@@ -86,7 +86,7 @@ set.seed(!23)
 tb_data <- tibble(x1 = abs(rnorm(N)),
                   x2 = x1 + abs(rnorm(N, .01)),
                   x3 = rnorm(N)) %>% 
-  mutate(y = 2*x1 + 3*x2 -5*x3 + rnorm(N, .01))
+  mutate(y = 2*x1 + 3*x2 -5*x3 + 7+ rnorm(N, .01))
 
 cor(tb_data)
 
@@ -174,3 +174,46 @@ FeatureEffect$new(mod_predictor_lm, method = "pdp", feature = "x1")$results
 plot(tb_data$x1, pdp_x1, type = "l")
 
 calc_pdp(lm_fit, tb_data, "x1")
+
+
+# ALE - LM ----------------------------------------------------------------
+probe_lm <- FeatureEffects$new(mod_predictor_lm, method = "ale")$results %>% 
+  lapply(function(x) x[, c(1,3,4)]) %>% bind_rows()
+
+probe_rf <- FeatureEffects$new(mod_predictor_rf, method = "ale")$results %>% 
+  lapply(function(x) x[, c(1,3,4)]) %>% bind_rows()
+
+calc_ale_lms <- function(probe) {
+  aux <- probe %>% mutate(.ale = .ale - mean(probe$.ale),
+                          .feature = .feature - mean(probe$.feature))
+  lm_fit <- lm(.ale ~ .feature, aux)
+  coef(lm_fit)
+}
+
+calc_ale_lms(probe_lm %>% filter(.feature.1 == "x1"))
+calc_ale_lms(probe_lm %>% filter(.feature.1 == "x2"))
+calc_ale_lms(probe_lm %>% filter(.feature.1 == "x3"))
+
+res_rf <- probe_rf %>% split(.[".feature.1"]) %>% 
+  map(~ .x %>% spread(key = ".feature.1", value = ".feature")) %>% 
+  bind_cols() %>% 
+  mutate(sum_ale = select(., starts_with(".ale")) %>% rowSums()) %>% 
+  mutate(sum_x = select(., starts_with("x")) %>% rowSums()) %>% 
+  mutate(y_hat = predict(rf_fit, .),
+         diff_sum_x_y_hat = y_hat - sum_x)
+  
+res_lm <- probe_lm %>% split(.[".feature.1"]) %>% 
+  map(~ .x %>% spread(key = ".feature.1", value = ".feature")) %>% 
+  bind_cols() %>% 
+  mutate(sum_ale = select(., starts_with(".ale")) %>% rowSums()) %>% 
+  mutate(sum_x = select(., starts_with("x")) %>% rowSums()) %>% 
+  mutate(y_hat = predict(lm_fit, .),
+         diff_sum_x_y_hat = y_hat - sum_x)
+
+true_contrib <- (tibble(intcpt = rep(1, 21)) %>% 
+                   bind_cols(res_lm %>% 
+                               select(starts_with("x")))) %>% 
+  sweep(2, coef(lm_fit), "*") %>% 
+  mutate(y_hat = rowSums(.),
+         sum_x = y_hat - intcpt)
+
