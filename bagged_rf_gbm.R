@@ -22,7 +22,7 @@ summary(lm_fit)
 modelLookup("ranger")
 getModelInfo("ranger")$fit
 
-hyper_param_grid <- expand.grid(mtry = 2,       # m = p means bagged trees
+hyper_param_grid <- expand.grid(mtry = 10,       # m = p means bagged trees
                                 min.node.size = 1,
                                 splitrule = "variance") 
 
@@ -182,5 +182,29 @@ Metrics::rmse(actual = mtcars$mpg, predict(new_gbm_caret_fit, mtcars))
 
 # XGBOOST -----------------------------------------------------------------
 
+# https://xgboost.readthedocs.io/en/latest/parameter.html
+# https://xgboost.readthedocs.io/en/latest/tutorials/param_tuning.html
 
+?xgboost::xgboost
 modelLookup("xgbLinear")
+getModelInfo("xgbLinear")$xgbTree$fit
+
+modelLookup("xgbTree")
+getModelInfo("xgbTree")$xgbTree$fit
+
+# B número de árboles -> nrounds
+# 
+# TREE BOOSTER:
+# 
+# d profundidad                    -> max_depth
+# lambda learning rate o shrinkage -> eta
+#                                  -> gamma
+# bagging fraction                 -> subsample
+# colsample_bytree                 -> colsample_bytree
+#                                  -> min_child_weight
+# 
+# LINEAR BOOSTER:
+# 
+# L2 regularization -> lambda
+# L2 regularization on bias -> lambda_bias
+# L1 regularization -> alpha
