@@ -1,5 +1,10 @@
 library(readxl)
 
+
+
+# CORES -------------------------------------------------------------------
+
+
 get_cores_data <- function(sheet = "Gasolinas") {
   #
   # Esta función se baja de la web de CORES el archivo excel con los consumos 
@@ -56,6 +61,12 @@ make_cores_data <- function() {
   cores_data
 }
 
+
+# INE ---------------------------------------------------------------------
+
+# ♂devtools::install_github("oddworldng/INEbaseR")
+library(INEbaseR)
+
 get_ine_data <- function(code, date_start = "2010-01-01") {
   #
   # Esta función se baja de la web del INE la serie temporal trimestral que se
@@ -88,7 +99,13 @@ get_ine_data <- function(code, date_start = "2010-01-01") {
   # "EPA815"   = Total Nacional. Tasa de paro de la población. Ambos sexos. 
   #              16 y más años.
   
-  aux <- INEbaseR::get_data_serie(code, date_start)
+  # aux <- get_data_serie(code, date_start)
+  aux <- INEbaseR::get_series(code = code, 
+                              resource = "data",
+                              date_start = date_start,
+                              date_end = "2100-12-31",
+                              nlast = 100000)
+  
   
   out <- aux$Data %>% 
     as.tibble %>% 
@@ -102,6 +119,9 @@ get_ine_data <- function(code, date_start = "2010-01-01") {
   
   out
 }
+
+
+# Eurostat ----------------------------------------------------------------
 
 
 library(eurostat)
