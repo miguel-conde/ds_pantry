@@ -44,7 +44,7 @@ if(any(!(paquetes %in% installed.packages()))){
 Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS=TRUE)
 
 # La siguiente línea de código instala el paquete desde Gitlab. 
-# Tienes que cambiarlo para especificar tu usuario, e.g., "ltorres@deloitte.es" 
+# Tienes que cambiarlo para especificar tu usuario, e.g., "ltorres@xxx.es" 
 # hay que ponerlo como "ltorres".
 # Aparecerá una ventana emergente cuando ejecutemos el código que nos permitirá 
 # escribir la contraseña.
