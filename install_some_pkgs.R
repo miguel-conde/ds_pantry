@@ -47,7 +47,7 @@ Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS=TRUE)
 # incluir la propia del usuario, e.g., "leonardo.torres@conento.com". Aparecerá una ventana emergente
 # cuando ejecutemos el código que nos permitirá escribir la contraseña.
 
-remotes::install_git("https://bitbucket.es.deloitte.com/scm/cnnt/interno_conentorlib.git",
+remotes::install_git("https://bitbucket.es.xxxxxx.com/scm/cnnt/interno_conentorlib.git",
                      ref = "master",
                      dependencies = "Imports",
                      upgrade = "never",
