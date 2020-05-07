@@ -51,7 +51,7 @@ Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS=TRUE)
 
 Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS=TRUE)
 
-remotes::install_git("https://bitbucket.es.deloitte.com/scm/cnnt/interno_conentorlib.git",
+remotes::install_git("https://bitbucket.es.xxxxxx.com/scm/cnnt/interno_conentorlib.git",
                      ref = "master",
                      dependencies = "Imports",
                      upgrade = "never",
