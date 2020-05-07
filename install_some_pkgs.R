@@ -43,16 +43,20 @@ if(any(!(paquetes %in% installed.packages()))){
 
 Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS=TRUE)
 
-# La siguiente línea de código instala el paquete desde Gitlab. En la dirección de correo necesitamos
-# incluir la propia del usuario, e.g., "leonardo.torres@conento.com". Aparecerá una ventana emergente
-# cuando ejecutemos el código que nos permitirá escribir la contraseña.
+# La siguiente línea de código instala el paquete desde Gitlab. 
+# Tienes que cambiarlo para especificar tu usuario, e.g., "ltorres@xxx.es" 
+# hay que ponerlo como "ltorres".
+# Aparecerá una ventana emergente cuando ejecutemos el código que nos permitirá 
+# escribir la contraseña.
+
+Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS=TRUE)
 
 remotes::install_git("https://bitbucket.es.xxxxxx.com/scm/cnnt/interno_conentorlib.git",
                      ref = "master",
                      dependencies = "Imports",
                      upgrade = "never",
                      quiet = F,
-                     credentials = git2r::cred_user_pass ("mcondedesimon", getPass::getPass()))
+                     credentials = git2r::cred_user_pass ("ltorres", getPass::getPass()))
 
 # For rstan ---------------------------------------------------------------
 

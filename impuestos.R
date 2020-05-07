@@ -66,7 +66,9 @@ tb_cotizacion <- tribble(~tipo_cotiz, ~empresa, ~trabajador,
                          "Comunes", .236, .047,
                          "Desempleo", .055, .0155,
                          "Fogasa", .002, 0,
-                         "Formación Profesional", 0.006, 0.001) %>% 
+                         "Formación Profesional", 0.006, 0.001) 
+
+tb_cotizacion <- tb_cotizacion %>% 
   mutate(total_SS = rowSums(tb_cotizacion %>% 
                            select_if(is.numeric)))
 
@@ -112,7 +114,7 @@ calc_total(48750, tb_tramos_IRPF, bases, total_cotizacion)
 tb_total %>% filter(sba == 40000 | sba == 43000 | sba == 45000 | sba == 48750)
 
 para_plot_4 <- 
-  sapply((12:450)*1000, calc_total, tb_tramos_irpf, bases_ss, total_tipos_cotizacion) %>% 
+  sapply((12:450)*1000, calc_total, tb_tramos_IRPF, bases, total_cotizacion) %>% 
   t %>% as.data.frame() %>% sapply(unlist) %>% as_tibble()
 
 plot(para_plot_4 %>% select(sba, sobrecoste), type = "l")
