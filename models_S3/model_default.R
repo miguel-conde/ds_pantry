@@ -69,16 +69,38 @@ new_model.default <- function(f, base, ...) {
       set_model_base = function(base) {
         stopifnot(is.null(base) | inherits(base, "data.frame"))
         return(assign("model_base", base, this_env)) 
-      }#,
+      },
       
       ## Methods
-      # copy = function() {
-      #   new_m <- model()
-      #   
-      #   return(this)
+      copy = function() {
+        return(make_copy(this))
+      },
+      fit = function(...) {
+        return(fit(this, ...))
+      },
+      summary = function(...) {
+        return(summary(this, ...))
+      },
+      fitted = function(...) {
+        return(fitted(this, ...))
+      },
+      residuals = function(...) {
+        return(residuals(this, ...))
+      },
+      coef = function(...) {
+        return(coef(this, ...))
+      },
+      plot = function(...) {
+        return(plot(this, ...))
+      },
+      predict = function(...) {
+        return(predict(this, ...))
+      }#,
+      # confint = function(...) {
+      #   return(confint(this, ...))
       # },
-      # fit = function() {
-      #   return(fit(get("this", this_env)))
+      # contributions = function(...) {
+      #   return(contributions(this, ...))
       # }
     ),
     class = c("model", "list")

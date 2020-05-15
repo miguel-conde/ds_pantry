@@ -17,19 +17,16 @@
 # CONSTRUCTORS ------------------------------------------------------------
 
 new_model_lm.default <- function(f, base, ...) {
-  # browser()
+  
   out <- model(f, base)
   
   assign("model_type", "lm", out$get_env())
   
   class(out) <- append("model_lm", class(out))
   
-  ###
-  # new_this <- get("this", out$get_env())
-  # class(new_this) <- class(out)
-  # new_this$fit <- function() return(fit(get("this", out$get_env())))
-  # out <- assign("this", new_this, out$get_env(), inherits = TRUE)
-  ###
+  new_this <- get("this", out$get_env())
+  class(new_this) <- class(out)
+  assign("this", new_this, out$get_env(), inherits = TRUE)
   
   return(out)
 }
@@ -78,7 +75,6 @@ fit.model_lm <- function(object, ...) {
   aux_lm <- lm(formula = object$get_model_formula(), 
                data = object$get_model_base(),
                ...)
-  # assign("fitted_object", aux_lm, object$get_env(), inherits = TRUE)
   assign("fitted_object", aux_lm, object$get_env())
   
   invisible(object)
