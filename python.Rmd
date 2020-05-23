@@ -1,0 +1,46 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+reticulate::use_condaenv("r-reticulate", required = TRUE)
+```
+
+
+```{python}
+x = [1, 2, 3, 4, 5]
+
+import numpy as np
+
+np_x = np.array(x)
+np_y = 2 * np_x
+
+print(np_y) 
+
+```
+
+```{python}
+import matplotlib.pyplot as plt
+
+plt.plot(np_x, np_y)
+plt.show()
+```
+
+```{python}
+import matplotlib.pyplot as plt
+year = [1950, 1951, 1952, 2100]
+pop = [2.538, 2.57, 2.62, 10.85]
+# Add more data
+year = [1800, 1850, 1900] + year
+pop = [1.0, 1.262, 1.650] + pop
+plt.plot(year, pop)
+plt.xlabel('Year')
+plt.ylabel('Population')
+plt.title('World Population Projections')
+plt.yticks([0, 2, 4, 6, 8, 10], ['0', '2B', '4B', '6B', '8B', '10B'])
+plt.show()
+```
+
+
+
