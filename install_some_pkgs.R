@@ -92,3 +92,6 @@ remotes::install_git("https://miguelco2000@bitbucket.org/miguelco2000/bayesm3.gi
                      #                                     getPass::getPass()), 
                      update = "never", verbose = TRUE,
                      build_vignettes = TRUE)
+
+
+
