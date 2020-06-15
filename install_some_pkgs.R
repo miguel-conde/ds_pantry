@@ -90,8 +90,16 @@ remotes::install_git("https://miguelco2000@bitbucket.org/miguelco2000/bayesm3.gi
                      quiet = FALSE,
                      # credentials = git2r::cred_user_pass("miguelco2000",
                      #                                     getPass::getPass()), 
-                     update = "never", verbose = TRUE,
+                     upgrade = "never", 
+                     verbose = TRUE,
                      build_vignettes = TRUE)
 
 
-
+remotes::install_git(url = "https://bitbucket.es.xxxxxx.com/scm/cnnt/interno_bayesm3_rpkg.git",
+                     ref = "develop",
+                     dependencies = "Imports",
+                     # git = "external",
+                     quiet = FALSE, verbose = TRUE,
+                     upgrade = "never",
+                     credentials = git2r::cred_user_pass("yyyyyyy", getPass::getPass()),
+                     build_vignettes = TRUE)
