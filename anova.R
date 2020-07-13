@@ -69,3 +69,76 @@ anova(therapy.regression, no.therapy.regresion)
 
 # To:
 summary(aov(mood.gain ~ drug + therapy, clin.trial))
+
+
+# COOKBOOK ----------------------------------------------------------------
+
+
+# 1-Way -------------------------------------------------------------------
+
+boxplot(mpg ~ factor(gear), data = mtcars,
+        xlab = "gear", ylab = "mpg")
+
+# Applies a Welch correction to address the nonhomogeneity of a 
+# variance:
+oneway.test(mpg ~ factor(gear), data = mtcars)
+
+mtcars_aov <- aov(mpg ~ factor(gear), data = mtcars)
+summary(mtcars_aov)
+
+model.tables(mtcars_aov, "means")
+model.tables(mtcars_aov, "effects")
+
+mtcars_posthoc <- TukeyHSD(mtcars_aov)
+mtcars_posthoc
+plot(mtcars_posthoc)
+
+
+# 2-Way -------------------------------------------------------------------
+
+old_par <- par(mfrow = c(1,2))
+boxplot(mpg ~ factor(gear), data = subset(mtcars, am == 0),
+        xlab = "gear", ylab = "mpg",
+        main = "automatic")
+boxplot(mpg ~ factor(gear), data = subset(mtcars, am == 1),
+        xlab = "gear", ylab = "mpg",
+        main = "manual")
+par(old_par)
+
+boxplot(mpg ~ factor(gear) * factor(am), data = mtcars,
+        xlab = "gear * transmission", ylab = "mpg",
+        main = "mpg by gear * transmission")
+
+# Interaction plot
+interaction.plot(mtcars$gear, mtcars$am,
+                 response = mtcars$mpg,
+                 type = "b",
+                 col = 1:3,
+                 leg.bty = "o",
+                 leg.bg = "beige",
+                 lwd = 2, pch = c(18, 24, 22),
+                 xlab = "Number of Gears",
+                 ylab = "Mean Miles per Gallon",
+                 main = "Interaction Plot")
+
+mtcars_2_aov <- aov(mpg ~ factor(gear)*factor(am), 
+                    data = mtcars)
+summary(mtcars_2_aov)
+
+model.tables(mtcars_2_aov, "means")
+model.tables(mtcars_2_aov, "effects")
+
+mtcars_posthoc_2 <- TukeyHSD(mtcars_2_aov)
+mtcars_posthoc_2
+
+old_par <- par(mfrow = c(1,2))
+plot(mtcars_posthoc_2)
+par(old_par)
+
+# ANOVA and LM ------------------------------------------------------------
+
+mtcars_lm <- lm(mpg ~ factor(gear)*factor(am), 
+                data = mtcars)
+summary(mtcars_lm)
+
+summary(aov(mtcars_lm))
