@@ -70,3 +70,7 @@ Sys.getenv("R_HOME")
 startup::find_rprofile(all = FALSE)
 
 startup::find_renviron(all = FALSE)
+
+
+# https://support.rstudio.com/hc/en-us/articles/200488488-Configuring-R-to-Use-an-HTTP-or-HTTPS-Proxy
+#
