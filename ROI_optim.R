@@ -1,7 +1,7 @@
 library(ROI)
 
 
-#
+# http://roi.r-forge.r-project.org/
 
 A <- rbind(c(5, 7, 2), c(3, 2, -9), c(1, 3, 1))
 dir <- c("<=", "<=", "<=")
