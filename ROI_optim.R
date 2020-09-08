@@ -1,4 +1,8 @@
 library(ROI)
+library(tidyverse)
+
+
+# TUTORIAL ----------------------------------------------------------------
 
 
 # http://roi.r-forge.r-project.org/
@@ -77,7 +81,7 @@ solution(L1_res)[1:ncol(stackloss)]
 # OLS ---------------------------------------------------------------------
 
 create_ols_problem <- function(y, X, intcpt = TRUE) {
-  
+  # browser()
   X_design <- as.matrix(X)
   
   if (intcpt == TRUE) {
@@ -165,3 +169,166 @@ ecdf(t_H_0) %>% plot
 
 sum(boot_res$t0[4] > t_H_0) / 10000
 ecdf(t_H_0)(boot_res$t0[4])
+
+
+# CONSTRAINED OLS ---------------------------------------------------------
+
+create_ols_cons_problem <- function(y, X_free = NULL, X_pos = NULL, X_neg = NULL) {
+  # browser()
+  X <- NULL
+  
+  if (!is.null(X_free)) {
+    X <- as.matrix(X_free)
+    n_free <- ncol(X_free) 
+  } else n_free <-  0
+  
+  if (!is.null(X_pos)) {
+    X <- cbind(X, as.matrix(X_pos))
+    n_pos <- ncol(X_pos) 
+  } else n_pos <-  0
+  
+  if (!is.null(X_neg)) {
+    X <- cbind(X, as.matrix(X_neg))
+    n_neg <- ncol(X_neg) 
+  } else n_neg <-  0
+  
+  n <- n_free + n_pos + n_neg
+  
+  if (n == 0) {
+    stop("Need SOME data !!!")
+  }
+  
+  col_names <-  colnames(X)
+  
+  sse <- function(beta) {
+    
+    y_hat <- as.numeric(X %*% beta)
+    
+    out <- sum((y - y_hat)^2)
+    
+    return(out)
+  }
+  
+  out <- OP()
+  # browser()
+  objective(out) <- F_objective(sse, n = n, names = col_names)
+  
+  if (n > n_free) {
+    bounds(out) <- V_bound(ld = -Inf, ud = Inf, 
+                           li = (n_free + 1):(n_free + n_pos + n_neg),
+                           ui = (n_free + 1):(n_free + n_pos + n_neg),
+                           lb = c(rep(  0, n_pos), rep(-Inf, n_neg)),
+                           ub = c(rep(Inf, n_pos), rep(   0, n_neg)),
+                           nobj = n)
+  } else {
+    bounds(out) <- V_bound(ld = -Inf, ud = Inf, nobj = n)
+  }
+  
+  
+  return(out)
+}
+
+# 1 Only free, no intercept
+olscp <- create_ols_cons_problem(y = stackloss$stack.loss, X_free = stackloss[, -4])
+
+ROI_applicable_solvers(olscp)
+
+(olscp_sol <- ROI_solve(olscp, solver = "nlminb", start = c(1,1,1)))
+
+solution(olscp_sol)
+objective(olscp)(solution(olscp_sol))
+
+ref_lm <- lm(stack.loss ~ .-1, stackloss)
+summary(ref_lm)
+
+sum((fitted(ref_lm) - stackloss$stack.loss)^2)
+
+# 2 Only free, intercept
+olscp <- create_ols_cons_problem(y = stackloss$stack.loss, 
+                                 X_free = cbind(intcpt = 1, stackloss[, -4]))
+
+ROI_applicable_solvers(olscp)
+
+(olscp_sol <- ROI_solve(olscp, solver = "nlminb", start = c(1,1,1,1)))
+
+solution(olscp_sol)
+objective(olscp)(solution(olscp_sol))
+
+ref_lm <- lm(stack.loss ~ ., stackloss)
+summary(ref_lm)
+
+sum((fitted(ref_lm) - stackloss$stack.loss)^2)
+
+# 3 Only POS, no intercept
+olscp <- create_ols_cons_problem(y = stackloss$stack.loss, X_pos = stackloss[, -4])
+
+ROI_applicable_solvers(olscp)
+
+(olscp_sol <- ROI_solve(olscp, solver = "nlminb", start = c(1,1,1)))
+
+solution(olscp_sol)
+objective(olscp)(solution(olscp_sol))
+
+# 4 Only POS, intercept
+olscp <- create_ols_cons_problem(y = stackloss$stack.loss, 
+                                 X_pos = cbind(intcpt = 1, stackloss[, -4]))
+
+ROI_applicable_solvers(olscp)
+
+(olscp_sol <- ROI_solve(olscp, solver = "nlminb", start = c(1,1,1, 1)))
+
+solution(olscp_sol)
+objective(olscp)(solution(olscp_sol))
+
+# 5 Only NEG, no intercept
+olscp <- create_ols_cons_problem(y = stackloss$stack.loss, X_neg = stackloss[, -4])
+
+ROI_applicable_solvers(olscp)
+
+(olscp_sol <- ROI_solve(olscp, solver = "nlminb", start = c(1,1,1)))
+
+solution(olscp_sol)
+objective(olscp)(solution(olscp_sol))
+
+# 6 Only NEG, intercept
+olscp <- create_ols_cons_problem(y = stackloss$stack.loss, 
+                                 X_neg = cbind(intcpt = 1, stackloss[, -4]))
+
+ROI_applicable_solvers(olscp)
+
+(olscp_sol <- ROI_solve(olscp, solver = "nlminb", start = c(1,1,1, 1)))
+
+solution(olscp_sol)
+objective(olscp)(solution(olscp_sol))
+
+# 7 Free + POS, no intercept
+olscp <- create_ols_cons_problem(y = stackloss$stack.loss, 
+                                 X_free = stackloss[, 1:2],
+                                 X_pos = stackloss[, 3, drop = FALSE])
+
+ROI_applicable_solvers(olscp)
+
+(olscp_sol <- ROI_solve(olscp, solver = "nlminb", start = c(1,1,1)))
+
+solution(olscp_sol)
+objective(olscp)(solution(olscp_sol))
+
+# 8 Free + POS, intercept
+
+
+# 9 Free + NEG, no intercept
+
+
+# 10 Free + NEG, intercept
+
+
+# 11 POS + NEG, no intercept
+
+
+# 12 POS + NEG, intercept
+
+
+# 13 Free + POS + NEG, no intercept
+
+
+# 14 Free + POS + NEG, intercept
