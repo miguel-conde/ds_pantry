@@ -219,6 +219,13 @@ mape <- mean(abs(model_alshaya$one.step.prediction.errors /
                    sum(model_alshaya$original.series))^2)
 mape
 
+model_components <- model_alshaya$state.contributions %>% 
+  apply(2:3, mean) %>%  
+  t 
+model_components[, "trend"] %>% plot(type = "l")
+model_components[, "seasonal.7.1"] %>% plot(type = "l")
+model_components[, "dynamic"] %>% plot(type = "l")
+
 model_alshaya$dynamic.regression.coefficients %>% dim()
 model_coefs <- model_alshaya$dynamic.regression.coefficients %>% 
   apply(2:3, mean) %>% t
@@ -241,11 +248,7 @@ for(i in 1:1000) {
 
 reg_contr_array %>% apply(1:2, mean) %>% rowSums() %>% plot(type = "l")
 
-model_alshaya$state.contributions %>% 
-  apply(2:3, mean) %>% 
-  tail() %>% 
-  t %>% 
-  tail()
+model_components %>% tail()
 reg_contr_array %>% apply(1:2, mean) %>% rowSums() %>% tail()
 
 all_contr <- abind::abind(model_alshaya$state.contributions, along = 2)
