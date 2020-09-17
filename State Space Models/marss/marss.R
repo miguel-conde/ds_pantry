@@ -39,15 +39,15 @@ fitted(kemfit)
 residuals(kemfit)
 print(kemfit, what = "par")
 print(kemfit, what = "Q")
-tidy::tidy(kemfit)
+# tidy::tidy(kemfit)
 tidy.marssMLE(kemfit)
 logLik(kemfit)
 AIC(kemfit)
 residuals(kemfit) 
 predict(kemfit, n.ahead = 12)
 ggplot2::autoplot(predict(kemfit, n.ahead = 12))
-forecast(kemfit, n.ahead = 12) 
-ggplot2::autoplot(forecast(kemfit, n.ahead = 12))
+# forecast(kemfit, n.ahead = 12) 
+# ggplot2::autoplot(forecast(kemfit, n.ahead = 12))
 plot(kemfit)
 ggplot2::autoplot(kemfit)
 
@@ -134,12 +134,14 @@ dat = data.frame(Yr = floor(lubridate::year(time(initial.claims)) + .Machine$dou
 # Model
 Z <- matrix(list(1,0), nrow = 1)
 A <- matrix(list(0), nrow = 1)
+G <- matrix(list(1, 0, 0 ,1), nrow = 2) # Default
 R <- matrix(list("r"), nrow = 1)
 B <- matrix(list(1, 0, 1, 1), nrow = 2)
 U <- matrix(list(0, 0), nrow = 2)
+H <- matrix(list(1), nrow = 1) # Default
 Q <- matrix(list(0), nrow =2, ncol = 2)
 diag(Q) <- c("s_mu", "s_beta")
-x0 <- matrix(list(pi_mu, pi_beta), nrow = 1)
+x0 <- matrix(list(dat["iclaims_nsa", 1], 0), nrow = 1)
 V0 <- matrix(list(0), nrow =2, ncol = 2)
 diag(V0) <- c("s_mu_0", "s_beta_0")
 
@@ -150,9 +152,9 @@ llt_spec <- list(Z = Z,
                  U = U,
                  Q = Q,
                  x0 = x0,
-                 V0 = V0 #,
-                 # G = G,
-                 # H = H,
+                 V0 = V0,
+                 G = G,
+                 H = H#,
                  # L = L ???
                  )
 
@@ -170,3 +172,5 @@ ggplot2::autoplot(predict(llt_fit, n.ahead = 52))
 
 broom::tidy(llt_fit)
 broom::glance(llt_fit)
+
+llt_fit$model$fixed$Z %*% print(llt_fit, what = "states", silent = TRUE) 
