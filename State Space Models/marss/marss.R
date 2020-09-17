@@ -114,10 +114,67 @@ kem.sim.2$model$data <- sim.data[, , 2]
 MARSSkf(kem.sim.2)$logLik
 
 
-# Replicate BSTS examples -------------------------------------------------
+## Covariates
+fulldat <- lakeWAplanktonTrans
+years <- fulldat[, "Year"] >= 1965 & fulldat[, "Year"] < 1975
+dat <- t(fulldat[years, c("Greens", "Bluegreens")])
+the.mean <- apply(dat, 1, mean, na.rm = TRUE)
+the.sigma <- sqrt(apply(dat, 1, var, na.rm = TRUE))
+dat <- (dat - the.mean) * (1 / the.sigma)
+
+covariates <- rbind(
+  Temp = fulldat[years, "Temp"],
+  TP = fulldat[years, "TP"]
+)
+# z.score the covariates
+covariates <- zscore(covariates)
+
+# Multivariate linear regression with autocorrelated errors
+Z <- "identity"
+Q <- "unconstrained"
+B <- "diagonal and unequal"
+A <- U <- x0 <- "zero"
+R <- "diagonal and equal"
+d <- covariates
+
+D <- "unconstrained"
+y <- dat
+model.list <- list(B = B, U = U, Q = Q, Z = Z, A = A,
+                   R = R, D = D, d = d, x0 = x0)
+control.list <- list(maxit = 1500)
+kem <- MARSS(y, model = model.list, control = control.list)
+
+# Time-varying parameters
+
+dat <- t(harborSealWA)
+dat <- dat[2:nrow(dat), ] # remove the year row
+
+# Time-varying parameters are specified by passing in an array of matrices (list,
+# numeric or character) where the 3rd dimension of the array is time and must
+# be the same value as the 2nd (time) dimension of the data matrix. No text
+# shortcuts are allowed for time-varying parameters; you need to use the matrix
+# form.
+# For example, let's say we wanted a different u for the first half versus
+# second half of the harbor seal time series. We would pass in an array for u as
+# follows:
+U1 <- matrix("t1", 5, 1)
+U2 <- matrix("t2", 5, 1)
+
+Ut <- array(U2, dim = c(dim(U1), dim(dat)[2]))
+TT <- dim(dat)[2]
+Ut[, , 1:floor(TT / 2)] <- U1
+kemfit.tv <- MARSS(dat, model = list(U = Ut, Q = "diagonal and equal"))
+
+U1 <- matrix(c(rep("t1", 4), "hc"), 5, 1)
+U2 <- matrix(c(rep("t2", 4), "hc"), 5, 1)
+Ut <- array(U2, dim = c(dim(U1), dim(dat)[2]))
+Ut[, , 1:floor(TT / 2)] <- U1
+kemfit.tv <- MARSS(dat, model = list(U = Ut, Q = "diagonal and equal"))
+
+# 2 - Replicate BSTS examples ---------------------------------------------
 
 
-# Nowcasting --------------------------------------------------------------
+# 2.1 Nowcasting ----------------------------------------------------------
 
 library(bsts)     # load the bsts package
 data(iclaims)     # bring the initial.claims data into scope
@@ -131,19 +188,23 @@ dat = data.frame(Yr = floor(lubridate::year(time(initial.claims)) + .Machine$dou
   janitor::clean_names() %>% 
   t()
 
-# Model
-Z <- matrix(list(1,0), nrow = 1)
+
+# 2.2 LLT Model -----------------------------------------------------------
+
+
+var_y <- var(dat["iclaims_nsa", ])
+Z <- matrix(c(1,0), nrow = 1, ncol = 2)
 A <- matrix(list(0), nrow = 1)
-G <- matrix(list(1, 0, 0 ,1), nrow = 2) # Default
+G <- diag(nrow = 2) # Default
 R <- matrix(list("r"), nrow = 1)
-B <- matrix(list(1, 0, 1, 1), nrow = 2)
-U <- matrix(list(0, 0), nrow = 2)
-H <- matrix(list(1), nrow = 1) # Default
-Q <- matrix(list(0), nrow =2, ncol = 2)
-diag(Q) <- c("s_mu", "s_beta")
-x0 <- matrix(list(dat["iclaims_nsa", 1], 0), nrow = 1)
-V0 <- matrix(list(0), nrow =2, ncol = 2)
-diag(V0) <- c("s_mu_0", "s_beta_0")
+B <- matrix(c(1, 0, 1, 1), nrow = 2, ncol = 2)
+U <- "zero"
+H <- diag(nrow = 1) # Default
+Q <- ldiag(c("s_mu", "s_beta"))
+x0 <- matrix(c(dat["iclaims_nsa", 1], 0), nrow = 2, ncol = 1)
+V0 <- matrix(list(0), nrow =2, ncol = 2) + diag(1e-10, 2)
+# diag(V0) <- c("s_mu_0", "s_beta_0")
+diag(V0) <- c(1e+04*var_y, 1e+04*var_y)
 
 llt_spec <- list(Z = Z,
                  A = A,
@@ -173,4 +234,280 @@ ggplot2::autoplot(predict(llt_fit, n.ahead = 52))
 broom::tidy(llt_fit)
 broom::glance(llt_fit)
 
-llt_fit$model$fixed$Z %*% print(llt_fit, what = "states", silent = TRUE) 
+llt_fit$model$fixed$Z %*% print(llt_fit, what = "states", silent = TRUE) %>% 
+  t %>% tail()
+Z %*% print(llt_fit, what = "states", silent = TRUE) %>% 
+  t %>% tail()
+fitted(llt_fit) %>% tail()
+
+# 
+# 
+
+# 2.3 LLT + Season(52) ----------------------------------------------------
+
+
+makeB <- function(nf) {
+  B <- matrix(0, nf + 1L, nf + 1L)
+  B[1L:2L, 1L:2L] <- c(1, 0, 1, 1)
+  B[3L, ] <- c(0, 0, rep(-1, nf - 1L))
+  if (nf >= 3L) {
+    ind <- 3:nf
+    B[cbind(ind + 1L, ind)] <- 1
+  }
+  return(B)
+}
+
+S <- 52
+var_y <- var(dat["iclaims_nsa", ])/100
+Z <- matrix(c(1,0,1, rep(0, S-2)), nrow = 1, ncol = 2+S-1)
+A <- "zero"
+G <- "identity" # Default
+R <- matrix(list("r"), nrow = 1)
+B <- makeB(S)
+U <- "zero"
+H <- "identity" # Default
+Q <- ldiag(c(list("s_mu", "s_beta", "s_w"), as.list(rep(0, S-2))))
+x0 <- matrix(c(dat["iclaims_nsa", 1], rep(0, S)),  ncol = 1)
+V0 <- diag(1e+06*var_y, S+1) + diag(1e-10, S+1)
+
+
+llt_spec <- list(Z = Z,
+                 A = A,
+                 R = R,
+                 B = B,
+                 U = U,
+                 Q = Q,
+                 x0 = x0,
+                 V0 = V0,
+                 G = G,
+                 H = H,
+                 # L = L ???
+                 tinitx = 0
+                 )
+
+llt_seas52_fit <- MARSS(dat["iclaims_nsa", ], 
+                 model = llt_spec,
+                 fit = TRUE, 
+                 form = "marxss",
+                 # method = "kem")
+                 method = "BFGS")
+
+print(llt_seas52_fit, what = "R")
+print(llt_seas52_fit, what = "Q")
+print(llt_seas52_fit, what = "V0")
+
+ggplot2::autoplot(predict(llt_seas52_fit, n.ahead = 52))
+
+broom::tidy(llt_seas52_fit)
+broom::glance(llt_seas52_fit)
+
+llt_seas52_fit$model$fixed$Z %*% print(llt_seas52_fit, 
+                                       what = "states", silent = TRUE) %>% 
+  t %>% tail()
+Z %*% print(llt_seas52_fit, what = "states", silent = TRUE) %>% 
+  t %>% tail()
+fitted(llt_seas52_fit) %>% tail()
+fitted(llt_seas52_fit, type = "ytT") %>% tail()
+fitted(llt_seas52_fit, type = "xtT") %>% tail()
+fitted(llt_seas52_fit, type = "ytt") %>% tail()
+fitted(llt_seas52_fit, type = "xtt1") %>% tail()
+
+
+# 2.4 LLT + Season(52) + COVARIATES ---------------------------------------
+
+
+covariates <- dat[c("michigan_unemployment"     ,
+                    "idaho_unemployment",
+                    "pennsylvania_unemployment",
+                    "unemployment_filing",
+                    "new_jersey_unemployment"   ,
+                    "department_of_unemployment",
+                    "illinois_unemployment" ,
+                    "rhode_island_unemployment",
+                    "unemployment_office"       ,
+                    "filing_unemployment"), ]
+
+S <- 52
+var_y <- var(dat["iclaims_nsa", ])/100
+
+B <- makeB(S)
+U <- "zero"
+# C
+# c
+G <- "identity" # Default
+Q <- ldiag(c(list("s_mu", "s_beta", "s_w"), as.list(rep(0, S-2))))
+
+
+Z <- matrix(c(1,0,1, rep(0, S-2)), nrow = 1, ncol = 2+S-1)
+A <- "zero"
+D <- "unconstrained"
+d <- covariates
+H <- "identity" # Default
+R <- matrix(list("r"), nrow = 1)
+
+
+x0 <- matrix(c(dat["iclaims_nsa", 1], rep(0, S)),  ncol = 1)
+V0 <- diag(1e+06*var_y, S+1) + diag(1e-10, S+1)
+
+
+llt_spec <- list(Z = Z,
+                 A = A,
+                 D = D,
+                 d = d,
+                 H = H,
+                 R = R,
+                 B = B,
+                 U = U,
+                 # C = c,
+                 # c = c,
+                 G = G,
+                 Q = Q,
+                 x0 = x0,
+                 V0 = V0,
+                 # L = L ???
+                 tinitx = 0
+)
+
+llt_seas52_cov_fit <- MARSS(dat["iclaims_nsa", ], 
+                        model = llt_spec,
+                        fit = TRUE, 
+                        form = "marxss",
+                        # method = "kem")
+                        method = "BFGS")
+
+print(llt_seas52_cov_fit, what = "R")
+print(llt_seas52_cov_fit, what = "Q")
+print(llt_seas52_cov_fit, what = "V0")
+
+ggplot2::autoplot(predict(llt_seas52_cov_fit, 
+                          n.ahead = 52,
+                          newdata = d[,1:52]))
+
+broom::tidy(llt_seas52_cov_fit)
+broom::glance(llt_seas52_cov_fit)
+
+llt_seas52_cov_fit$model$fixed$Z %*% print(llt_seas52_cov_fit, 
+                                       what = "states", silent = TRUE) %>% 
+  t %>% tail()
+Z %*% print(llt_seas52_cov_fit, what = "states", silent = TRUE) %>% 
+  t %>% tail()
+fitted(llt_seas52_cov_fit) %>% tail()
+fitted(llt_seas52_cov_fit, type = "ytT") %>% tail()
+fitted(llt_seas52_cov_fit, type = "xtT") %>% tail()
+fitted(llt_seas52_cov_fit, type = "ytt") %>% tail()
+fitted(llt_seas52_cov_fit, type = "xtt1") %>% tail()
+
+# for (j in 1:5) {
+plot.ts(MARSSresiduals(llt_seas52_cov_fit, type = "tt1")$model.residuals[1,],
+        ylab = "Residual", main = "Model Residuals"
+)
+abline(h = 0, lty = "dashed")
+acf(MARSSresiduals(llt_seas52_cov_fit, type = "tt1")$model.residuals[1,],
+    na.action = na.pass)
+# }
+# 
+
+
+# 2.5 LLT + Season(52) + TIME VARYING COVARIATES --------------------------
+
+covariates <- dat[c("michigan_unemployment"     ,
+                    "idaho_unemployment",
+                    "pennsylvania_unemployment",
+                    "unemployment_filing",
+                    "new_jersey_unemployment"   ,
+                    "department_of_unemployment",
+                    "illinois_unemployment" ,
+                    "rhode_island_unemployment",
+                    "unemployment_office"       ,
+                    "filing_unemployment"), ]
+
+S <- 52
+var_y <- var(dat["iclaims_nsa", ])/100
+
+make2 <- function(B1, B2) {
+  #browser()
+  out1 <- cbind(B1, matrix(0, nrow = nrow(B1), ncol = ncol(B2)))
+  out2 <- cbind(matrix(0, nrow = nrow(B2), ncol = ncol(B1)), B2)
+  
+  rbind(out1, out2)
+}
+
+B <- make2(makeB(S), diag(1, nrow(covariates)))
+U <- "zero"
+# C
+# c
+G <- "identity" # Default
+Q <- make2(ldiag(c(list("s_mu", "s_beta", "s_w"), as.list(rep(0, S-2)))),
+           ldiag(paste0("q_", 1:nrow(covariates))))
+
+aux <- covariates %>% rownames()
+
+Z <- matrix(c(c(1,0,1), as.list(rep(0, S-2)), as.list(aux)), 
+            nrow = 1, ncol = 2+S-1+length(aux))
+A <- "zero"
+D <- "zero"
+d <- "zero"
+H <- "identity" # Default
+R <- matrix(list("r"), nrow = 1)
+
+
+x0 <- matrix(c(dat["iclaims_nsa", 1], rep(0, S)),  ncol = 1)
+V0 <- diag(1e+06*var_y, S+1) + diag(1e-10, S+1)
+
+
+llt_spec <- list(Z = Z,
+                 A = A,
+                 D = D,
+                 d = d,
+                 H = H,
+                 R = R,
+                 B = B,
+                 U = U,
+                 # C = c,
+                 # c = c,
+                 G = G,
+                 Q = Q,
+                 x0 = x0,
+                 V0 = V0,
+                 # L = L ???
+                 tinitx = 0
+)
+
+llt_seas52_cov_t_fit <- MARSS(dat["iclaims_nsa", ], 
+                            model = llt_spec,
+                            fit = TRUE, 
+                            form = "marxss",
+                            # method = "kem")
+                            method = "BFGS")
+
+print(llt_seas52_cov_t_fit, what = "R")
+print(llt_seas52_cov_t_fit, what = "Q")
+print(llt_seas52_cov_t_fit, what = "V0")
+
+ggplot2::autoplot(predict(llt_seas52_cov_t_fit, 
+                          n.ahead = 52,
+                          newdata = d[,1:52]))
+
+broom::tidy(llt_seas52_cov_t_fit)
+broom::glance(llt_seas52_cov_t_fit)
+
+llt_seas52_cov_t_fit$model$fixed$Z %*% print(llt_seas52_cov_t_fit, 
+                                           what = "states", silent = TRUE) %>% 
+  t %>% tail()
+Z %*% print(llt_seas52_cov_t_fit, what = "states", silent = TRUE) %>% 
+  t %>% tail()
+fitted(llt_seas52_cov_t_fit) %>% tail()
+fitted(llt_seas52_cov_t_fit, type = "ytT") %>% tail()
+fitted(llt_seas52_cov_t_fit, type = "xtT") %>% tail()
+fitted(llt_seas52_cov_t_fit, type = "ytt") %>% tail()
+fitted(llt_seas52_cov_t_fit, type = "xtt1") %>% tail()
+
+# for (j in 1:5) {
+plot.ts(MARSSresiduals(llt_seas52_cov_t_fit, type = "tt1")$model.residuals[1,],
+        ylab = "Residual", main = "Model Residuals"
+)
+abline(h = 0, lty = "dashed")
+acf(MARSSresiduals(llt_seas52_cov_t_fit, type = "tt1")$model.residuals[1,],
+    na.action = na.pass)
+# }
+# 

@@ -254,3 +254,59 @@ reg_contr_array %>% apply(1:2, mean) %>% rowSums() %>% tail()
 all_contr <- abind::abind(model_alshaya$state.contributions, along = 2)
 
 (all_contr %>% apply(2:3, mean) %>% t)[, "regression"]  %>% plot(type = "l")
+
+
+
+# MBSTS -------------------------------------------------------------------
+
+library(mbsts)
+
+data(exdata)
+
+#Two target series
+Y<-as.matrix(exdata[,1:2])
+
+#Sixteen candidate predictors
+X.star<-as.matrix(exdata[,3:18])
+
+#split dataset into training set and test set
+n=dim(Y)[1]
+
+ntrain=n-5
+Ytrain<-Y[1:ntrain,]
+
+Xtrain<-X.star[1:ntrain,]
+
+Ytest<-Y[(ntrain+1):n,]
+Xtest<-X.star[(ntrain+1):n,]
+
+#Specify time series components
+STmodel<-tsc.setting(Ytrain,mu=c(1,1),rho=c(0.6,1),S=c(4,0),
+                     vrho=c(0,0.5),lambda=c(0,pi/10))
+
+#prior parameters setting
+
+#gama
+ki<- c(8,dim(Xtrain)[2])
+pii<- matrix(rep(0.5,dim(Xtrain)[2]),nrow=dim(Xtrain)[2])
+
+#beta
+b<-matrix(0,dim(Xtrain)[2])
+kapp<-0.01
+
+#v0 and V0 for obs Sigma
+R2<-0.8
+v0<-5
+
+#State component Sigma
+v<-0.01
+ss<-0.01
+
+#train a mbsts model
+mbsts.model<-mbsts(Ytrain,Xtrain,STmodel,ki,pii,b,kapp,R2,v0,v,ss,mc=15,burn=5)
+
+#make a 5-steps prediction
+output<-mbsts.forecast(mbsts.model,STmodel,newdata=Xtest,steps=3)
+
+error<-abs(output$pred.mean-Ytest)
+error
