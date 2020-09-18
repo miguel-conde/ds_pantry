@@ -532,17 +532,18 @@ print(llt_seas52_cov_t_fit, what = "R")
 print(llt_seas52_cov_t_fit, what = "Q")
 print(llt_seas52_cov_t_fit, what = "V0")
 
+llt_seas52_cov_t_fit$states[54:63,]
+
 ggplot2::autoplot(predict(llt_seas52_cov_t_fit, 
-                          n.ahead = 52,
-                          newdata = d[,1:52]))
+                          n.ahead = 52))
 
 broom::tidy(llt_seas52_cov_t_fit)
 broom::glance(llt_seas52_cov_t_fit)
 
-llt_seas52_cov_t_fit$model$fixed$Z %*% print(llt_seas52_cov_t_fit, 
-                                           what = "states", silent = TRUE) %>% 
+llt_seas52_cov_t_fit$model$fixed$Z[,1,] %*% 
+  t(print(llt_seas52_cov_t_fit,  what = "states", silent = TRUE)) %>% 
   t %>% tail()
-Z %*% print(llt_seas52_cov_t_fit, what = "states", silent = TRUE) %>% 
+Z[1,,] %*% t(print(llt_seas52_cov_t_fit, what = "states", silent = TRUE)) %>% 
   t %>% tail()
 fitted(llt_seas52_cov_t_fit) %>% tail()
 fitted(llt_seas52_cov_t_fit, type = "ytT") %>% tail()
@@ -559,3 +560,200 @@ acf(MARSSresiduals(llt_seas52_cov_t_fit, type = "tt1")$model.residuals[1,],
     na.action = na.pass)
 # }
 # 
+
+
+# 2.5 - CLEAN -------------------------------------------------------------
+
+library(bsts)     # load the bsts package
+data(iclaims)     # bring the initial.claims data into scope
+
+
+# Data --------------------------------------------------------------------
+
+
+dat = data.frame(Yr = floor(lubridate::year(time(initial.claims)) + .Machine$double.eps),
+                 Qtr = lubridate::quarter(time(initial.claims)), 
+                 initial.claims) %>% 
+  janitor::clean_names() %>% 
+  t()
+
+
+# Aux funs ----------------------------------------------------------------
+
+
+make_LLT_season_B <- function(nf) {
+  #
+  # Make B matrix  to model Local Level Trend (LLT) + seasonal components 
+  # nf = Seasonal frequency
+  # 
+  # Ch 19 Structural Time Series Models, p. 264 - MARSS User's Guide
+  # 
+  B <- matrix(0, nf + 1L, nf + 1L)
+  B[1L:2L, 1L:2L] <- c(1, 0, 1, 1)
+  B[3L, ] <- c(0, 0, rep(-1, nf - 1L))
+  if (nf >= 3L) {
+    ind <- 3:nf
+    B[cbind(ind + 1L, ind)] <- 1
+  }
+  return(B)
+}
+
+make_B <- function(B1, B2) {
+  #
+  # Make B matrix from B1 (e.g., LLT + Season) and B2 (e.g., time variant 
+  # covariates) matrices.
+  #
+  out1 <- cbind(B1, matrix(0, nrow = nrow(B1), ncol = ncol(B2)))
+  out2 <- cbind(matrix(0, nrow = nrow(B2), ncol = ncol(B1)), B2)
+  
+  rbind(out1, out2)
+}
+
+
+# Aux vars ----------------------------------------------------------------
+
+COVARIATES <- c("michigan_unemployment",
+                "idaho_unemployment",
+                "pennsylvania_unemployment",
+                "unemployment_filing",
+                "new_jersey_unemployment",
+                "department_of_unemployment",
+                "illinois_unemployment",
+                "rhode_island_unemployment",
+                "unemployment_office",
+                "filing_unemployment")
+
+# Covariates-only matrix
+covariates <- dat[COVARIATES, ] 
+
+TGT_VARS <- c("iclaims_nsa")
+
+targets <- dat[TGT_VARS, ]
+
+var_y <- var(tartgets)/100
+
+N_T_PERIODS <- ncol(dat)             # T
+N_TARGETS <- length(TGT_VARS)        # n
+N_COVARIATES <- nrow(covariates)
+STATIONALITIES <- c(yearly = 52)
+SUM_STATIONALITIES = sum(STATIONALITIES)
+N_STATIONALITIES <- length(STATIONALITIES)
+N_STATES <- 2 +  # LLT               # m
+  SUM_STATIONALITIES - N_STATIONALITIES  + N_COVARIATES
+
+
+# Model Specification -----------------------------------------------------
+
+# Ch 1 Overview, pp. 1-2 - MARSS User's Guide
+# 
+
+## State Process
+## 
+## x[t] = B[t] X[t-1] + u[t] + C[t] c[t] + G[t] w[t], w[t] ~ MVN(0, Q[t])
+## 
+## x: m X T - N_STATES X N_T_PERIODS
+## w: m X T - N_STATES X N_T_PERIODS
+## 
+
+# m X m - N_STATES X N_STATES - Default="identity"
+B <- make2(makeB(STATIONALITIES["yearly"]), # LLT + Season
+           diag(1, N_COVARIATES))            # Time-variant covariates coefs
+
+# m X 1 - N_STATES X 1 - Default="unconstrained"
+U <- "zero"
+
+# m X p - Default="zero"
+C <- "zero"
+
+# p X T - Default="zero"
+c <- "zero"
+
+# m X m - N_STATES X N_STATES - Default="identity"
+G <- "identity" # Default
+
+# m X m - N_STATES X N_STATES - Default="diagonal and unequal"
+Q <- make2(ldiag(c(list("s_mu", "s_beta", "s_w"), 
+                   as.list(rep(0, SUM_STATIONALITIES - 2*N_STATIONALITIES)))),
+           ldiag(paste0("q_", 1:N_COVARIATES)))
+
+## Observation Process
+## 
+## y[t] = Z[t] X[t-1] + a[t] + D[t] d[t] + H[t] v[t], v[t] ~ MVN(0, R[t])
+## 
+## y: n X T - N_TARGETS X N_T_PERIODS
+## v: n X T - N_TARGETS X N_T_PERIODS
+## 
+
+# n X m X T - N_TARGETS X N_STATES X N_T_PERIODS - Default="identity"
+Z <- array(NA, c(N_TARGETS, N_STATES, N_T_PERIODS))
+for(i in 1:N_T_PERIODS) {
+  Z[1:N_TARGETS, 1:(N_STATES - N_COVARIATES), i] <-  
+    c(c(1,0,1), # LLT
+      rep(0,    # Seasonalities
+          SUM_STATIONALITIES - 2*N_STATIONALITIES))
+  Z[1:N_TARGETS, (N_STATES - N_COVARIATES + 1):N_STATES, i] <- 
+    covariates[,i] # Time-variant covariates coefs
+}
+
+# n X 1 - N_TARGETS X 1 - Default="scaling"
+A <- "zero"
+
+# n X q - Default="zero"
+D <- "zero"
+
+# q X T - Default="zero"
+d <- "zero"
+
+# n X n - N_TARGETS X N_TARGETS - Default="identity"
+H <- "identity" # Default
+
+# n X n - N_TARGETS X N_TARGETS - Default="diagonal and equal"
+R <- matrix(list("r"), nrow = N_TARGETS)
+
+## Initial States
+## 
+## X[1] ~ MVN(pi, lambda) ó X[1] ~ MVN(pi, lambda)
+## 
+
+# m X T - N_STATES X N_T_PERIODS - Default="unconstrained"
+x0 <- matrix(c(dat["iclaims_nsa", 1], 
+               rep(0, S),  
+               rep(0, length(aux))), 
+             ncol = 1)
+
+# n X T - N_TARGETS X N_T_PERIODS - Default="zero"
+V0 <- diag(1e+06*var_y, S+1+length(aux)) + diag(1e-10, S+1+length(aux))
+
+# Default=0
+tinitx = 0
+
+llt_spec <- list(Z = Z,
+                 A = A,
+                 D = D,
+                 d = d,
+                 H = H,
+                 R = R,
+                 B = B,
+                 U = U,
+                 C = c,
+                 c = c,
+                 G = G,
+                 Q = Q,
+                 x0 = x0,
+                 V0 = V0,
+                 # L = L ???
+                 tinitx = tinitx
+)
+
+
+# Model fit ---------------------------------------------------------------
+llt_seas52_cov_t_fit <- MARSS(targets, 
+                              model = llt_spec,
+                              fit = TRUE, 
+                              form = "marxss",
+                              # method = "kem")
+                              method = "BFGS")
+
+# Model check -------------------------------------------------------------
+
+
