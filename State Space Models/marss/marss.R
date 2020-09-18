@@ -3,7 +3,7 @@ library(MARSS)
 
 
 
-# Users Guide -------------------------------------------------------------
+# 1 Users Guide -----------------------------------------------------------
 
 
 harborSealWA
@@ -114,7 +114,9 @@ kem.sim.2$model$data <- sim.data[, , 2]
 MARSSkf(kem.sim.2)$logLik
 
 
-## Covariates
+
+# 1.X Covariates ----------------------------------------------------------
+
 fulldat <- lakeWAplanktonTrans
 years <- fulldat[, "Year"] >= 1965 & fulldat[, "Year"] < 1975
 dat <- t(fulldat[years, c("Greens", "Bluegreens")])
@@ -144,7 +146,8 @@ model.list <- list(B = B, U = U, Q = Q, Z = Z, A = A,
 control.list <- list(maxit = 1500)
 kem <- MARSS(y, model = model.list, control = control.list)
 
-# Time-varying parameters
+
+# 1.Y Time-varying parameters ---------------------------------------------
 
 dat <- t(harborSealWA)
 dat <- dat[2:nrow(dat), ] # remove the year row
@@ -170,6 +173,43 @@ U2 <- matrix(c(rep("t2", 4), "hc"), 5, 1)
 Ut <- array(U2, dim = c(dim(U1), dim(dat)[2]))
 Ut[, , 1:floor(TT / 2)] <- U1
 kemfit.tv <- MARSS(dat, model = list(U = Ut, Q = "diagonal and equal"))
+
+
+# 1.Z DLM -----------------------------------------------------------------
+
+data(SalmonSurvCUI)
+years <- SalmonSurvCUI[, 1]
+TT <- length(years)
+# response data: logit(survival)
+dat <- matrix(SalmonSurvCUI[, 2], nrow = 1)
+
+CUI <- SalmonSurvCUI[, "CUI.apr"]
+CUI.z <- zscore(CUI)
+# number of state = # of regression params (slope(s) + intercept)
+m <- 1 + 1
+
+# for process eqn
+B <- diag(m) # 2x2; Identity
+
+U <- matrix(0, nrow = m, ncol = 1) # 2x1; both elements = 0
+Q <- matrix(list(0), m, m) # 2x2; all 0 for now
+diag(Q) <- c("q1", "q2") # 2x2; diag = (q1,q2)
+
+# for observation eqn
+Z <- array(NA, c(1, m, TT)) # NxMxT; empty for now
+Z[1, 1, ] <- rep(1, TT) # Nx1; 1's for intercept
+Z[1, 2, ] <- CUI.z # Nx1; regr variable
+A <- matrix(0) # 1x1; scalar = 0
+R <- matrix("r") # 1x1; scalar = r
+
+# only need starting values for regr parameters
+inits.list <- list(x0 = matrix(c(0, 0), nrow = m))
+# list of model matrices & vectors
+mod.list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R)
+
+dlm1 <- MARSS(dat, inits = inits.list, model = mod.list)
+
+dlm1$states
 
 # 2 - Replicate BSTS examples ---------------------------------------------
 
@@ -442,8 +482,13 @@ Q <- make2(ldiag(c(list("s_mu", "s_beta", "s_w"), as.list(rep(0, S-2)))),
 
 aux <- covariates %>% rownames()
 
-Z <- matrix(c(c(1,0,1), as.list(rep(0, S-2)), as.list(aux)), 
-            nrow = 1, ncol = 2+S-1+length(aux))
+# Z <- matrix(c(1,0,1, rep(0, S-2)), nrow = 1, ncol = 2+S-1)
+Z <- array(NA, c(1, 2+S-1+length(aux), ncol(dat)))
+for(i in 1:ncol(dat)) {
+  Z[1,1:(2+S-1),i] <-  c(c(1,0,1), rep(0, S-2))
+  Z[1,(2+S):(2+S-1+length(aux)),i] <- covariates[,i]
+}
+
 A <- "zero"
 D <- "zero"
 d <- "zero"
@@ -451,8 +496,11 @@ H <- "identity" # Default
 R <- matrix(list("r"), nrow = 1)
 
 
-x0 <- matrix(c(dat["iclaims_nsa", 1], rep(0, S)),  ncol = 1)
-V0 <- diag(1e+06*var_y, S+1) + diag(1e-10, S+1)
+x0 <- matrix(c(dat["iclaims_nsa", 1], 
+               rep(0, S),  
+               rep(0, length(aux))), 
+             ncol = 1)
+V0 <- diag(1e+06*var_y, S+1+length(aux)) + diag(1e-10, S+1+length(aux))
 
 
 llt_spec <- list(Z = Z,
