@@ -564,12 +564,21 @@ acf(MARSSresiduals(llt_seas52_cov_t_fit, type = "tt1")$model.residuals[1,],
 
 # 2.5 - CLEAN -------------------------------------------------------------
 
-library(bsts)     # load the bsts package
-data(iclaims)     # bring the initial.claims data into scope
+## KEYS:
+## 
+## Local Level Trend  (LLT) + Season: Ch 19 Structural Time Series Models,
+##                                    MARSS User's Guide.
+## Dynamic linear models (DLMs): Ch 16 Structural Time Series Models,
+##                                    MARSS User's Guide.
+##                                    
 
+library(tidyverse)
+library(MARSS)
 
 # Data --------------------------------------------------------------------
 
+library(bsts)     # load the bsts package
+data(iclaims)     # bring the initial.claims data into scope
 
 dat = data.frame(Yr = floor(lubridate::year(time(initial.claims)) + .Machine$double.eps),
                  Qtr = lubridate::quarter(time(initial.claims)), 
@@ -580,6 +589,30 @@ dat = data.frame(Yr = floor(lubridate::year(time(initial.claims)) + .Machine$dou
 
 # Aux funs ----------------------------------------------------------------
 
+make_LLT_B <- function() {
+  #
+  # Make B matrix for Local Linear Trend (LLT)
+  # 
+  
+  matrix(c(1, 0, 1, 1), nrow = 2, ncol = 2)
+}
+
+make_season_B <- function(nf) {
+  #
+  # Make B matrix for a seasonal component
+  # nf = Seasonal frequency
+  # 
+  
+  B <- matrix(0, nf - 1L, nf -1L)
+  
+  B[1L, ] <- rep(-1, nf - 1L)
+  
+  if (nf >= 3L) {
+    ind <- (3:nf) - 2L
+    B[cbind(ind + 1L, ind)] <- 1
+  }
+  return(B)
+}
 
 make_LLT_season_B <- function(nf) {
   #
@@ -596,6 +629,25 @@ make_LLT_season_B <- function(nf) {
     B[cbind(ind + 1L, ind)] <- 1
   }
   return(B)
+}
+
+make_dynamic_covariates_B <- function(n_covariates) {
+  diag(1, n_covariates)
+}
+
+make_LLT_Q <- function() {
+  ldiag(c("s_mu", "s_beta"))
+}
+
+make_season_Q <- function(nf, suffix = "") {
+  
+  ldiag(c(list(paste0("s_w", suffix)), 
+          as.list(rep(0, nf - 2))))
+}
+
+make_covariates_Q <- function(n_covariates) {
+  
+  ldiag(paste0("q_", 1:n_covariates))
 }
 
 make_B <- function(B1, B2) {
@@ -630,7 +682,7 @@ TGT_VARS <- c("iclaims_nsa")
 
 targets <- dat[TGT_VARS, ]
 
-var_y <- var(tartgets)/100
+var_y <- var(tartgets)/100 ## TO DO MULTIVARIATE
 
 N_T_PERIODS <- ncol(dat)             # T
 N_TARGETS <- length(TGT_VARS)        # n
@@ -656,8 +708,9 @@ N_STATES <- 2 +  # LLT               # m
 ## 
 
 # m X m - N_STATES X N_STATES - Default="identity"
-B <- make2(makeB(STATIONALITIES["yearly"]), # LLT + Season
-           diag(1, N_COVARIATES))            # Time-variant covariates coefs
+B <- make_LLT_B() %>% # LLT
+  make_B(make_season_B(STATIONALITIES["yearly"])) %>% # Season
+  make_B(make_dynamic_covariates_B(N_COVARIATES)) # Time-variant covariates coefs
 
 # m X 1 - N_STATES X 1 - Default="unconstrained"
 U <- "zero"
@@ -672,9 +725,10 @@ c <- "zero"
 G <- "identity" # Default
 
 # m X m - N_STATES X N_STATES - Default="diagonal and unequal"
-Q <- make2(ldiag(c(list("s_mu", "s_beta", "s_w"), 
-                   as.list(rep(0, SUM_STATIONALITIES - 2*N_STATIONALITIES)))),
-           ldiag(paste0("q_", 1:N_COVARIATES)))
+Q <- make_LLT_Q() %>% 
+  make_B(make_season_Q(STATIONALITIES["yearly"])) %>% 
+  make_B(make_covariates_Q(N_COVARIATES))
+            
 
 ## Observation Process
 ## 
@@ -715,14 +769,14 @@ R <- matrix(list("r"), nrow = N_TARGETS)
 ## X[1] ~ MVN(pi, lambda) ó X[1] ~ MVN(pi, lambda)
 ## 
 
-# m X T - N_STATES X N_T_PERIODS - Default="unconstrained"
-x0 <- matrix(c(dat["iclaims_nsa", 1], 
-               rep(0, S),  
-               rep(0, length(aux))), 
+# m X 1 - N_STATES X 1 - Default="unconstrained"
+x0 <- matrix(c(targets[1], 
+               rep(0, STATIONALITIES["yearly"]),  
+               rep(0, N_COVARIATES)), 
              ncol = 1)
 
-# n X T - N_TARGETS X N_T_PERIODS - Default="zero"
-V0 <- diag(1e+06*var_y, S+1+length(aux)) + diag(1e-10, S+1+length(aux))
+# m X m - N_STATES X N_STATES - Default="zero"
+V0 <- diag(1e+06*var_y, N_STATES) + diag(1e-10, N_STATES)
 
 # Default=0
 tinitx = 0
