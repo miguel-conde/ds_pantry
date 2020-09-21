@@ -242,7 +242,7 @@ U <- "zero"
 H <- diag(nrow = 1) # Default
 Q <- ldiag(c("s_mu", "s_beta"))
 x0 <- matrix(c(dat["iclaims_nsa", 1], 0), nrow = 2, ncol = 1)
-V0 <- matrix(list(0), nrow =2, ncol = 2) + diag(1e-10, 2)
+V0 <- matrix(0, nrow =2, ncol = 2) + diag(1e-10, 2)
 # diag(V0) <- c("s_mu_0", "s_beta_0")
 diag(V0) <- c(1e+04*var_y, 1e+04*var_y)
 
@@ -589,6 +589,17 @@ dat = data.frame(Yr = floor(lubridate::year(time(initial.claims)) + .Machine$dou
 
 # Aux funs ----------------------------------------------------------------
 
+dbind <- function(B1, B2) {
+  #
+  # Make B matrix from B1 (e.g., LLT + Season) and B2 (e.g., time variant 
+  # covariates) matrices.
+  #
+  out1 <- cbind(B1, matrix(0, nrow = nrow(B1), ncol = ncol(B2)))
+  out2 <- cbind(matrix(0, nrow = nrow(B2), ncol = ncol(B1)), B2)
+  
+  rbind(out1, out2)
+}
+
 make_LLT_B <- function() {
   #
   # Make B matrix for Local Linear Trend (LLT)
@@ -650,15 +661,36 @@ make_covariates_Q <- function(n_covariates) {
   ldiag(paste0("q_", 1:n_covariates))
 }
 
-make_B <- function(B1, B2) {
-  #
-  # Make B matrix from B1 (e.g., LLT + Season) and B2 (e.g., time variant 
-  # covariates) matrices.
-  #
-  out1 <- cbind(B1, matrix(0, nrow = nrow(B1), ncol = ncol(B2)))
-  out2 <- cbind(matrix(0, nrow = nrow(B2), ncol = ncol(B1)), B2)
+make_LLT_Z <- function() {
+  matrix(c(1,0), nrow = 1, ncol = 2)
+}
+
+make_season_Z <- function(nf) {
+  matrix(c(1,0, 0), nrow = 1, ncol = nf-1)
+}
+
+make_covariates_Z <- function(n_covariates) {
   
-  rbind(out1, out2)
+}
+
+make_R <- function() {
+  matrix("r")
+}
+
+make_LLT_x0 <- function(y) {
+  matrix(c(y[1], 0), nrow = 2, ncol = 1)
+}
+
+make_LLT_V0 <- function(y) {
+  matrix(1e+06*var(y)/100 + 1e-10, nrow = 2, ncol = 2)
+}
+
+make_season_x0 <- function(nf) {
+  matrix(0, nrow = nf-1, ncol = 1)
+}
+
+make_season_V0 <- function(y, nf) {
+  matrix(1e+06*var(y)/100 + 1e-10, nrow = nf-1, ncol = nf-1)
 }
 
 
@@ -709,8 +741,8 @@ N_STATES <- 2 +  # LLT               # m
 
 # m X m - N_STATES X N_STATES - Default="identity"
 B <- make_LLT_B() %>% # LLT
-  make_B(make_season_B(STATIONALITIES["yearly"])) %>% # Season
-  make_B(make_dynamic_covariates_B(N_COVARIATES)) # Time-variant covariates coefs
+  dbind(make_season_B(STATIONALITIES["yearly"])) %>% # Season
+  dbind(make_dynamic_covariates_B(N_COVARIATES)) # Time-variant covariates coefs
 
 # m X 1 - N_STATES X 1 - Default="unconstrained"
 U <- "zero"
@@ -726,8 +758,8 @@ G <- "identity" # Default
 
 # m X m - N_STATES X N_STATES - Default="diagonal and unequal"
 Q <- make_LLT_Q() %>% 
-  make_B(make_season_Q(STATIONALITIES["yearly"])) %>% 
-  make_B(make_covariates_Q(N_COVARIATES))
+  dbind(make_season_Q(STATIONALITIES["yearly"])) %>% 
+  dbind(make_covariates_Q(N_COVARIATES))
             
 
 ## Observation Process
