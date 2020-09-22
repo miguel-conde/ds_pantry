@@ -589,109 +589,7 @@ dat = data.frame(Yr = floor(lubridate::year(time(initial.claims)) + .Machine$dou
 
 # Aux funs ----------------------------------------------------------------
 
-dbind <- function(B1, B2) {
-  #
-  # Make B matrix from B1 (e.g., LLT + Season) and B2 (e.g., time variant 
-  # covariates) matrices.
-  #
-  out1 <- cbind(B1, matrix(0, nrow = nrow(B1), ncol = ncol(B2)))
-  out2 <- cbind(matrix(0, nrow = nrow(B2), ncol = ncol(B1)), B2)
-  
-  rbind(out1, out2)
-}
-
-make_LLT_B <- function() {
-  #
-  # Make B matrix for Local Linear Trend (LLT)
-  # 
-  
-  matrix(c(1, 0, 1, 1), nrow = 2, ncol = 2)
-}
-
-make_season_B <- function(nf) {
-  #
-  # Make B matrix for a seasonal component
-  # nf = Seasonal frequency
-  # 
-  
-  B <- matrix(0, nf - 1L, nf -1L)
-  
-  B[1L, ] <- rep(-1, nf - 1L)
-  
-  if (nf >= 3L) {
-    ind <- (3:nf) - 2L
-    B[cbind(ind + 1L, ind)] <- 1
-  }
-  return(B)
-}
-
-make_LLT_season_B <- function(nf) {
-  #
-  # Make B matrix  to model Local Level Trend (LLT) + seasonal components 
-  # nf = Seasonal frequency
-  # 
-  # Ch 19 Structural Time Series Models, p. 264 - MARSS User's Guide
-  # 
-  B <- matrix(0, nf + 1L, nf + 1L)
-  B[1L:2L, 1L:2L] <- c(1, 0, 1, 1)
-  B[3L, ] <- c(0, 0, rep(-1, nf - 1L))
-  if (nf >= 3L) {
-    ind <- 3:nf
-    B[cbind(ind + 1L, ind)] <- 1
-  }
-  return(B)
-}
-
-make_dynamic_covariates_B <- function(n_covariates) {
-  diag(1, n_covariates)
-}
-
-make_LLT_Q <- function() {
-  ldiag(c("s_mu", "s_beta"))
-}
-
-make_season_Q <- function(nf, suffix = "") {
-  
-  ldiag(c(list(paste0("s_w", suffix)), 
-          as.list(rep(0, nf - 2))))
-}
-
-make_covariates_Q <- function(n_covariates) {
-  
-  ldiag(paste0("q_", 1:n_covariates))
-}
-
-make_LLT_Z <- function() {
-  matrix(c(1,0), nrow = 1, ncol = 2)
-}
-
-make_season_Z <- function(nf) {
-  matrix(c(1,0, 0), nrow = 1, ncol = nf-1)
-}
-
-make_covariates_Z <- function(n_covariates) {
-  
-}
-
-make_R <- function() {
-  matrix("r")
-}
-
-make_LLT_x0 <- function(y) {
-  matrix(c(y[1], 0), nrow = 2, ncol = 1)
-}
-
-make_LLT_V0 <- function(y) {
-  matrix(1e+06*var(y)/100 + 1e-10, nrow = 2, ncol = 2)
-}
-
-make_season_x0 <- function(nf) {
-  matrix(0, nrow = nf-1, ncol = 1)
-}
-
-make_season_V0 <- function(y, nf) {
-  matrix(1e+06*var(y)/100 + 1e-10, nrow = nf-1, ncol = nf-1)
-}
+source(here::here("State Space Models", "marss", "marss_utils.R"))
 
 
 # Aux vars ----------------------------------------------------------------
@@ -712,7 +610,7 @@ covariates <- dat[COVARIATES, ]
 
 TGT_VARS <- c("iclaims_nsa")
 
-targets <- dat[TGT_VARS, ]
+targets <- dat[TGT_VARS, , drop = FALSE]
 
 var_y <- var(tartgets)/100 ## TO DO MULTIVARIATE
 
@@ -771,15 +669,24 @@ Q <- make_LLT_Q() %>%
 ## 
 
 # n X m X T - N_TARGETS X N_STATES X N_T_PERIODS - Default="identity"
-Z <- array(NA, c(N_TARGETS, N_STATES, N_T_PERIODS))
+Z_old <- array(NA, c(N_TARGETS, N_STATES, N_T_PERIODS))
 for(i in 1:N_T_PERIODS) {
-  Z[1:N_TARGETS, 1:(N_STATES - N_COVARIATES), i] <-  
+  Z_old[1:N_TARGETS, 1:(N_STATES - N_COVARIATES), i] <-  
     c(c(1,0,1), # LLT
       rep(0,    # Seasonalities
           SUM_STATIONALITIES - 2*N_STATIONALITIES))
-  Z[1:N_TARGETS, (N_STATES - N_COVARIATES + 1):N_STATES, i] <- 
+  Z_old[1:N_TARGETS, (N_STATES - N_COVARIATES + 1):N_STATES, i] <- 
     covariates[,i] # Time-variant covariates coefs
 }
+
+Z_LLT_season <- make_LLT_Z() %>% 
+  cbind(make_season_Z(STATIONALITIES["yearly"])) %>% 
+  array(dim = c(N_TARGETS, N_STATES - N_COVARIATES, N_T_PERIODS))
+Z_covariates <- array(covariates, 
+                      dim = c(N_TARGETS, 
+                              N_COVARIATES, 
+                              N_T_PERIODS))
+Z <- abind::abind(Z_LLT_season, Z_covariates, along = 2)
 
 # n X 1 - N_TARGETS X 1 - Default="scaling"
 A <- "zero"
@@ -802,13 +709,22 @@ R <- matrix(list("r"), nrow = N_TARGETS)
 ## 
 
 # m X 1 - N_STATES X 1 - Default="unconstrained"
-x0 <- matrix(c(targets[1], 
+x0 <- matrix(c(targets[TGT_VARS[1], 1], 
                rep(0, STATIONALITIES["yearly"]),  
                rep(0, N_COVARIATES)), 
              ncol = 1)
 
+x0 <- make_LLT_x0(targets[TGT_VARS[1], ]) %>% 
+  rbind(make_season_x0(STATIONALITIES["yearly"])) %>% 
+  rbind(make_covariates_x0(covariates))
+
 # m X m - N_STATES X N_STATES - Default="zero"
 V0 <- diag(1e+06*var_y, N_STATES) + diag(1e-10, N_STATES)
+
+V0 <- make_LLT_V0(targets[TGT_VARS[1], ]) %>% 
+  dbind(make_season_V0(targets[TGT_VARS[1], ], 
+                       nf = STATIONALITIES["yearly"])) %>% 
+  dbind(make_covariates_V0(covariates))
 
 # Default=0
 tinitx = 0
@@ -841,5 +757,39 @@ llt_seas52_cov_t_fit <- MARSS(targets,
                               method = "BFGS")
 
 # Model check -------------------------------------------------------------
+
+plot(llt_seas52_cov_t_fit, plot.type = "model.ytT")
+
+print(llt_seas52_cov_t_fit, what = "R")
+print(llt_seas52_cov_t_fit, what = "Q")
+print(llt_seas52_cov_t_fit, what = "V0")
+
+llt_seas52_cov_t_fit$states[54:63,]
+
+ggplot2::autoplot(predict(llt_seas52_cov_t_fit, 
+                          n.ahead = 52))
+
+broom::tidy(llt_seas52_cov_t_fit)
+broom::glance(llt_seas52_cov_t_fit)
+
+llt_seas52_cov_t_fit$model$fixed$Z[,1,] %*% 
+  t(print(llt_seas52_cov_t_fit,  what = "states", silent = TRUE)) %>% 
+  t %>% tail()
+Z[1,,] %*% t(print(llt_seas52_cov_t_fit, what = "states", silent = TRUE)) %>% 
+  t %>% tail()
+fitted(llt_seas52_cov_t_fit) %>% tail()
+fitted(llt_seas52_cov_t_fit, type = "ytT") %>% tail()
+fitted(llt_seas52_cov_t_fit, type = "xtT") %>% tail()
+fitted(llt_seas52_cov_t_fit, type = "ytt") %>% tail()
+fitted(llt_seas52_cov_t_fit, type = "xtt1") %>% tail()
+
+# for (j in 1:5) {
+plot.ts(MARSSresiduals(llt_seas52_cov_t_fit, type = "tt1")$model.residuals[1,],
+        ylab = "Residual", main = "Model Residuals"
+)
+abline(h = 0, lty = "dashed")
+acf(MARSSresiduals(llt_seas52_cov_t_fit, type = "tt1")$model.residuals[1,],
+    na.action = na.pass)
+
 
 
