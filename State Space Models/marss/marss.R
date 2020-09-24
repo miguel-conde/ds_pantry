@@ -791,5 +791,331 @@ abline(h = 0, lty = "dashed")
 acf(MARSSresiduals(llt_seas52_cov_t_fit, type = "tt1")$model.residuals[1,],
     na.action = na.pass)
 
+aux <- fitted(llt_seas52_cov_t_fit, type = "xtT")
+
+states_evol <- aux %>% 
+  dplyr::select(t, .rownames, .fitted) %>% 
+  filter(.rownames %in% c(t, "X1", "X3", paste0("X", 54:63))) %>% 
+  spread(.rownames, .fitted)  %>% 
+  mutate(l_s = X1 + X3) # %>% 
+  # rowwise() %>% 
+  # mutate(cov = sum(X54:X63)) %>% 
+  # ungroup %>% 
+  # mutate(fitted = l_s + cov)
+
+  
+  
+beta_coefs <- states_evol %>% dplyr::select(X54:X63)
+contrib_covariates <- (covariates * t(beta_coefs)) %>% 
+  t %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column("date") %>% 
+  as_tibble() %>% 
+  mutate(date = as.Date(date))
+
+contrib_covariates <- contrib_covariates %>% 
+  mutate(all_covariates = contrib_covariates %>% dplyr::select(-date) %>% rowSums()) 
+
+contrib_evol <- states_evol %>% 
+  dplyr::select(trend = X1, season = X3, trend_season = l_s) %>% 
+  bind_cols((contrib_covariates)) %>% 
+  mutate(fitted = trend + season + all_covariates,
+         y = targets[1,],
+         residuals = y - fitted)
+
+plot(contrib_evol %>% dplyr::select(date, y), type = "l")
+lines(contrib_evol%>% dplyr::select(date, trend), col = "blue") # Trend
+
+plot(contrib_evol[1:52, c("date", "season")], type = "l") # Stationality
+
+plot(contrib_evol %>% dplyr::select(date, y), type = "l")
+lines(contrib_evol%>% dplyr::select(date, trend_season), col = "blue") # Trend + Stationality
+
+plot(contrib_evol %>% dplyr::select(date, all_covariates), 
+     col = "blue", type = "l") # Covariates 
+
+plot(contrib_evol %>% dplyr::select(date, y), type = "l")
+lines(contrib_evol%>% dplyr::select(date, fitted), col = "blue") # Fitted
+
+plot(contrib_evol %>% dplyr::select(date, residuals))
+qqnorm(scale(contrib_evol %>% pull(residuals)))
+abline(a = 0, b = 1)
 
 
+# 2.6 - 2 RESPONSES -------------------------------------------------------------
+
+library(tidyverse)
+library(MARSS)
+
+# Data --------------------------------------------------------------------
+
+library(bsts)     # load the bsts package
+data(iclaims)     # bring the initial.claims data into scope
+
+dat = data.frame(Yr = floor(lubridate::year(time(initial.claims)) + .Machine$double.eps),
+                 Qtr = lubridate::quarter(time(initial.claims)), 
+                 initial.claims) %>% 
+  janitor::clean_names() %>% 
+  t()
+
+
+# Aux funs ----------------------------------------------------------------
+
+source(here::here("State Space Models", "marss", "marss_utils.R"))
+
+
+# Aux vars ----------------------------------------------------------------
+
+COVARIATES <- c("michigan_unemployment",
+                "idaho_unemployment",
+                "pennsylvania_unemployment",
+                "unemployment_filing",
+                "new_jersey_unemployment",
+                # "department_of_unemployment",
+                "illinois_unemployment",
+                "rhode_island_unemployment",
+                "unemployment_office",
+                "filing_unemployment")
+
+# Covariates-only matrix
+covariates <- dat[COVARIATES, ] 
+
+TGT_VARS <- c("iclaims_nsa", "department_of_unemployment")
+
+targets <- dat[TGT_VARS, , drop = FALSE]
+
+# var_y <- var(tartgets)/100 ## TO DO MULTIVARIATE
+
+N_T_PERIODS <- ncol(dat)             # T
+N_TARGETS <- length(TGT_VARS)        # n
+N_COVARIATES <- nrow(covariates)
+STATIONALITIES <- c(yearly = 52)
+SUM_STATIONALITIES = sum(STATIONALITIES)
+N_STATIONALITIES <- length(STATIONALITIES)
+N_STATES <- N_TARGETS * (2  +  # LLT               # m
+                             SUM_STATIONALITIES - N_STATIONALITIES  + 
+                             N_COVARIATES)
+
+
+# Model Specification -----------------------------------------------------
+
+# Ch 1 Overview, pp. 1-2 - MARSS User's Guide
+# 
+
+## State Process
+## 
+## x[t] = B[t] X[t-1] + u[t] + C[t] c[t] + G[t] w[t], w[t] ~ MVN(0, Q[t])
+## 
+## x: m X T - N_STATES X N_T_PERIODS
+## w: m X T - N_STATES X N_T_PERIODS
+## 
+
+# m X m - N_STATES X N_STATES - Default="identity"
+B <- make_LLT_B() %>% # LLT
+  dbind(make_LLT_B()) %>% 
+  dbind(make_season_B(STATIONALITIES["yearly"])) %>% # Season
+  dbind(make_season_B(STATIONALITIES["yearly"])) %>% 
+  dbind(make_dynamic_covariates_B(N_COVARIATES)) %>% # Time-variant covariates coefs
+  dbind(make_dynamic_covariates_B(N_COVARIATES))
+
+# m X 1 - N_STATES X 1 - Default="unconstrained"
+U <- "zero"
+
+# m X p - Default="zero"
+C <- "zero"
+
+# p X T - Default="zero"
+c <- "zero"
+
+# m X m - N_STATES X N_STATES - Default="identity"
+G <- "identity" # Default
+
+# m X m - N_STATES X N_STATES - Default="diagonal and unequal"
+Q <- make_LLT_Q() %>% 
+  dbind(make_LLT_Q()) %>% 
+  dbind(make_season_Q(STATIONALITIES["yearly"])) %>% 
+  dbind(make_season_Q(STATIONALITIES["yearly"])) %>% 
+  dbind(make_covariates_Q(N_COVARIATES)) %>% 
+  dbind(make_covariates_Q(N_COVARIATES))
+
+
+## Observation Process
+## 
+## y[t] = Z[t] X[t-1] + a[t] + D[t] d[t] + H[t] v[t], v[t] ~ MVN(0, R[t])
+## 
+## y: n X T - N_TARGETS X N_T_PERIODS
+## v: n X T - N_TARGETS X N_T_PERIODS
+## 
+
+# n X m X T - N_TARGETS X N_STATES X N_T_PERIODS - Default="identity"
+
+Z_LLT_season <- make_LLT_Z() %>% 
+  dbind(make_LLT_Z()) %>% 
+  cbind(make_season_Z(STATIONALITIES["yearly"]) %>% 
+          dbind(make_season_Z(STATIONALITIES["yearly"]))) %>% 
+  array(dim = c(N_TARGETS, N_STATES - N_COVARIATES, N_T_PERIODS))
+Z_covariates <- array(rbind(covariates, covariates), 
+                      dim = c(N_TARGETS, 
+                              N_COVARIATES, 
+                              N_T_PERIODS))
+Z <- abind::abind(Z_LLT_season, Z_covariates, along = 2)
+
+# n X 1 - N_TARGETS X 1 - Default="scaling"
+A <- "zero"
+
+# n X q - Default="zero"
+D <- "zero"
+
+# q X T - Default="zero"
+d <- "zero"
+
+# n X n - N_TARGETS X N_TARGETS - Default="identity"
+H <- "identity" # Default
+
+# n X n - N_TARGETS X N_TARGETS - Default="diagonal and equal"
+R <- make_R(N_TARGETS)
+
+## Initial States
+## 
+## X[1] ~ MVN(pi, lambda) ó X[1] ~ MVN(pi, lambda)
+## 
+
+# m X 1 - N_STATES X 1 - Default="unconstrained"
+# x0 <- matrix(c(targets[TGT_VARS[1], 1], 
+#                rep(0, STATIONALITIES["yearly"]),  
+#                rep(0, N_COVARIATES)), 
+#              ncol = 1)
+
+x0 <- make_LLT_x0(targets[TGT_VARS[1], ]) %>% 
+  rbind(make_LLT_x0(targets[TGT_VARS[2], ])) %>% 
+  rbind(make_season_x0(STATIONALITIES["yearly"])) %>% 
+  rbind(make_season_x0(STATIONALITIES["yearly"])) %>% 
+  rbind(make_covariates_x0(covariates)) %>% 
+  rbind(make_covariates_x0(covariates))
+
+# m X m - N_STATES X N_STATES - Default="zero"
+# V0 <- diag(1e+06*var_y, N_STATES) + diag(1e-10, N_STATES)
+
+V0 <- make_LLT_V0(targets[TGT_VARS[1], ]) %>% 
+  dbind(make_LLT_V0(targets[TGT_VARS[2], ])) %>% 
+  dbind(make_season_V0(targets[TGT_VARS[1], ], 
+                       nf = STATIONALITIES["yearly"])) %>% 
+  dbind(make_season_V0(targets[TGT_VARS[2], ], 
+                       nf = STATIONALITIES["yearly"])) %>% 
+  dbind(make_covariates_V0(covariates)) %>% 
+  dbind(make_covariates_V0(covariates))
+
+# Default=0
+tinitx = 0
+
+llt_spec <- list(Z = Z,
+                 A = A,
+                 D = D,
+                 d = d,
+                 H = H,
+                 R = R,
+                 B = B,
+                 U = U,
+                 C = c,
+                 c = c,
+                 G = G,
+                 Q = Q,
+                 x0 = x0,
+                 V0 = V0,
+                 # L = L ???
+                 tinitx = tinitx
+)
+
+
+# Model fit ---------------------------------------------------------------
+llt_seas52_cov_t_2y_fit <- MARSS(targets, 
+                              model = llt_spec,
+                              fit = TRUE, 
+                              form = "marxss",
+                              # method = "kem")
+                              method = "BFGS")
+
+# Model check -------------------------------------------------------------
+
+plot(llt_seas52_cov_t_2y_fit, plot.type = "model.ytT")
+
+# print(llt_seas52_cov_t_2y_fit, what = "R")
+# print(llt_seas52_cov_t_2y_fit, what = "Q")
+# print(llt_seas52_cov_t_2y_fit, what = "V0")
+# 
+# llt_seas52_cov_t_2y_fit$states[54:63,]
+
+ggplot2::autoplot(predict(llt_seas52_cov_t_2y_fit, 
+                          n.ahead = 52))
+
+broom::tidy(llt_seas52_cov_t_2y_fit)
+broom::glance(llt_seas52_cov_t_2y_fit)
+
+llt_seas52_cov_t_2y_fit$model$fixed$Z[,1,] %*% 
+  t(print(llt_seas52_cov_t_2y_fit,  what = "states", silent = TRUE)) %>% 
+  t %>% tail()
+Z[1,,] %*% t(print(llt_seas52_cov_t_2y_fit, what = "states", silent = TRUE)) %>% 
+  t %>% tail()
+fitted(llt_seas52_cov_t_2y_fit) %>% tail()
+fitted(llt_seas52_cov_t_2y_fit, type = "ytT") %>% tail()
+fitted(llt_seas52_cov_t_2y_fit, type = "xtT") %>% tail()
+fitted(llt_seas52_cov_t_2y_fit, type = "ytt") %>% tail()
+fitted(llt_seas52_cov_t_2y_fit, type = "xtt1") %>% tail()
+
+# for (j in 1:5) {
+plot.ts(MARSSresiduals(llt_seas52_cov_t_2y_fit, type = "tt1")$model.residuals[1,],
+        ylab = "Residual", main = "Model Residuals"
+)
+abline(h = 0, lty = "dashed")
+acf(MARSSresiduals(llt_seas52_cov_t_2y_fit, type = "tt1")$model.residuals[1,],
+    na.action = na.pass)
+
+aux <- fitted(llt_seas52_cov_t_2y_fit, type = "xtT")
+
+states_evol <- aux %>% 
+  dplyr::select(t, .rownames, .fitted) %>% 
+  filter(.rownames %in% c(t, "X1", "X3", paste0("X", 54:63))) %>% 
+  spread(.rownames, .fitted)  %>% 
+  mutate(l_s = X1 + X3) # %>% 
+# rowwise() %>% 
+# mutate(cov = sum(X54:X63)) %>% 
+# ungroup %>% 
+# mutate(fitted = l_s + cov)
+
+
+
+beta_coefs <- states_evol %>% dplyr::select(X54:X63)
+contrib_covariates <- (covariates * t(beta_coefs)) %>% 
+  t %>% 
+  as.data.frame() %>% 
+  tibble::rownames_to_column("date") %>% 
+  as_tibble() %>% 
+  mutate(date = as.Date(date))
+
+contrib_covariates <- contrib_covariates %>% 
+  mutate(all_covariates = contrib_covariates %>% dplyr::select(-date) %>% rowSums()) 
+
+contrib_evol <- states_evol %>% 
+  dplyr::select(trend = X1, season = X3, trend_season = l_s) %>% 
+  bind_cols((contrib_covariates)) %>% 
+  mutate(fitted = trend + season + all_covariates,
+         y = targets[1,],
+         residuals = y - fitted)
+
+plot(contrib_evol %>% dplyr::select(date, y), type = "l")
+lines(contrib_evol%>% dplyr::select(date, trend), col = "blue") # Trend
+
+plot(contrib_evol[1:52, c("date", "season")], type = "l") # Stationality
+
+plot(contrib_evol %>% dplyr::select(date, y), type = "l")
+lines(contrib_evol%>% dplyr::select(date, trend_season), col = "blue") # Trend + Stationality
+
+plot(contrib_evol %>% dplyr::select(date, all_covariates), 
+     col = "blue", type = "l") # Covariates 
+
+plot(contrib_evol %>% dplyr::select(date, y), type = "l")
+lines(contrib_evol%>% dplyr::select(date, fitted), col = "blue") # Fitted
+
+plot(contrib_evol %>% dplyr::select(date, residuals))
+qqnorm(scale(contrib_evol %>% pull(residuals)))
+abline(a = 0, b = 1)

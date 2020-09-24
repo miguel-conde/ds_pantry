@@ -84,8 +84,11 @@ make_covariates_Z <- function(n_covariates) {
   
 }
 
-make_R <- function() {
-  matrix("r")
+make_R <- function(n_targets) {
+  R <- matrix(list(0), N_TARGETS, N_TARGETS)
+  diag(R) <-  "r"
+  
+  R
 }
 
 make_LLT_x0 <- function(y) {
