@@ -17,7 +17,7 @@ fit1 <- brm(formula = time | cens(censored) ~ age * sex + disease
 
 S# ALSHAYA -----------------------------------------------------------------
 
-
+library(bayesm3)
 
 base_modeler <- read.csv("C:/Users/mcondedesimon/Documents/PROYECTOS/alshaya_mmm_pottery_barn_ksa/DELIVERY/data/base_final_bayes.csv")
 base_modeler <- base_modeler %>% 
