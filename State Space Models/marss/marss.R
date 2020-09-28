@@ -115,7 +115,7 @@ MARSSkf(kem.sim.2)$logLik
 
 
 
-# 1.X Covariates ----------------------------------------------------------
+# 1.1 Covariates ----------------------------------------------------------
 
 fulldat <- lakeWAplanktonTrans
 years <- fulldat[, "Year"] >= 1965 & fulldat[, "Year"] < 1975
@@ -147,7 +147,7 @@ control.list <- list(maxit = 1500)
 kem <- MARSS(y, model = model.list, control = control.list)
 
 
-# 1.Y Time-varying parameters ---------------------------------------------
+# 1.2 Time-varying parameters ---------------------------------------------
 
 dat <- t(harborSealWA)
 dat <- dat[2:nrow(dat), ] # remove the year row
@@ -175,7 +175,7 @@ Ut[, , 1:floor(TT / 2)] <- U1
 kemfit.tv <- MARSS(dat, model = list(U = Ut, Q = "diagonal and equal"))
 
 
-# 1.Z DLM -----------------------------------------------------------------
+# 1.3 DLM -----------------------------------------------------------------
 
 data(SalmonSurvCUI)
 years <- SalmonSurvCUI[, 1]
@@ -211,6 +211,145 @@ dlm1 <- MARSS(dat, inits = inits.list, model = mod.list)
 
 dlm1$states
 
+
+# 1.4 - Seasonalities -----------------------------------------------------
+
+# Here we show a few approaches for including seasonal effects using the
+# Lake Washington plankton data, which were collected monthly. The following
+# examples will use all five phytoplankton species from Lake Washington. First,
+# let's set up the data.
+years <- fulldat[, "Year"] >= 1965 & fulldat[, "Year"] < 1975
+phytos <- c(
+"Diatoms", "Greens", "Bluegreens",
+"Unicells", "Other.algae"
+)
+dat <- t(fulldat[years, phytos])
+# z.score data again because we changed the mean when we subsampled
+dat <- zscore(dat)
+# number of time periods/samples
+TT <- ncol(dat)
+
+
+# 1.4.1 - Seasonal effects as fixed factors ---------------------------------
+# number of "seasons" (e.g., 12 months per year)
+period <- 12
+# first "season" (e.g., Jan = 1, July = 7)
+per.1st <- 1
+# create factors for seasons
+c.in <- diag(period)
+for (i in 2:(ceiling(TT / period))) {
+  c.in <- cbind(c.in, diag(period))
+}
+# trim c.in to correct start & length
+c.in <- c.in[, (1:TT) + (per.1st - 1)]
+
+C <- matrix(month.abb, 5, 12, byrow = TRUE)
+C
+
+# better row names
+rownames(c.in) <- month.abb
+
+# Notice, that C only has 12 values in it, the 12 common month effects. However,
+# for this example, we will let each taxon have a different month effect thus
+# allowing different seasonality for each taxon. For this model, we want each
+# value in C to be unique:
+C <- "unconstrained"
+
+# Now C has 5 x 12 = 60 separate effects.
+
+# Each taxon has unique density-dependence
+B <- "diagonal and unequal"
+# Independent process errors
+Q <- "diagonal and unequal"
+# We have demeaned the data & are fitting a mean-reverting model
+# by estimating a diagonal B, thus
+U <- "zero"
+# Each obs time series is associated with only one process
+Z <- "identity"
+# The data are demeaned & fluctuate around a mean
+A <- "zero"
+
+# Observation errors are independent, but they
+# have similar variance due to similar collection methods
+R <- "diagonal and equal"
+# No covariate effects in the obs equation
+D <- "zero"
+d <- "zero"
+# Now we can set up the model list for MARSS and fft the model (results
+# are not shown since they are verbose with 60 different month effects).
+model.list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R,
+                   C = C, c = c.in, D = D, d = d)
+seas.mod.1 <- MARSS(dat, model = model.list, control = list(maxit = 1500))
+# Get the estimated seasonal effects
+# rows are taxa, cols are seasonal effects
+seas.1 <- coef(seas.mod.1, type = "matrix")$C
+rownames(seas.1) <- phytos
+colnames(seas.1) <- month.abb
+
+
+# 1.4.2 - Seasonal effects as a polynomial ---------------------------------
+# The fixed factor approach required estimating 60 effects. Another approach is
+# to model the month effect as a 3rd-order (or higher) polynomial: 
+# a+bxm+cxm2+dxm3 where m is the month number. This approach has less 
+# exibility but requires only 20 estimated parameters (i.e., 4 regression parameters
+# times 5 taxa). To do so, we create a 4 x T covariate matrix c with the rows
+# corresponding to 1, m, m2, and m3, and the columns again corresponding to
+# the time points. Here is how to set up this matrix:
+
+# number of "seasons" (e.g., 12 months per year)
+period <- 12
+# first "season" (e.g., Jan = 1, July = 7)
+per.1st <- 1
+# order of polynomial
+poly.order <- 3
+# create polynomials of months
+month.cov <- matrix(1, 1, period)
+for (i in 1:poly.order) {
+  month.cov <- rbind(month.cov, (1:12)^i)
+}
+
+# our c matrix is month.cov replicated once for each year
+c.m.poly <- matrix(month.cov, poly.order + 1, TT + period, byrow = FALSE)
+# trim c.in to correct start & length
+c.m.poly <- c.m.poly[, (1:TT) + (per.1st - 1)]
+# Everything else remains the same as in the previous example
+model.list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R,
+                   C = C, c = c.m.poly, D = D, d = d)
+seas.mod.2 <- MARSS(dat, model = model.list, control = list(maxit = 1500))
+
+# The effect of month m for taxon i is ai+bixm+cixm2+dixm3, where ai, bi,
+# ci and di are in the i-th row of C. We can now calculate the matrix of seasonal
+# effects as follows, where each row is a taxon and each column is a month:
+C.2 <- coef(seas.mod.2, type = "matrix")$C
+seas.2 <- C.2 %*% month.cov
+rownames(seas.2) <- phytos
+colnames(seas.2) <- month.abb
+
+
+# 1.4.3 - Seasonal effects as a Fourier series ----------------------------
+
+# The factor approach required estimating 60 effects, and the 3rd order polynomial
+# model was an improvement at only 20 parameters. A third option is to
+# use a discrete Fourier series, which is combination of sine and cosine waves; it
+# would require only 10 parameters. Specifically, the effect of month m on taxon
+# i is aixcos(2pm=p)+bixsin(2pm=p), where p is the period (e.g., 12 months,
+# 4 quarters), and ai and bi are contained in the i-th row of C.
+# We begin by defining the 2 x T seasonal covariate matrix c as a combination
+# of 1 cosine and 1 sine wave:
+cos.t <- cos(2 * pi * seq(TT) / period)
+sin.t <- sin(2 * pi * seq(TT) / period)
+c.Four <- rbind(cos.t, sin.t)
+# Everything else remains the same and we can fit this model as follows:
+model.list <- list(B = B, U = U, Q = Q, Z = Z, A = A, R = R,
+                   C = C, c = c.Four, D = D, d = d)
+seas.mod.3 <- MARSS(dat, model = model.list, control = list(maxit = 1500))
+# We make our seasonal effect matrix as follows:
+C.3 <- coef(seas.mod.3, type = "matrix")$C
+# The time series of net seasonal effects
+seas.3 <- C.3 %*% c.Four[, 1:period]
+rownames(seas.3) <- phytos
+colnames(seas.3) <- month.abb
+  
 # 2 - Replicate BSTS examples ---------------------------------------------
 
 
