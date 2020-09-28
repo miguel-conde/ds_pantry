@@ -1,6 +1,9 @@
 library(tidyverse)
 
-## LLT
+
+# LLT ---------------------------------------------------------------------
+
+
 ## 
 N <- 1000
 
@@ -59,3 +62,39 @@ manipulate(plot(llt(eta_delta_mn = mn_delta,
            s_epsilon = slider(0, 20, 10, step = 1),
            lvl_0 = slider(-100, 100, 0, step = 10),
            slope_0 = slider(-1, 1, 0, step = .1))
+
+
+# SEASONALITY -------------------------------------------------------------
+
+simul_season <- function(t, lambda, alpha, beta) {
+  
+  alpha * cos(lambda*t) + beta * sin(lambda*t)
+}
+
+simul_season(1:(2*12), 2*pi/12, 1, 1) %>% plot(type = "o")
+
+
+season_matrix <- function(lambda) {
+  matrix(c(cos(lambda), sin(lambda),
+           -sin(lambda), cos(lambda)),
+         byrow = TRUE, nrow = 2)
+}
+
+season_matrix(2*pi/12)
+
+phi_0 <- 1 # alpha
+conf_phi_0 <-  1 # beta
+
+phi_0 <- matrix(c(phi_0, conf_phi_0))
+
+
+phi_t_1 <- phi_0
+
+phi_t <- vector(mode = 'list', length = 24)
+
+for (i in 1:24) {
+  phi_t[[i]] <- season_matrix(2*pi/12) %*% phi_t_1  + matrix(rnorm(2))
+  phi_t_1 <- phi_t[[i]]
+}
+
+phi_t %>% map_dbl(~ .[1,1]) %>% plot(type = "o")
