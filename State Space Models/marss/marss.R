@@ -349,6 +349,32 @@ C.3 <- coef(seas.mod.3, type = "matrix")$C
 seas.3 <- C.3 %*% c.Four[, 1:period]
 rownames(seas.3) <- phytos
 colnames(seas.3) <- month.abb
+
+
+# 1.4.4 - Compare models --------------------------------------------------
+
+data.frame(
+  Model = c("Fixed", "Cubic", "Fourier"),
+  AICc = round(c(
+    seas.mod.1$AICc,
+    seas.mod.2$AICc,
+    seas.mod.3$AICc
+  ), 1),
+  stringsAsFactors = FALSE
+)
+
+for (i in 1:3) {
+  dev.new()
+  modn <- paste("seas.mod", i, sep = ".")
+  for (j in 1:5) {
+    plot.ts(MARSSresiduals(modn, type = "tt1")$model.residuals[j, ],
+            ylab = "Residual", main = phytos[j]
+    )
+    abline(h = 0, lty = "dashed")
+    acf(MARSSresiduals(modn, type = "tt1")$model.residuals[j, ],
+        na.action = na.pass)
+  }
+}
   
 # 2 - Replicate BSTS examples ---------------------------------------------
 
@@ -892,8 +918,12 @@ llt_seas52_cov_t_fit <- MARSS(targets,
                               model = llt_spec,
                               fit = TRUE, 
                               form = "marxss",
-                              # method = "kem")
-                              method = "BFGS")
+                              method = "kem")
+                              # method = "BFGS")
+
+llt_seas52_cov_t_fit.bfgs2 <- MARSS(targets, 
+                                    method = "BFGS", 
+                                    inits = llt_seas52_cov_t_fit$par)
 
 # Model check -------------------------------------------------------------
 
