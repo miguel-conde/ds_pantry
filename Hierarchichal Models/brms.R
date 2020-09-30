@@ -15,7 +15,7 @@ fit1 <- brm(formula = time | cens(censored) ~ age * sex + disease
             control = list(adapt_delta = 0.95))
 
 
-S# ALSHAYA -----------------------------------------------------------------
+# ALSHAYA -----------------------------------------------------------------
 
 library(bayesm3)
 
