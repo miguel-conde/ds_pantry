@@ -1122,11 +1122,12 @@ Z_LLT_season <- make_LLT_Z() %>%
   dbind(make_LLT_Z()) %>% 
   cbind(make_season_Z(STATIONALITIES["yearly"]) %>% 
           dbind(make_season_Z(STATIONALITIES["yearly"]))) %>% 
-  array(dim = c(N_TARGETS, N_STATES - N_COVARIATES, N_T_PERIODS))
-Z_covariates <- array(rbind(covariates, covariates), 
-                      dim = c(N_TARGETS, 
-                              N_COVARIATES, 
-                              N_T_PERIODS))
+  array(dim = c(N_TARGETS, N_STATES - 2*N_COVARIATES, N_T_PERIODS))
+# Z_covariates <- array(rbind(covariates, covariates), 
+#                       dim = c(N_TARGETS, 
+#                               N_COVARIATES, 
+#                               N_T_PERIODS))
+Z_covariates <- ssm_adbind(covariates, covariates)
 Z <- abind::abind(Z_LLT_season, Z_covariates, along = 2)
 
 # n X 1 - N_TARGETS X 1 - Default="scaling"
@@ -1197,12 +1198,20 @@ llt_spec <- list(Z = Z,
 
 
 # Model fit ---------------------------------------------------------------
+fit_kem <- MARSS(targets, 
+                 model = llt_spec,
+                 fit = TRUE, 
+                 form = "marxss",
+                 silent = 2,
+                 method = "kem")
+
 llt_seas52_cov_t_2y_fit <- MARSS(targets, 
-                              model = llt_spec,
-                              fit = TRUE, 
-                              form = "marxss",
-                              # method = "kem")
-                              method = "BFGS")
+                                 model = llt_spec,
+                                 inits = fit_kem,
+                                 fit = TRUE, 
+                                 form = "marxss",
+                                 silent = 2,
+                                 method = "BFGS")
 
 # Model check -------------------------------------------------------------
 

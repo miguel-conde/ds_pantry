@@ -115,3 +115,53 @@ make_covariates_V0 <- function(covariates) {
   # diag(apply(covariates, 2, var, na.rm = TRUE) * 1e+06 / 100, nrow(covariates))
   diag(0, nrow(covariates))
 }
+
+
+ssm_adbind <- function(...) {
+  
+  the_dots <- list(...)
+  
+  n_targets <- length(the_dots)
+  n_cols <- 0
+  n_T <- ncol(the_dots[[1]])
+  
+  dims_list <- vector(mode = "list", length = n_targets)
+  
+  for (A_i in seq_along(the_dots)) {
+    
+    if (ncol(the_dots[[A_i]]) != n_T) stop("Incorrect dimensions")
+    
+    n_rows_i <- nrow(the_dots[[A_i]])
+    n_cols_i <- ncol(the_dots[[A_i]])
+    
+    n_cols <- n_cols + n_rows_i
+
+    dims_list[[A_i]] <- c(nrows = n_rows_i, ncols = n_cols_i)
+    
+    # for (r_i in 1:n_rows_i) {
+    #   for (c_j in 1:n_cols_i) {
+    #     print(c_j)
+    #     the_dots[[A_i]][r_i, c_j] <- list(the_dots[[A_i]][r_i, c_j])
+    #   }
+    # }
+  }
+  
+  out <- array(0, dim = c(n_targets, n_cols, n_T))
+  
+  j_end_old <- 0
+  
+  for (A_i in seq_along(the_dots)) {
+    
+    n_r <- dims_list[[A_i]]["nrows"]
+    n_c <- dims_list[[A_i]]["ncols"]
+    
+    j <- j_end_old + seq(n_r)
+    k <- seq(n_c)
+
+    out[A_i, j , k] <- the_dots[[A_i]]
+    
+    j_end_old <- j[length(j)]
+  }
+  
+  out
+}
