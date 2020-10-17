@@ -1,0 +1,16 @@
+// Problem 16.1 Discoveries data revisited 
+
+data {
+  int<lower = 0> N; // Number of years
+  int<lower = 0> X[N]; // Nummber of great inventions / discoveries each year
+}
+
+parameters {
+  real<lower = 0> lambda; // Rate of occurence of discoveries
+}
+
+model {
+  X ~ poisson(lambda);      // Likelihood
+  
+  lambda ~ lognormal(2, 1); // Prior
+}
