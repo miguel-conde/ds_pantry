@@ -14,3 +14,11 @@ model {
   
   lambda ~ lognormal(2, 1); // Prior
 }
+
+generated quantities {
+  int<lower = 0> XSim[N];
+  
+  for (i in 1:N) {
+    XSim[i] = poisson_rng(lambda);
+  }
+}
