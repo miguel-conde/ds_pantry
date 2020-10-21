@@ -22,28 +22,19 @@ fit_llt_1 <- stan(here::here("STAN", "stan_ts", "llt_1.stan"),
 plot(Y, type = "l")
 
 as.data.frame(fit_llt_1) %>% 
-  select(starts_with("v")) %>% 
+  select(starts_with("u")) %>% 
   colMeans() %>% 
   lines(col = "blue")
-
-as.data.frame(fit_llt) %>% 
-  select(starts_with("pred")) %>% 
-  colMeans() %>% 
-  lines(col = "red")
-
-
 
 fit_llt_2 <- stan(here::here("STAN", "stan_ts", "llt_2.stan"), 
                   data = list(T = N, y = Y),
                   iter = 2000, 
                   chains = 4)
 
-plot(Y, type = "l")
-
 as.data.frame(fit_llt_2) %>% 
   select(starts_with("u")) %>% 
   colMeans() %>% 
-  lines(col = "blue", lwd = 2)
+  lines(col = "red", lwd = 2)
 
 
 
@@ -55,17 +46,12 @@ fit_llt<- stan(here::here("STAN", "stan_ts", "llt.stan"),
                   iter = 2000, 
                   chains = 4)
 
-plot(Y, type = "l")
-
 as.data.frame(fit_llt) %>% 
   select(starts_with("level")) %>% 
   colMeans() %>% 
-  lines(col = "blue")
+  lines(col = "green")
 
-as.data.frame(fit_llt) %>% 
-  select(starts_with("y")) %>% 
-  colMeans() %>% 
-  lines(col = "red", lwd = 2)
+
 
 
 
