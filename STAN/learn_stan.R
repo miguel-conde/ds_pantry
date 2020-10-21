@@ -292,3 +292,35 @@ pvalue
 # distribution. (Above, we calculate the standard deviation on the difference 
 # in log pointwise predictive density to calculate a z score.)
 
+
+# TIDYBAYES ---------------------------------------------------------------
+
+library(tidybayes) # https://mjskay.github.io/tidybayes/
+
+# fit de toy_student.stan
+
+fit %>%
+  spread_draws(mu[S], sigma[S])
+
+fit %>%
+  spread_draws(mu[S], sigma[S]) %>% 
+  ggplot(aes(x = mu, y = S)) +
+  stat_eye()
+
+fit %>%
+  spread_draws(mu[S], sigma[S]) %>% 
+  ggplot(aes(x = mu, y = S)) +
+  stat_halfeyeh()
+
+fit %>%
+  spread_draws(mu[S], sigma[S]) %>% 
+  ggplot(aes(x = mu, y = S)) +
+  stat_dots()
+
+fit %>%
+  spread_draws(mu[S]) %>% 
+  median_qi(mu)
+
+fit %>%
+  spread_draws(mu[S]) %>% 
+  mean_qi(mu)
