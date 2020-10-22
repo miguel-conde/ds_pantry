@@ -19,7 +19,7 @@ transformed data {
     n_obs_ctry[country[i]] += 1;
   }
   
-  print(n_obs_ctry)
+  print(n_obs_ctry);
 }
 
 
@@ -66,32 +66,43 @@ transformed parameters {
 model {
   
   for(i in 1:n) {
-    print(i)
-    print(country[i])
+    
     y[i] ~ normal(level[country[i]], epsilon[country[i]]);
     
     slope_err[country[i]] ~ normal(slope_err_top, sigma_slope_err_top);
     level_err[country[i]] ~ normal(level_err_top, sigma_level_err_top);
+    
+    epsilon[country[i]] ~ normal(epsilon_top, sigma_epsilon_top);
+    eta_lvl[country[i]] ~ normal(eta_lvl_top, sigma_eta_lvl_top);
+    eta_slp[country[i]] ~ normal(eta_slp_top, sigma_eta_slp_top);
   }
   
-  epsilon ~ normal(epsilon_top, sigma_epsilon_top);
-  eta_lvl ~ normal(eta_lvl_top, sigma_eta_lvl_top);
-  eta_slp ~ normal(eta_slp_top, sigma_eta_slp_top);
+  slope_err_top ~ normal(0, 1); 
+  sigma_slope_err_top ~ gamma(1, 1);
+  level_err_top ~ normal(0, 1); 
+  sigma_level_err_top ~ gamma(1, 1);
+  
+  epsilon_top ~ normal(0, 1);
+  sigma_epsilon_top ~ gamma(1, 1);
+  eta_lvl_top ~ normal(0, 1);
+  sigma_eta_lvl_top ~ gamma(1, 1);
+  eta_slp_top ~ normal(0, 1);
+  sigma_eta_slp_top ~ gamma(1, 1);
 }
 
-// generated quantities {
-//   
-//   real<lower=0> epsilon_average;
-//   real<lower=0> eta_lvl_average;
-//   real<lower=0> eta_slp_average;
-//   
-//   real logLikelihood[n];
-//   
-//   epsilon_average = normal_rng(epsilon_top, sigma_epsilon_top);
-//   eta_lvl_average = normal_rng(eta_lvl_top, sigma_eta_lvl_top);
-//   eta_slp_average = normal_rng(eta_slp_top, sigma_eta_slp_top);
-//   
-//   for(i in 1:n) {
-//     logLikelihood[i] = normal_lpdf(y[i] | level[i], epsilon);
-//   }
-// }
+generated quantities {
+
+  real<lower=0> epsilon_average;
+  real<lower=0> eta_lvl_average;
+  real<lower=0> eta_slp_average;
+
+  real logLikelihood[n];
+
+  epsilon_average = normal_rng(epsilon_top, sigma_epsilon_top);
+  eta_lvl_average = normal_rng(eta_lvl_top, sigma_eta_lvl_top);
+  eta_slp_average = normal_rng(eta_slp_top, sigma_eta_slp_top);
+
+  for(i in 1:n) {
+    logLikelihood[i] = normal_lpdf(y[i] | level[i], epsilon);
+  }
+}

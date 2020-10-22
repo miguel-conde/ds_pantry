@@ -13,13 +13,6 @@ rstan_options(auto_write = TRUE)
 
 # LLT ---------------------------------------------------------------------
 
-Y = sales_ts$value %>% scale() %>% as.numeric()
-
-N = length(Y)
-
-K_ctries <- sales_ts$country %>% unique %>% length()
-
-ctries <- sales_ts$country %>% as.integer()
 
 fit_hyer_llt <- stan(here::here("STAN", "stan_ts", "hyer_llt.stan"), 
                   data = compose_data(sales_ts %>% 
@@ -28,6 +21,38 @@ fit_hyer_llt <- stan(here::here("STAN", "stan_ts", "hyer_llt.stan"),
                                         rename(y = value)),
                   iter = 2000, 
                   chains = 4)
+
+plot(Y, type = "l")
+
+as.data.frame(fit_llt_1) %>% 
+  select(starts_with("level[1]")) %>% 
+  colMeans() %>% 
+  lines(col = "blue")
+
+####
+
+y = sales_ts %>% 
+  filter(segment == "existing") %>% 
+  dplyr::select(-date, -segment) %>%
+  rename(y = value) %>% pull(y) 
+
+n = length(y)
+
+n_country <- sales_ts$country %>% unique %>% length()
+
+S <- table(sales_ts %>% 
+             filter(segment == "existing") %>% 
+             pull(country)) %>% as.numeric()
+names(S) <- c("GE", "IT")
+index <- c(IT = as.numeric(S["GE"]) + 1, GE = 1)
+
+ctries <- sales_ts$country %>% as.integer()
+
+fit_hyer_llt_2 <- stan(here::here("STAN", "stan_ts", "hyer_llt_2.stan"), 
+                       data = list(y = y, n = n, 
+                                   n_country = n_country, index = index, S = S),
+                       iter = 2000, 
+                       chains = 4)
 
 plot(Y, type = "l")
 
