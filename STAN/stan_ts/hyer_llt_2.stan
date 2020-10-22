@@ -14,8 +14,8 @@ transformed data {
 
 
 parameters {
-  real eta_slp[n_country, n]; // Slope innovation
-  real eta_lvl[n_country, n]; // Level innovation
+  real eta_slp[n]; // Slope innovation
+  real eta_lvl[n]; // Level innovation
   
   real epsilon[n_country];
   real<lower = 0> sigma_lvl[n_country];
@@ -36,18 +36,20 @@ parameters {
 
 transformed parameters {
   
-  vector[n]  level[n_country];
-  vector[n]  slope[n_country];
+  vector[n]  level;
+  vector[n]  slope;
   
   for(i in 1:n_country) {
     
-    level[i][1] = sigma_lvl[i];
-    slope[i][1] = sigma_slp[i];
+    level[index[i]] = sigma_lvl[i];
+    slope[index[i]] = sigma_slp[i];
     
     for(j in 2:S[i]) {
       
-      level[i][j] = level[i][j-1] + slope[i][j-1] + sigma_lvl[i]*eta_lvl[i][j]; 
-      slope[i][j] = slope[i][j-1] + sigma_slp[i]*eta_slp[i][j];
+      level[index[i] + j - 1] = level[index[i] + j - 2] + slope[index[i] + j - 2] + 
+                                sigma_lvl[i]*eta_lvl[index[i] + j - 1]; 
+      slope[index[i] + j - 1] = slope[index[i] + j - 2] + 
+                                sigma_slp[i]*eta_slp[index[i] + j - 1];
     }
   }
 }
@@ -57,10 +59,11 @@ model {
   
   for(i in 1:n_country) {
     
-    y[index[i]:(index[i]+S[i]-1)] ~ normal(level[i], epsilon[i]);
+    y[index[i]:(index[i]+S[i]-1)] ~ normal(level[index[i]:(index[i]+S[i]-1)], epsilon[i]);
+    print(epsilon[i])
     
-    eta_slp[i, index[i]:index[i]+S[i]-1] ~ normal(eta_slp_top, sigma_eta_slp_top);
-    eta_lvl[i, index[i]:index[i]+S[i]-1] ~ normal(eta_lvl_top, sigma_eta_lvl_top);
+    eta_slp[index[i]:index[i]+S[i]-1] ~ normal(eta_slp_top, sigma_eta_slp_top);
+    eta_lvl[index[i]:index[i]+S[i]-1] ~ normal(eta_lvl_top, sigma_eta_lvl_top);
     
     epsilon[i] ~ normal(epsilon_top, sigma_epsilon_top);
     sigma_lvl[i] ~ gamma(sigma_lvl_top, sigma_sigma_lvl_top);

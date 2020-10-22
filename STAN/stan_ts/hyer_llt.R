@@ -54,10 +54,10 @@ fit_hyer_llt_2 <- stan(here::here("STAN", "stan_ts", "hyer_llt_2.stan"),
                        iter = 2000, 
                        chains = 4)
 
-plot(Y, type = "l")
+plot(y, type = "l")
 
-as.data.frame(fit_llt_1) %>% 
-  select(starts_with("level[1]")) %>% 
+as.data.frame(fit_hyer_llt_2) %>% 
+  select(starts_with("level")) %>% 
   colMeans() %>% 
   lines(col = "blue")
 
@@ -69,7 +69,7 @@ library(loo)
 logLikelihood_1 <- extract_log_lik(fit_llt_1, "logLikelihood")
 WAIC_1 <- waic(logLikelihood_1)
 
-logLikelihood_2 <- extract_log_lik(fit_llt_1, "logLikelihood")
+logLikelihood_2 <- extract_log_lik(fit_hyer_llt_2, "logLikelihood")
 WAIC_2 <- waic(logLikelihood_2)
 
 logLikelihood_mine <- extract_log_lik(fit_llt, "logLikelihood")
