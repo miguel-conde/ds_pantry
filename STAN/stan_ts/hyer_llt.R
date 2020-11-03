@@ -51,6 +51,8 @@ ctries <- sales_ts$country %>% as.integer()
 fit_hyer_llt_2 <- stan(here::here("STAN", "stan_ts", "hyer_llt_2.stan"), 
                        data = list(y = y, n = n, 
                                    n_country = n_country, index = index, S = S),
+                       # control = list(adapt_delta = 0.99,
+                       #                max_treedepth = 15),
                        iter = 2000, 
                        chains = 4)
 
@@ -60,6 +62,19 @@ as.data.frame(fit_hyer_llt_2) %>%
   select(starts_with("level")) %>% 
   colMeans() %>% 
   lines(col = "blue")
+
+level_1 <- rstan::extract(fit_hyer_llt_2, "level[191]")[[1]] 
+
+qplot(level_1)
+
+level_2 <- rstan::extract(fit_hyer_llt_2, "level[382]")[[1]] 
+
+qplot(level_2)
+
+library(shinystan)
+aFit <- as.shinystan(fit_hyer_llt_2) 
+
+launch_shinystan(aFit)
 
 
 
