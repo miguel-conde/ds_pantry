@@ -3,12 +3,18 @@ library(quantmod)
 library(timetk)
 
 goog = getSymbols("GOOG",src="yahoo", auto.assign = FALSE)
+saveRDS(goog, here::here("Monte Carlo", "data", "goog.Rds"))
 dji = getSymbols("^DJI",src="yahoo", auto.assign = FALSE)
+saveRDS(dji, here::here("Monte Carlo", "data", "dji.Rds"))
 ibex = getSymbols("^IBEX",src="yahoo", auto.assign = FALSE)
+saveRDS(ibex, here::here("Monte Carlo", "data", "ibex.Rds"))
 sp500 = getSymbols("^GSPC",src="yahoo", auto.assign = FALSE)
+saveRDS(sp500, here::here("Monte Carlo", "data", "sp500.Rds"))
 
-probe <- dji$DJI.Close
+# probe <- dji$DJI.Close
 probe <- sp500$GSPC.Close
+periodicity(probe)
+
 plot(probe)
 acf(diff(probe)[-1])
 pacf(diff(probe)[-1])
@@ -59,7 +65,11 @@ for (i in 1:100) {
 sapply(total_returns, function(x) x[N]) %>% hist()
 sapply(total_returns, function(x) x[N]) %>% mean()
 sapply(total_returns, function(x) x[N]) %>% sd()
-
+(sapply(total_returns, function(x) x[N]) < 0) %>% mean()
+(sapply(total_returns, function(x) x[N]) > 1) %>% mean()
+(sapply(total_returns, function(x) x[N]) > 5) %>% mean()
+(sapply(total_returns, function(x) x[N]) > 10) %>% mean()
+(sapply(total_returns, function(x) x[N]) > 20) %>% mean()
 
 # MC2 ---------------------------------------------------------------------
 
@@ -151,9 +161,20 @@ lines(seq(-.1, .1, .001),
       col = "red")
 
 plot(x=1:N, y=rep(0, N), type ="n", ylim = c(0, 50))
+total_returns <- vector(mode = "list", length = 100)
 for(i in 1:100) {
-  i_returns <- (rdexp(N, 
+  total_returns[[i]] <- (rdexp(N, 
                      location = location_laplace, 
                      scale = scale_laplace) + 1) %>% cumprod()
-  lines(1:N, i_returns, col = i)
+  lines(1:N, total_returns[[i]], col = i)
 }
+
+sapply(total_returns, function(x) x[N]) %>% hist(freq = FALSE)
+sapply(total_returns, function(x) x[N]) %>% density %>% lines(col = "blue")
+sapply(total_returns, function(x) x[N]) %>% mean()
+sapply(total_returns, function(x) x[N]) %>% sd()
+(sapply(total_returns, function(x) x[N]) < 0) %>% mean()
+(sapply(total_returns, function(x) x[N]) > 1) %>% mean()
+(sapply(total_returns, function(x) x[N]) > 5) %>% mean()
+(sapply(total_returns, function(x) x[N]) > 10) %>% mean()
+(sapply(total_returns, function(x) x[N]) > 20) %>% mean()
