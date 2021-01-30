@@ -3,10 +3,9 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-```{r}
+```{r, eval = FALSE}
 reticulate::use_condaenv("r-reticulate", required = TRUE)
 ```
-
 
 ```{python}
 x = [1, 2, 3, 4, 5]
@@ -61,6 +60,7 @@ ioc_codes = ioc_codes[["Country", "NOC"]]
 print(ioc_codes.head())
 print(ioc_codes.tail())
 ```
+
 ```{python, eval = FALSE}
 # Import pandas
 import pandas as pd
@@ -139,7 +139,6 @@ print(fractions_change.head())
 print(fractions_change.tail())
 ```
 
-
 ## Reshaping and plotting
 
 ```{python}
@@ -217,4 +216,3 @@ ax.set_xticklabels(editions['City'])
 # Display the plot
 plt.show()
 ```
-
