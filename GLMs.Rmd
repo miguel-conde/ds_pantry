@@ -1,0 +1,118 @@
+---
+title: "GLMs"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Lognormal
+
+La variable a modelar es un número real positivo con una distribución exponencial. Por ejemplo, para modelar ventas.
+
+Veamos un modelo log-normal:
+
+$$
+\log(y_i) = \beta_0 +\beta_1 x_{1i} + \beta_2\log(x_{2i}) + \epsilon_i \\
+\epsilon_i \sim N(0, \sigma^2)
+$$
+
+O:
+
+$$
+\log(y) \sim N(\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2), \sigma^2)
+$$
+
+De manera que:
+
+$$
+\hat{y}_i = e^{\beta_0 +\beta_1 x_{1i} + \beta_2\log(x_{2i})}
+$$
+
+## Interpretación de los coeficientes
+
+En el caso de la primera variable:
+
+$$
+\frac{\hat{y}|_{x+1}}{\hat{y}|_{x}} = \frac{e^{\beta_0 +\beta_1 (x_{1}+1) + \beta_2\log(x_{2})}}{e^{\beta_0 +\beta_1 x_{1} + \beta_2\log(x_{2})}} = e^{\beta_1}
+$$
+
+Es decir, si incrementamos $x_1$ en 1 unidad, $\hat{y}$ se multiplica por la cantidad $e^{\beta_1}$.
+
+En el caso de la variable con logaritmo:
+
+$$
+\frac{\hat{y}|_{kx_2}}{\hat{y}|_{x_2}} = \frac{e^{\beta_0 +\beta_1 x_{1} + \beta_2\log(kx_{2})}}{e^{\beta_0 +\beta_1 x_{1} + \beta_2\log(x_{2})}} = \frac{(kx_2)^{\beta_2}}{x_2^{\beta_2}} = k^{\beta_2}
+$$
+
+Lo que significa que si multiplicamos la variable por $k$, $\hat{y}$ se multiplica por $k^{\beta_2}$.
+
+## Elasticidades
+
+En el caso de $x_1$:
+
+$$
+\epsilon_{x_1} = \frac{\frac{d\hat{y}}{\hat{y}}}{\frac{dx_1}{x_1}} = \frac{d\hat{y}}{dx_1}\frac{x_1}{\hat{y}} = \beta_1 \hat{y} \frac{x_1}{\hat{y}} = \beta_1x_1
+$$
+
+Y en el de $x_2$:
+
+$$
+\epsilon_{x_2} = \frac{d\hat{y}}{dx_2}\frac{x_2}{\hat{y}} = e^{\beta_0 + \beta_1x_1}\frac{d}{dx_2} (x_2^{\beta_2}) \frac{x_2}{\hat{y}}= \frac{\beta_2 x_2^{\beta_2} }{x_2^{\beta_2}} = \beta_2
+$$
+
+# Logit - Binomial
+
+La variable a modelar, $p$ es una probabilidad o una proporción, es decir, $0\leq p\leq1$. En este caso, se define la *odd ratio*:
+
+$$
+\text{Odds}(p) = \frac{p}{1-p}
+$$
+
+Y la transformación es la función $\text{logit}$:
+
+$$
+\text{logit}(p_i) = \log(\text{Odds}(p_i)) = \log(\frac{p_i}{1-p_i}) = \beta_0 +\beta_1 x_{1i} + \beta_2\log(x_{2i}) + \epsilon_i \\
+\epsilon_i \sim N(0, \sigma^2)
+$$
+
+Luego:
+
+$$
+p_i = \frac{1}{1+e^{\beta_0 + \beta_1 x_{1i} + \beta_2 \log{x_{2i}}}}
+$$
+
+También:
+
+$$
+\text{logit}(p) \sim N(\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2), \sigma^2)
+$$
+
+## Interpretación de los coeficientes
+
+Por analogía con el caso lognormal:
+
+-   En el caso de $x_1$, si incrementamos $x_1$ en 1 unidad, $\text{Odds}(p)$ se multiplica por la cantidad $e^{\beta_1}$.
+
+-   En el caso de $x_2$, si la multiplicamos por $k$, $\text{Odds}(p)$ se multiplica por $k^{\beta_2}$.
+
+## Elasticidades
+
+### De las *Odds*:
+
+Por analogía con el caso lognormal:
+
+$\epsilon_{odds}(x_1) = \beta_1 x_1$
+
+$\epsilon_{odds}(x_2) = \beta_2$
+
+### De $p$:
+
+$$
+\epsilon_y(x_1) = \frac{dp}{dx_1} \frac{x_1}{p}= \frac{\beta_1 e^{\beta_0 + \beta_1 x_1 + \beta_2 \log{x_2}}}{(1 + e^{\beta_0 + \beta_1 x_1 + \beta2 \log{x_2}})^2} \frac{x_1}{p} = \frac{e^{\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2)}}{1 + e^{\beta0 + \beta_1 x_1 + \beta_2 \log{x_2}}} \beta_1 x_1 = (1- y) \beta_1 x_1
+$$
+
+$$
+\epsilon_y(x_2) = \frac{dp}{dx_2} \frac{x_2}{p}= \frac{\beta_2 x_2^{-1} e^{\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2)}}{(1 + e^{\beta_0 + \beta_1 x_1 + \beta2 \log{x_2}})^2} \frac{x_2}{p} = \frac{e^{\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2)}}{1 + e^{\beta_0 + \beta_1 x_1 + \beta_2 \log{x_2}}} \beta_2 = (1-y)\beta_2
+$$
