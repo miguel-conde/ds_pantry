@@ -110,9 +110,9 @@ $\epsilon_{odds}(x_2) = \beta_2$
 ### De $p$:
 
 $$
-\epsilon_y(x_1) = \frac{dp}{dx_1} \frac{x_1}{p}= \frac{\beta_1 e^{\beta_0 + \beta_1 x_1 + \beta_2 \log{x_2}}}{(1 + e^{\beta_0 + \beta_1 x_1 + \beta2 \log{x_2}})^2} \frac{x_1}{p} = \frac{e^{\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2)}}{1 + e^{\beta0 + \beta_1 x_1 + \beta_2 \log{x_2}}} \beta_1 x_1 = (1- y) \beta_1 x_1
+\epsilon_y(x_1) = \frac{dp}{dx_1} \frac{x_1}{p}= \frac{\beta_1 e^{\beta_0 + \beta_1 x_1 + \beta_2 \log{x_2}}}{(1 + e^{\beta_0 + \beta_1 x_1 + \beta2 \log{x_2}})^2} \frac{x_1}{p} = \frac{e^{\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2)}}{1 + e^{\beta0 + \beta_1 x_1 + \beta_2 \log{x_2}}} \beta_1 x_1 = (1- p) \beta_1 x_1
 $$
 
 $$
-\epsilon_y(x_2) = \frac{dp}{dx_2} \frac{x_2}{p}= \frac{\beta_2 x_2^{-1} e^{\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2)}}{(1 + e^{\beta_0 + \beta_1 x_1 + \beta2 \log{x_2}})^2} \frac{x_2}{p} = \frac{e^{\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2)}}{1 + e^{\beta_0 + \beta_1 x_1 + \beta_2 \log{x_2}}} \beta_2 = (1-y)\beta_2
+\epsilon_y(x_2) = \frac{dp}{dx_2} \frac{x_2}{p}= \frac{\beta_2 x_2^{-1} e^{\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2)}}{(1 + e^{\beta_0 + \beta_1 x_1 + \beta2 \log{x_2}})^2} \frac{x_2}{p} = \frac{e^{\beta_0 + \beta_1 x_1 + \beta_2 \log(x_2)}}{1 + e^{\beta_0 + \beta_1 x_1 + \beta_2 \log{x_2}}} \beta_2 = (1-p)\beta_2
 $$
