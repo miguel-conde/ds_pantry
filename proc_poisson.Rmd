@@ -95,3 +95,7 @@ simul_pois <- function(lambda, T, seed = 123) {
 ```{r}
 simul_pois(0.5, 24)
 ```
+
+# Reefrences
+
+https://www.probabilitycourse.com/chapter11/11_1_2_basic_concepts_of_the_poisson_process.php
