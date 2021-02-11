@@ -1,0 +1,97 @@
+---
+title: "Procesos de Poisson"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+## Proceso de Poisson
+
+En un intervalo de tiempo fijo $[0, T]$ se produce un número aleatorio de eventos (***llegadas***), $N_T$, en los instantes también aleatorios $0\leq X_i \leq T, X_i < X_{i+1}, i = 1, 2, ..., N_T$., denomin**ados *tiempos de llegada****.*
+
+Los intervalos aleatorios entre eventos sucesivos, o ***tiempos entre llegadas***, los denotaremos como $T_1 = X_1$ y $T_i = X_i - X_{i-1}, i = 2, ..., N_T$.
+
+-   La **Variable Aleatoria** $N_T$ sigue una ***distribución de Poisson***:
+
+    $$
+    Pois(\mu) \sim P(N_T = k) = \frac{\mu^k}{k!}e^{-\mu} 
+    $$
+
+    Donde $\mu = \lambda T$ es el *número medio de llegadas* en el intervalo $[0, T]$ y $\lambda$ es la *tasa media de llegadas* por unidad de tiempo:
+
+    $$
+    E[N_T] = \mu
+    $$
+
+    Además se verifica:
+
+    $$
+    Var(N_T) = \mu
+    $$
+
+-   Las **Variables Aleatorias** $T_i$ siguen sendas ***distribuciones exponenciales***:
+
+    $$
+    Exp(\lambda) \sim f(t_i) = \lambda e^{-\lambda t_i}, t_i \geq 0
+    $$
+
+    $$
+    E[T_i] = \frac{1}{\lambda} \\
+    Var[T_i] = \frac{1}{\lambda^2}
+    $$
+
+-   Por último, las **Variables Aleatorias** $X_i$ siguen sendas ***distribuciones Gamma***:
+
+    $$
+    Gam(i, \lambda) \sim f(x_i) = \frac{\lambda (\lambda x_i)^{i-1}e^{-\lambda x}}{\Gamma(\alpha)}, x_i \geq 0 
+    $$
+
+    $$
+    E[X_i] = \frac{i}{\lambda} \\
+    Var[X_i] = \frac{i}{\lambda^2}
+    $$
+
+    Esto se debe a que podemos poner::
+
+    $$
+    X_1 = T_1 \\
+    X_i = X_{i-1} + T_i, i = 2,...,N_T
+    $$
+
+    Lo que nos proporciona una manera de generar (simular) Procesos de Poisson.
+
+    Nótese que $X_i$ representa el tiempo hasta la llegada del $i$-ésimo evento.
+
+## Simulación de Procesos de Poisson
+
+1.  Extraemos de una distribución de Poisson con parámetro $\lambda T$ el número de llegadasen el periodo $[0, T]$: $n_T$.
+2.  Extraemos $n_t$ muestras de una distribución exponencial con parámetro $\lambda$: $t_i, i = 1, ..., n_t$.
+3.  Obtenemos los $x_i, i = 1, ..., n_T$ como suma acumulada de los $t_i$.
+
+```{r}
+simul_pois <- function(lambda, T, seed = 123) {
+  
+  if (!is.null(seed)) set.seed(seed = seed)
+  
+  n_t = rpois(1, lambda * T)
+  
+  ts_i <- rexp(n_t, lambda)
+  # browser()()
+  xs_i <- cumsum(ts_i)
+  
+  out <- tibble(t_i = ts_i,
+                x_i = xs_i)
+  
+  return(out)
+}
+```
+
+```{r}
+simul_pois(0.5, 24)
+```
