@@ -31,6 +31,9 @@ ggplot(ames, aes(x = Sale_Price)) +
 ames <- ames %>% mutate(Sale_Price = log10(Sale_Price))
 
 
+# RESAMPLE ----------------------------------------------------------------
+
+
 # Splitting the data ------------------------------------------------------
 
 ## SIMPLE RANDOM SAMPLING
@@ -64,6 +67,9 @@ dim(ames_train)
 # argument denotes what proportion of the first part of the data should be used 
 # as the training set; the function assumes that the data have been pre-sorted 
 # in an appropriate order.
+
+
+# RECIPEs -----------------------------------------------------------------
 
 
 # Feature engineering with recipes ----------------------------------------
@@ -109,13 +115,272 @@ bake(simple_ames, new_data = NULL) %>% nrow()
 ames_train %>% nrow()
 
 # Example
-complex_ames <- 
+complex_ames_rec <- 
   recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + Latitude,
        data = ames_train) %>%
   step_log(Gr_Liv_Area, base = 10) %>% 
   step_other(Neighborhood, threshold = 0.01) %>% 
   step_dummy(all_nominal_predictors()) %>% 
   step_interact( ~ Gr_Liv_Area:starts_with("Bldg_Type_") ) %>% 
+  step_ns(Latitude, deg_free = 20) 
+
+complex_ames_prepped <- complex_ames_rec %>% 
+  prep(training = ames_train) 
+
+complex_ames_train_prepped <- complex_ames_prepped %>% 
+  bake(new_data = NULL)
+
+complex_ames_test_prepped <- complex_ames_prepped %>% 
+  bake(ames_test)
+
+
+# Using with a traditional model ------------------------------------------
+
+# Fit the model; Note that the column Sale_Price has already been
+# log transformed.
+lm_fit <- lm(Sale_Price ~ ., data = complex_ames_train_prepped)
+
+glance(lm_fit)
+
+tidy(lm_fit)
+
+predict(lm_fit, complex_ames_test_prepped %>% head())
+
+
+# Tidy a recipe -----------------------------------------------------------
+
+tidy(complex_ames_rec)
+
+complex_ames_prepped %>% tidy(id = "dummy_6HPZn")
+
+complex_ames_prepped %>% tidy(number = 2)
+
+
+# Column roles ------------------------------------------------------------
+
+complex_ames_train_prepped %>% select(address)
+
+complex_ames_rec <- 
+  recipe(Sale_Price ~ Street + Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + Latitude,
+         data = ames_train) %>%
+  step_log(Gr_Liv_Area, base = 10) %>% 
+  step_other(Neighborhood, threshold = 0.01) %>% 
+  step_dummy(all_nominal_predictors()) %>% 
+  step_interact( ~ Gr_Liv_Area:starts_with("Bldg_Type_") ) %>% 
   step_ns(Latitude, deg_free = 20) %>% 
-  prep(training = ames_train) %>% 
-  bake(ames_test, starts_with("Neighborhood_"))
+  update_role(Street, new_role = "street address")
+
+complex_ames_prepped <- complex_ames_rec %>% 
+  prep(training = ames_train) 
+
+complex_ames_train_prepped <- complex_ames_prepped %>% 
+  bake(new_data = NULL)
+
+complex_ames_test_prepped <- complex_ames_prepped %>% 
+  bake(ames_test)
+
+
+# PARSNIP -----------------------------------------------------------------
+
+
+# Create models -----------------------------------------------------------
+
+#
+linear_reg() %>% set_engine("lm") # Type of model + engine for fitting it
+
+linear_reg() %>% set_engine("glmnet") 
+
+linear_reg() %>% set_engine("stan")
+
+#
+linear_reg() %>% set_engine("lm") %>% translate()
+linear_reg(penalty = 1) %>% set_engine("glmnet") %>% translate()
+linear_reg() %>% set_engine("stan") %>% translate()
+
+#
+lm_model <- 
+  linear_reg() %>% 
+  set_engine("lm")
+
+lm_form_fit <- 
+  lm_model %>% 
+  # Recall that Sale_Price has been pre-logged
+  fit(Sale_Price ~ Longitude + Latitude, data = ames_train)
+
+lm_xy_fit <- 
+  lm_model %>% 
+  fit_xy(
+    x = ames_train %>% select(Longitude, Latitude),
+    y = ames_train %>% pull(Sale_Price)
+  )
+
+lm_form_fit
+
+lm_xy_fit
+
+# 
+rand_forest(trees = 1000, min_n = 5) %>% 
+  set_engine("ranger") %>% 
+  set_mode("regression") %>% 
+  translate()
+
+rand_forest(trees = 1000, min_n = 5) %>% 
+  set_engine("ranger", verbose = TRUE) %>% 
+  set_mode("regression") %>% 
+  translate()
+
+
+# Model results -----------------------------------------------------------
+
+# 
+lm_form_fit %>% pluck("fit")
+lm_form_fit %>% pluck("fit") %>% summary()
+lm_form_fit %>% pluck("fit") %>% plot()
+lm_form_fit %>% pluck("fit") %>% vcov()
+
+#
+model_res <- 
+  lm_form_fit %>% 
+  pluck("fit") %>% 
+  summary()
+
+model_res
+
+# The model coefficient table is accessible via the `coef` method.
+param_est <- coef(model_res)
+class(param_est)
+
+param_est
+
+#
+tidy(lm_form_fit)
+
+
+# Predictions -------------------------------------------------------------
+
+ames_test_small <- ames_test %>% slice(1:5)
+predict(lm_form_fit, new_data = ames_test_small)
+
+ames_test_small %>% 
+  select(Sale_Price) %>% 
+  bind_cols(predict(lm_form_fit, ames_test_small)) %>% 
+  # Add 95% prediction intervals to the results:
+  bind_cols(predict(lm_form_fit, ames_test_small, type = "pred_int"))
+
+# Only changes "tree", anything else remains equal
+tree_model <- 
+  decision_tree(min_n = 2) %>% 
+  set_engine("rpart") %>% 
+  set_mode("regression")
+
+tree_fit <- 
+  tree_model %>% 
+  fit(Sale_Price ~ Longitude + Latitude, data = ames_train)
+
+ames_test_small %>% 
+  select(Sale_Price) %>% 
+  bind_cols(predict(tree_fit, ames_test_small))
+
+
+# Tools for model specification -------------------------------------------
+
+## usemodels
+library(usemodels)
+
+use_xgboost(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+              Latitude + Longitude, 
+            data = ames_train,
+            # Don't create the model tuning code:
+            tune = FALSE,
+            # Add comments explaining some of the code:
+            verbose = TRUE)
+
+# 
+parsnip_addin()
+
+
+
+# WORKFLOWS ---------------------------------------------------------------
+
+
+
+# Basics ------------------------------------------------------------------
+
+# 1 - add_model()
+lm_wflow <- 
+  workflow() %>% 
+  add_model(lm_model)
+
+lm_wflow
+
+# 2a - add_formula()
+lm_wflow <- 
+  lm_wflow %>% 
+  add_formula(Sale_Price ~ Longitude + Latitude)
+
+lm_wflow
+
+lm_fit <- fit(lm_wflow, ames_train)
+lm_fit
+
+predict(lm_fit, ames_test %>% slice(1:3))
+
+# Both the model and preprocessor can be removed or updated
+lm_fit %>% update_formula(Sale_Price ~ Longitude)
+
+
+# Recipes -----------------------------------------------------------------
+
+
+lm_wflow %>% 
+  add_recipe(complex_ames_rec)
+
+# 2b - add_recipe()
+lm_wflow <- 
+  lm_wflow %>% 
+  remove_formula() %>% 
+  add_recipe(complex_ames_rec)
+
+lm_wflow
+
+# Does `prep()`, `bake()`, and `fit()` in one step:
+lm_fit <- fit(lm_wflow, ames_train)
+
+# Does `bake()` and `predict()` automatically:
+predict(lm_fit, ames_test %>% slice(1:3))
+
+# Get the recipe and run `tidy()` method: 
+lm_fit %>% 
+  pull_workflow_prepped_recipe() %>% 
+  tidy()
+
+# To tidy the model fit: 
+lm_fit %>% 
+  # This returns the parsnip object:
+  pull_workflow_fit() %>% 
+  # Now tidy the linear model object:
+  tidy() %>% 
+  slice(1:5)
+
+# 2c - add_variables()
+lm_wflow <- 
+  lm_wflow %>% 
+  remove_recipe() %>% 
+  add_variables(outcome = Sale_Price, predictors = c(Longitude, Latitude))
+
+lm_wflow
+
+
+# Special formulas --------------------------------------------------------
+
+data(Orthodont, package = "nlme")
+
+library(lme4)
+lmer(distance ~ Sex + (age | Subject), data = Orthodont)
+
+library(multilevelmod)
+
+parametric_model <- 
+  linear_reg() %>% 
+  set_engine("lmer")
+  
