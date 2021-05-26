@@ -383,4 +383,26 @@ library(multilevelmod)
 parametric_model <- 
   linear_reg() %>% 
   set_engine("lmer")
-  
+
+parametric_workflow <- 
+  workflow() %>% 
+  # Pass the data along as-is:
+  add_variables(outcome = distance, predictors = c(Sex, age, Subject)) %>% 
+  add_model(parametric_model,
+            # This formula is given to the model
+            formula = distance ~ Sex + (age | Subject))
+
+parametric_fit <- fit(parametric_workflow, data = Orthodont)
+parametric_fit
+
+
+# WORKFLOWSETS ------------------------------------------------------------
+
+# Multiple worflows at once
+
+
+
+# YARDSTICK ---------------------------------------------------------------
+
+# Models performance
+
