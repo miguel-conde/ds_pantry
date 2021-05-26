@@ -398,9 +398,34 @@ parametric_fit
 
 # WORKFLOWSETS ------------------------------------------------------------
 
-# Multiple worflows at once
+# Multiple workflows at once
 
+# List with a set of formulas
+location <- list(
+  longitude = Sale_Price ~ Longitude,
+  latitude = Sale_Price ~ Latitude,
+  coords = Sale_Price ~ Longitude + Latitude,
+  neighborhood = Sale_Price ~ Neighborhood
+)
 
+library(workflowsets)
+location_models <- workflow_set(preproc = location, 
+                                models = list(lm = lm_model))
+location_models
+
+location_models$info[[1]]
+location_models$option[[1]]
+location_models$result[[1]]
+
+pull_workflow(location_models, id = "coords_lm")
+
+# Model fits
+location_models <-
+  location_models %>%
+  mutate(fit = map(info, ~ fit(.x$workflow[[1]], ames_train)))
+location_models
+
+location_models$fit[[1]]
 
 # YARDSTICK ---------------------------------------------------------------
 
