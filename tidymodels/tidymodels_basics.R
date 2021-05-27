@@ -387,7 +387,8 @@ parametric_model <-
 parametric_workflow <- 
   workflow() %>% 
   # Pass the data along as-is:
-  add_variables(outcome = distance, predictors = c(Sex, age, Subject)) %>% 
+  # add_variables(outcome = distance, predictors = c(Sex, age, Subject)) %>% 
+  add_recipe(recipe(distance ~ Sex + age + Subject, Orthodont)) %>% 
   add_model(parametric_model,
             # This formula is given to the model
             formula = distance ~ Sex + (age | Subject))
@@ -431,3 +432,240 @@ location_models$fit[[1]]
 
 # Models performance
 
+# Regression --------------------------------------------------------------
+
+ames_test_res <- predict(lm_fit, new_data = ames_test %>% select(-Sale_Price))
+ames_test_res
+
+ames_test_res <- bind_cols(ames_test_res, ames_test %>% select(Sale_Price))
+ames_test_res
+
+ggplot(ames_test_res, aes(x = Sale_Price, y = .pred)) + 
+  # Create a diagonal line:
+  geom_abline(lty = 2) + 
+  geom_point(alpha = 0.5) + 
+  labs(y = "Predicted Sale Price (log10)", x = "Sale Price (log10)") +
+  # Scale and size the x- and y-axis uniformly:
+  coord_obs_pred()
+
+rmse(ames_test_res, truth = Sale_Price, estimate = .pred)
+
+ames_metrics <- metric_set(rmse, rsq, mae)
+ames_metrics(ames_test_res, truth = Sale_Price, estimate = .pred)
+
+
+# Binary Classification ---------------------------------------------------
+
+data(two_class_example)
+str(two_class_example)
+
+conf_mat(two_class_example, truth = truth, estimate = predicted)
+
+accuracy(two_class_example, truth = truth, estimate = predicted)
+
+# Matthews correlation coefficient:
+mcc(two_class_example, truth, predicted)
+
+# F1 metric:
+f_meas(two_class_example, truth, predicted)
+
+# For binary classification data sets, these functions have a standard argument
+# called event_level. The default is that the first level of the outcome factor 
+# is the event of interest.
+f_meas(two_class_example, truth, predicted, event_level = "second")
+
+# There are numerous classification metrics that use the predicted probabilities
+# as inputs rather than the hard class predictions. For example, the receiver 
+# operating characteristic (ROC) curve computes the sensitivity and specificity 
+# over a continuum of different event thresholds. The predicted class column is 
+# not used. There are two yardstick functions for this method: roc_curve() 
+# computes the data points that make up the ROC curve and roc_auc() computes 
+# the area under the curve.
+# The interfaces to these types of metric functions use the ... argument 
+# placeholder to pass in the appropriate class probability column. For 
+# two-class problems, the probability column for the event of interest is 
+# passed into the function:
+
+two_class_curve <- roc_curve(two_class_example, truth, Class1)
+two_class_curve
+
+roc_auc(two_class_example, truth, Class1)
+
+autoplot(two_class_curve)
+
+# There are a number of other functions that use probability estimates, 
+# including gain_curve(), lift_curve(), and pr_curve().
+autoplot(lift_curve(two_class_example, truth, Class1))
+
+
+# Multiclass Classification -----------------------------------------------
+
+data(hpc_cv)
+str(hpc_cv)
+
+accuracy(hpc_cv, obs, pred)
+
+mcc(hpc_cv, obs, pred)
+
+# There are methods for using metrics that are specific to outcomes with two 
+# classes for data sets with more than two classes.
+class_totals <- 
+  count(hpc_cv, obs, name = "totals") %>% 
+  mutate(class_wts = totals / sum(totals))
+
+class_totals
+
+cell_counts <- 
+  hpc_cv %>% 
+  group_by(obs, pred) %>% 
+  count() %>% 
+  ungroup()
+
+cell_counts
+
+one_versus_all <- 
+  cell_counts %>% 
+  filter(obs == pred) %>% 
+  full_join(class_totals, by = "obs") %>% 
+  mutate(sens = n / totals)
+
+one_versus_all %>% 
+  summarize(
+    macro = mean(sens), 
+    macro_wts = weighted.mean(sens, class_wts),
+    micro = sum(n) / sum(totals)
+  )
+
+sensitivity(hpc_cv, obs, pred, estimator = "macro")
+sensitivity(hpc_cv, obs, pred, estimator = "macro_weighted")
+sensitivity(hpc_cv, obs, pred, estimator = "micro")
+
+autoplot(roc_curve(hpc_cv, obs, VF, F, M, L))
+roc_auc(hpc_cv, obs, VF, F, M, L)
+
+roc_auc(hpc_cv, obs, VF, F, M, L, estimator = "macro_weighted")
+
+# Finally, all of these performance metrics can be computed using dplyr 
+# groupings. Recall that these data have a column for the resampling groups. 
+# Passing a grouped data frame to the metric function will compute the metrics 
+# for each group:
+hpc_cv %>% 
+  group_by(Resample) %>% 
+  accuracy(obs, pred)
+
+hpc_cv %>% 
+  group_by(Resample) %>% 
+  roc_curve(obs, VF, F, M, L) %>% 
+  autoplot()
+
+
+# RSAMPLE -----------------------------------------------------------------
+
+rf_model <- 
+  rand_forest(trees = 1000) %>% 
+  set_engine("ranger") %>% 
+  set_mode("regression")
+
+rf_wflow <- 
+  workflow() %>% 
+  add_formula(
+    Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+      Latitude + Longitude) %>% 
+  add_model(rf_model) 
+
+rf_fit <- rf_wflow %>% fit(data = ames_train)
+
+estimate_perf <- function(model, dat) {
+  # Capture the names of the objects used
+  cl <- match.call()
+  obj_name <- as.character(cl$model)
+  data_name <- as.character(cl$dat)
+  data_name <- gsub("ames_", "", data_name)
+  
+  # Estimate these metrics:
+  reg_metrics <- metric_set(rmse, rsq)
+  
+  model %>% 
+    predict(dat) %>% 
+    bind_cols(dat %>% select(Sale_Price)) %>% 
+    reg_metrics(Sale_Price, .pred) %>% 
+    select(-.estimator) %>% 
+    mutate(object = obj_name, data = data_name)
+}
+
+estimate_perf(rf_fit, ames_train)
+estimate_perf(lm_fit, ames_train)
+
+estimate_perf(rf_fit, ames_test)
+estimate_perf(lm_fit, ames_test)
+
+# Resampling Methods ------------------------------------------------------
+
+
+# 1 - Cross Validation ----------------------------------------------------
+
+set.seed(55)
+ames_folds <- vfold_cv(ames_train, v = 10)
+ames_folds
+
+# For the first fold:
+ames_folds$splits[[1]] %>% analysis() %>% dim()
+ames_folds$splits[[1]] %>% assessment() %>% dim()
+
+
+# 1.1 - Repeated Cross Validation -----------------------------------------
+vfold_cv(ames_train, v = 10, repeats = 5)
+
+
+# 1.2 - Leave-one-out Cross Validation ------------------------------------
+
+
+# 1.3 - Montecarlo Cross Validation ---------------------------------------
+mc_cv(ames_train, prop = 9/10, times = 20)
+
+
+
+# 2 - Validations sets ----------------------------------------------------
+
+set.seed(12)
+val_set <- validation_split(ames_train, prop = 3/4)
+val_set
+
+
+# 3 - Bootsrapping --------------------------------------------------------
+
+bootstraps(ames_train, times = 5)
+
+
+# 4 - Rolling Forecasting origin resampling -------------------------------
+
+time_slices <- 
+  tibble(x = 1:365) %>% 
+  rolling_origin(initial = 6 * 30, assess = 30, skip = 29, cumulative = FALSE)
+
+data_range <- function(x) {
+  summarize(x, first = min(x), last = max(x))
+}
+
+map_dfr(time_slices$splits, ~   analysis(.x) %>% data_range())
+
+map_dfr(time_slices$splits, ~ assessment(.x) %>% data_range())
+
+
+# Estimating Performance --------------------------------------------------
+
+# Let’s reconsider the previous random forest model contained in the rf_wflow 
+# object. The fit_resamples() function is analogous to fit(), but instead of 
+# having a data argument, fit_resamples() has resamples which expects an rset 
+# object like the ones shown above. 
+
+# For our example, let’s save the predictions in order to visualize the model 
+# fit and residuals:
+
+keep_pred <- control_resamples(save_pred = TRUE, save_workflow = TRUE)
+
+set.seed(130)
+rf_res <- 
+  rf_wflow %>% 
+  fit_resamples(resamples = ames_folds, control = keep_pred)
+rf_res
