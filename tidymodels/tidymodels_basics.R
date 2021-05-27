@@ -730,16 +730,16 @@ parallel::detectCores(logical = TRUE)
 # To reset the computations to sequential processing:
 # registerDoSEQ(
 
-# All operating systems
-library(doParallel)
-
-# Create a cluster object and then register: 
-cl <- makePSOCKcluster(2)
-registerDoParallel(cl)
-
-# Now run fit_resamples()`...
-
-stopCluster(cl)
+# # All operating systems
+# library(doParallel)
+# 
+# # Create a cluster object and then register: 
+# cl <- makePSOCKcluster(2)
+# registerDoParallel(cl)
+# 
+# # Now run fit_resamples()`...
+# 
+# stopCluster(cl)
 
 
 # Saving the resampled objects --------------------------------------------
