@@ -832,3 +832,55 @@ keep_pred <- control_resamples(save_pred = TRUE, save_workflow = TRUE)
 
 set.seed(130)
 rf_res <- rf_wflow %>% fit_resamples(resamples = ames_folds, control = keep_pred)
+
+
+# COMPARING MODELS --------------------------------------------------------
+
+basic_rec <- 
+  recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type + 
+           Latitude + Longitude, data = ames_train) %>%
+  step_log(Gr_Liv_Area, base = 10) %>% 
+  step_other(Neighborhood, threshold = 0.01) %>% 
+  step_dummy(all_nominal_predictors())
+
+interaction_rec <- 
+  basic_rec %>% 
+  step_interact( ~ Gr_Liv_Area:starts_with("Bldg_Type_") ) 
+
+spline_rec <- 
+  interaction_rec %>% 
+  step_ns(Latitude, Longitude, deg_free = 50)
+
+preproc <- 
+  list(basic = basic_rec, 
+       interact = interaction_rec, 
+       splines = spline_rec
+  )
+
+lm_models <- workflow_set(preproc, list(lm = lm_model), cross = FALSE)
+lm_models
+
+lm_models <- 
+  lm_models %>% 
+  workflow_map("fit_resamples", 
+               # Options to `workflow_map()`: 
+               seed = 1101, verbose = TRUE,
+               # Options to `fit_resamples()`: 
+               resamples = ames_folds, 
+               # metrics = metric_set(rmse, rsq, mae), 
+               control = keep_pred)
+
+collect_metrics(lm_models) %>% 
+  filter(.metric == "rmse")
+
+# What about the random forest model from the previous chapter? We can add it 
+# to the set by first converting it to its own workflow set then binding rows. 
+# This requires that, when the model was resampled, the save_workflow = TRUE 
+# option was set in the control function.
+
+four_models <- 
+  as_workflow_set(random_forest = rf_res) %>% 
+  bind_rows(lm_models)
+four_models
+
+autoplot(four_models, metric = "rsq")
