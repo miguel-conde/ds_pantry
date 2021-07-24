@@ -12,7 +12,8 @@ library(glmnet)
 library(carrier)
 
 old_path <- Sys.getenv("PATH") 
-Sys.setenv(PATH = paste(old_path, "C:\\Users\\mcondedesimon\\AppData\\Local\\Continuum\\anaconda3\\envs\\r-mlflow-1.8.0\\Scripts", sep = ";"))
+# Sys.setenv(PATH = paste(old_path, "C:\\Users\\mcondedesimon\\AppData\\Local\\Continuum\\anaconda3\\envs\\r-mlflow-1.8.0\\Scripts", sep = ";"))
+Sys.setenv(PATH = paste(old_path, "C:\\Users\\migue\\anaconda3\\envs\\r-mlflow-1.18.0\\Scripts", sep = ";"))
 
 # Mejor en .Renviron
 # Sys.setenv(MLFLOW_PYTHON_BIN = "C:\\Users\\mcondedesimon\\AppData\\Local\\Continuum\\anaconda3\\envs\\r-mlflow-1.8.0\\python.exe")
@@ -21,7 +22,7 @@ Sys.setenv(PATH = paste(old_path, "C:\\Users\\mcondedesimon\\AppData\\Local\\Con
 set.seed(40)
 
 # Read the wine-quality csv file
-data <- read.csv(here::here("data", "winequality-red.csv"), sep = ";")
+data <- read.csv(here::here("mlflow", "data", "winequality-red.csv"), sep = ";")
 
 # Split the data into training and test sets. (0.75, 0.25) split.
 sampled <- sample(1:nrow(data), 0.75 * nrow(data))
