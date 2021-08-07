@@ -185,7 +185,141 @@ mean(samples)
 median(samples)
 ```
 
+Se ve mucho mejor si forzamos los datos. Supongamos que los resultados han
+sido 3 "aguas" en 3 intentos:
+
+```{r}
+likelihood_2 <- dbinom(3, size = 3, prob = p_grid)
+posterior_2 <- prior * likelihood_2
+posterior_2 <- posterior_2 / sum(posterior_2)
+
+samples_2 <- sample(p_grid, L_POST_SAMPLE, replace = TRUE, prob = posterior_2)
+```
+
+```{r}
+hist(samples_2, freq = FALSE,
+     xlab = "p", ylab = "density")
+lines(density(samples_2), col = "blue")
+lines(p_grid, L_GRID*posterior_2, col = "red")
+legend("topleft", legend = c("Density", "Posterior"), 
+       lty = 1, col = c("blue", "red"), bty = "n")
+```
+
+Ahora, en cuanto a intervalos:
+
+```{r}
+quantile(samples_2, c(0.1, 0.9))
+```
+
+```{r}
+HPDI(samples_2, 0.8)
+```
+
+Y en cuanto a estimaciones puntutuales:
+
+```{r}
+p_grid[which.max(posterior_2)]
+```
+
+```{r}
+chainmode(samples_2, adj = 0.01)
+```
+
+```{r}
+mean(samples_2)
+```
+
+```{r}
+median(samples_2)
+```
+
+```{r}
+plot(p_grid, posterior_2, type = "l",
+     xlab = "Posterior", ylab = "p")
+
+abline(v = mean(samples_2), lty = 2, col = "blue")
+abline(v = median(samples_2), lty = 2, col = "red")
+abline(v = p_grid[which.max(posterior_2)], lty = 2, col = "green")
+
+legend("topleft",
+       legend = c("Mean", "Median", "Mode"),
+       col = c("blue", "red", "green"),
+       lty = 2,
+       bty = "n")
+```
+
+
 ### Función de pérdidas
+
+Para elegir entre posibles valores puntuales podemos usar una *loss function*.
+
+Por ejemplo, si el verdadero $p$ fuera 0.5, el error L1 ponderado sería:
+
+```{r}
+sum(posterior * abs(0.5 - p_grid))
+```
+Tratando a cada valor de `p_grid` como si fuera verdadero:
+
+```{r}
+loss <- sapply(p_grid, function(d) sum(posterior_2 * abs(d - p_grid)))
+```
+
+obtenemos los errores L1 para cada posible valor de $p$:
+
+```{r}
+plot(p_grid, loss, type = "l",
+     main = "Loss Function - L1", xlab = "p", ylab = "Loss")
+
+abline(v = p_grid[which.min(loss)], lty = 2, col = "red")
+```
+El valor mínimo:
+
+```{r}
+p_grid[which.min(loss)]
+```
+
+Es la mediana de la muestra de la distribución posterior:
+
+```{r}
+median(samples_2)
+```
+Podíamos haber usado otra función de pérdidas:
+
+```{r}
+loss <- sapply(p_grid, function(d) sum(posterior_2 * (d - p_grid)^2))
+```
+
+```{r}
+plot(p_grid, loss, type = "l",
+     main = "Loss Function - L2", xlab = "p", ylab = "Loss")
+
+abline(v = p_grid[which.min(loss)], lty = 2, col = "blue")
+```
+cuyo mínimo coincide con la media:
+
+```{r}
+p_grid[which.min(loss)]
+```
+
+```{r}
+sum(p_grid*posterior_2)
+```
+
+
+```{r}
+mean(samples_2)
+```
+
 
 
 # Muestreo predictivo
+
+```{r}
+w <- rbinom(length(samples), size=9, prob = samples)
+```
+
+```{r}
+hist(w)
+```
+
+
