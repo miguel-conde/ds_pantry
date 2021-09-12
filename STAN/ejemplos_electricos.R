@@ -29,11 +29,10 @@ historico_generacion_eolica <-
 # https://www.ree.es/es/datos/generacion/potencia-instalada
 historico_potencias_instaladas <-
   read_csv("data/historico_potencias_instaladas.csv", 
-           locale = locale(date_names = "es", decimal_mark = ",", 
-                           grouping_mark = "", encoding = "WINDOWS-1252"), 
-           skip = 4) %>% 
+           locale = locale(decimal_mark = ",", grouping_mark = ".", 
+                           encoding = "WINDOWS-1252"), skip = 4) %>% 
   drop_na() %>% 
-  rename(tecnologia = X1) %>% 
+  rename(tecnologia = `...1`) %>% 
   mutate_at(vars(2), ~ as.numeric(.)) %>% 
   gather(date, potencia, -tecnologia) %>% 
   spread(tecnologia, potencia) %>% 
@@ -179,6 +178,7 @@ library(rstan)
 
 options(mc.cores = parallel:: detectCores())
 rstan_options(auto_write = TRUE)
+
 
 stan_code <- "
 // The input data is a vector 'y' of length 'N'.
@@ -346,3 +346,14 @@ fit_eo <- stan(model_code = stan_code,
                data = list(N = length(Y_eo), y = Y_eo),
                verbose = TRUE) 
 fit_eo
+
+library(rethinking)
+
+precis(fit_eo)
+
+# Posterior Predictive Sampling
+rows_samples_eo <- 
+  lapply(rstan::extract(fit_eo), function(x) sample(x, 1e5, replace = TRUE))
+rbeta(1e5, rows_samples_eo$alpha, rows_samples_eo$beta) %>% 
+  density() %>% 
+  plot()

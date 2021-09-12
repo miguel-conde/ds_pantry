@@ -104,3 +104,4 @@ generated quantities {
   aMax_indicator = max(lSimData) > max(y);
   aMin_indicator = min(lSimData) < max(y);
 }
+
