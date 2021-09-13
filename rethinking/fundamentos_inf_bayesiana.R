@@ -55,7 +55,7 @@ dato_num_azules <- rbinom(n = n_obs, size = n_bernouillis_x_obs, prob = p)
 # MÉTODO GRID
 ps_grid <- seq(0, 1, length.out = 100) # La grid de p's
 
-prior <- dunif(ps, 0, 1)
+prior <- dunif(ps_grid, 0, 1)
 likelihood <- dbinom(x = dato_num_azules, 
                      size = n_bernouillis_x_obs, 
                      prob = ps_grid)
@@ -106,6 +106,32 @@ n_obs <- 100
 n_bernouillis_x_obs <- 9
 
 dato_num_azules <- rbinom(n = n_obs, size = n_bernouillis_x_obs, prob = p) 
+
+## MÉTODO GRID
+ps_grid <- seq(0, 1, length.out = 100) # La grid de p's
+
+posterior <- sapply(ps_grid,
+               function(p) {
+                 log_likelihood <- sum(dbinom(x = dato_num_azules,
+                                              size = n_bernouillis_x_obs,
+                                              prob = p), 
+                                       log = TRUE)
+                 likelihood <- exp(log_likelihood)
+                 post <- likelihood * dunif(p, 0, 1)
+                 post
+               })
+posterior <- posterior / sum(posterior)
+
+plot(ps_grid, posterior, type = "o")
+ps_grid[which.max(posterior)]
+
+# Método HMCMH - rstan
+
+options(mc.cores = parallel:: detectCores())
+rstan_options(auto_write = TRUE)
+
+
+## MÉTODO HMCMC - stan
 
 stan_code2 <- "
 data {
