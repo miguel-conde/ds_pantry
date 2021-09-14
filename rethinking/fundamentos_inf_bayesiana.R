@@ -108,9 +108,9 @@ n_bernouillis_x_obs <- 9
 dato_num_azules <- rbinom(n = n_obs, size = n_bernouillis_x_obs, prob = p) 
 
 ## MÉTODO GRID
-ps_grid <- seq(0, 1, length.out = 100) # La grid de p's
+ps_grid2 <- seq(0, 1, length.out = 1000) # La grid de p's
 
-posterior <- sapply(ps_grid,
+posterior2 <- sapply(ps_grid2,
                function(p) {
                  log_likelihood <- sum(dbinom(x = dato_num_azules,
                                               size = n_bernouillis_x_obs,
@@ -120,10 +120,10 @@ posterior <- sapply(ps_grid,
                  post <- likelihood * dunif(p, 0, 1)
                  post
                })
-posterior <- posterior / sum(posterior)
+posterior2 <- posterior2 / sum(posterior2)
 
-plot(ps_grid, posterior, type = "o")
-ps_grid[which.max(posterior)]
+plot(ps_grid2, posterior2, type = "o")
+ps_grid2[which.max(posterior2)]
 
 # Método HMCMH - rstan
 
@@ -198,6 +198,8 @@ rstan_options(auto_write = TRUE)
 
 ## MÉTODO HMCMC - stan
 
+
+
 stan_code3 <- "
 data {
   int<lower=0> N_obs;
@@ -231,6 +233,19 @@ fit3 <- stan(model_code = stan_code3,
 fit3
 precis(fit3)
 
-stan_posterior2 <- rstan::extract(fit2)$p
+stan_posterior3 <- rstan::extract(fit3)$p
 
-hist(stan_posterior2)
+hist(stan_posterior3)
+
+
+
+# 4 - SAMPLING ------------------------------------------------------------
+
+## Del modelo 2
+## 10000 muestras de la posterior:
+post_samples_2 <- sample(x = ps_grid2, 
+                         size = 10000, 
+                         prob = posterior2,
+                         replace = TRUE)
+plot(post_samples_2)
+density(post_samples_2) %>% plot()
