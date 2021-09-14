@@ -114,8 +114,8 @@ posterior <- sapply(ps_grid,
                function(p) {
                  log_likelihood <- sum(dbinom(x = dato_num_azules,
                                               size = n_bernouillis_x_obs,
-                                              prob = p), 
-                                       log = TRUE)
+                                              prob = p,
+                                              log = TRUE))
                  likelihood <- exp(log_likelihood)
                  post <- likelihood * dunif(p, 0, 1)
                  post
@@ -159,6 +159,77 @@ fit2 <- stan(model_code = stan_code2,
 
 fit2
 precis(fit2)
+
+stan_posterior2 <- rstan::extract(fit2)$p
+
+hist(stan_posterior2)
+
+# 3 - MODELO 3 ------------------------------------------------------------
+
+# Con 2 parámetros ahora
+
+## MÉTODO GRID
+ps <- seq(0, 1, length.out = 100) # La grid de p's
+Ns <- 0:30
+pars_grid <- expand_grid(ps, Ns)
+
+posterior <- sapply(1:nrow(pars_grid),
+                    function(idx) {
+                      log_likelihood <- sum( dbinom(x = dato_num_azules,
+                                                    size = pars_grid$Ns[idx],
+                                                    prob = pars_grid$ps[idx],
+                                                    log = TRUE))
+                      likelihood <- exp(log_likelihood)
+                      post <- likelihood * dunif(p, 0, 1)
+                      post
+                    })
+posterior <- posterior / sum(posterior)
+
+plot(pars_grid$ps, posterior, type = "o")
+plot(pars_grid$Ns, posterior, type = "o")
+pars_grid[which.max(posterior),]
+
+
+# Método HMCMH - rstan
+
+options(mc.cores = parallel:: detectCores())
+rstan_options(auto_write = TRUE)
+
+
+## MÉTODO HMCMC - stan
+
+stan_code3 <- "
+data {
+  int<lower=0> N_obs;
+  int y[N_obs];
+}
+
+parameters {
+  real<lower=0, upper=1> p;
+  real<lower = 0> N;
+}
+
+transformed parameters {
+int<lower=0> int_N;
+
+int_N = round(N);
+}
+
+model {
+  p ~ uniform(0, 1); 
+  N ~ uniform(1, 20);
+  y ~ binomial(int_N, p);
+}
+"
+
+fit3 <- stan(model_code = stan_code3, 
+             iter = 1000, chains = 1, 
+             data = list(N_obs = n_obs,
+                         y = dato_num_azules),
+             verbose = TRUE)
+
+fit3
+precis(fit3)
 
 stan_posterior2 <- rstan::extract(fit2)$p
 
