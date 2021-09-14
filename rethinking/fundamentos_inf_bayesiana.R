@@ -102,18 +102,18 @@ hist(stan_posterior)
 
 # 2 - MODELO 2 ------------------------------------------------------------
 
-n_obs <- 100
-n_bernouillis_x_obs <- 9
+n_obs2 <- 100
+n_bernouillis_x_obs2 <- 9
 
-dato_num_azules <- rbinom(n = n_obs, size = n_bernouillis_x_obs, prob = p) 
+dato_num_azules2 <- rbinom(n = n_obs2, size = n_bernouillis_x_obs2, prob = p) 
 
 ## MÉTODO GRID
 ps_grid2 <- seq(0, 1, length.out = 1000) # La grid de p's
 
 posterior2 <- sapply(ps_grid2,
                function(p) {
-                 log_likelihood <- sum(dbinom(x = dato_num_azules,
-                                              size = n_bernouillis_x_obs,
+                 log_likelihood <- sum(dbinom(x = dato_num_azules2,
+                                              size = n_bernouillis_x_obs2,
                                               prob = p,
                                               log = TRUE))
                  likelihood <- exp(log_likelihood)
@@ -173,9 +173,9 @@ ps <- seq(0, 1, length.out = 100) # La grid de p's
 Ns <- 0:30
 pars_grid <- expand_grid(ps, Ns)
 
-posterior <- sapply(1:nrow(pars_grid),
+posterior3 <- sapply(1:nrow(pars_grid),
                     function(idx) {
-                      log_likelihood <- sum( dbinom(x = dato_num_azules,
+                      log_likelihood <- sum( dbinom(x = dato_num_azules2,
                                                     size = pars_grid$Ns[idx],
                                                     prob = pars_grid$ps[idx],
                                                     log = TRUE))
@@ -183,11 +183,11 @@ posterior <- sapply(1:nrow(pars_grid),
                       post <- likelihood * dunif(p, 0, 1)
                       post
                     })
-posterior <- posterior / sum(posterior)
+posterior3 <- posterior3 / sum(posterior)
 
-plot(pars_grid$ps, posterior, type = "o")
-plot(pars_grid$Ns, posterior, type = "o")
-pars_grid[which.max(posterior),]
+plot(pars_grid$ps, posterior3, type = "o")
+plot(pars_grid$Ns, posterior3, type = "o")
+pars_grid[which.max(posterior3),]
 
 
 # Método HMCMH - rstan
