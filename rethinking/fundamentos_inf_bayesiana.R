@@ -283,7 +283,7 @@ quantile(post_samples_2, probs = c(0.3, 1 - 0.3))
 quantile(post_samples_2, probs = c(0.25, 1 - 0.25))
 
 # Funcionan bien si la posterior es bastante simétrica. Si está bastante sesgada,
-# mjor usar HISGHEST POSTERIOR DENSITY INTERVALS (HDPI) = el intervalo más estrecho
+# mjor usar HIGHEST POSTERIOR DENSITY INTERVALS (HDPI) = el intervalo más estrecho
 # que contiene la masa de probabilidad especificada
 rethinking::HPDI(post_samples_2, prob = 0.5)
 
@@ -380,3 +380,241 @@ fit2_pps <- stan(model_code = stan_code2_pps,
 # Salen 500 (1 por cada post-warmup draws) distribuciones de cada simulación predictiva
 
 extract(fit2_pps)$y_pps %>% apply(1, function(x) table(x)/100) %>% bind_rows()
+
+
+# EJERCICIOS --------------------------------------------------------------
+
+
+# Easy --------------------------------------------------------------------
+
+# The Easy problems use the samples from the posterior distribution for 
+# the globe tossing example.
+# This code will give you a specific set of samples, so that you can check your 
+# answers exactly.
+p_grid <- seq(from = 0, to = 1, length.out = 1000)
+prior <- rep(1, 1000)
+likelihood <- dbinom(6, size = 9, prob = p_grid)
+posterior <- likelihood * prior
+posterior <- posterior / sum(posterior)
+
+set.seed(100)
+samples <- sample(p_grid, prob = posterior, size = 1e4, replace = TRUE)
+
+# Use the values in samples to answer the questions that follow.
+
+plot(p_grid, posterior, type = "l")
+hist(samples, freq = FALSE)
+lines(density(samples), col = "red")
+
+
+# 3E1 ---------------------------------------------------------------------
+
+# How much posterior probability lies below p = 0.2?
+
+# Respuesta exacta de la posterior distribution:
+sum(posterior[p_grid < 0.2])
+
+# Respuesta de la posterior sample:
+mean(samples < 0.2) 
+
+
+# 3E2 ---------------------------------------------------------------------
+
+# How much posterior probability lies above p = 0.8?
+
+# Respuesta exacta de la posterior distribution:
+sum(posterior[p_grid > 0.8])
+
+# Respuesta de la posterior sample:
+mean(samples > 0.8) 
+
+# 3E3 ---------------------------------------------------------------------
+
+# How much posterior probability lies between p = 0.2 and p = 0.8?
+
+# Respuesta exacta de la posterior distribution:
+sum(posterior[p_grid < 0.8]) - sum(posterior[p_grid < 0.2])
+sum(posterior[p_grid > 0.2 & p_grid < 0.8])
+
+# Respuesta de la posterior sample:
+mean(samples > 0.2 & samples < 0.8) 
+
+# 3E4 ---------------------------------------------------------------------
+
+# 20% of the posterior probability lies below which value of p?
+
+# Respuesta de la posterior sample:
+quantile(samples, 0.2)
+
+# Comprobación con la posterior:
+sum(posterior[p_grid < quantile(samples, 0.2)])
+
+# Y con la mustra d ela posterior
+sum(samples < quantile(samples, 0.2)) / 1e4
+
+# 3E5 ---------------------------------------------------------------------
+
+# 20% of the posterior probability lies above which value of p?
+
+# Respuesta de la posterior sample:
+quantile(samples, 0.8,)
+
+# 3E6 ---------------------------------------------------------------------
+
+# Which values of p contain the narrowest interval equal to 66 % of the 
+# posterior probability?
+rethinking::HPDI(samples, prob = 0.66) # TODO
+
+# 3E7 ---------------------------------------------------------------------
+
+# Which values of p contain 66 % of the posterior probability, assuming equal 
+# posterior probability both below and above the interval?
+rethinking::PI(samples, prob = 0.66) # TODO
+quantile(samples, c((1-.66)/2, 1 - (1-.66)/2))
+
+# Medium ------------------------------------------------------------------
+
+
+# 3M1 ---------------------------------------------------------------------
+
+# Suppose the globe tossing data had turned out to be 8 water in 15 tosses.
+# Construct the posterior distribution, using grid approximation. Use the same 
+# flat prior as before.
+
+p_grid <- seq(from = 0, to = 1, length.out = 1000)
+prior <- rep(1, 1000)
+likelihood <- dbinom(8, size = 15, prob = p_grid)
+posterior <- likelihood * prior
+posterior <- posterior / sum(posterior)
+
+plot(p_grid, posterior, type = "l")
+
+# 3M2 ---------------------------------------------------------------------
+
+# Draw 10,000 samples from the grid approximation from above.Then use the 
+# samples to calculate the 90 % HPDI for p.
+
+set.seed(100)
+samples <- sample(p_grid, prob = posterior, size = 1e4, replace = TRUE)
+
+
+hist(samples, freq = FALSE)
+lines(density(samples), col = "red")
+
+rethinking::HPDI(samples, prob = 0.9) # TODO
+
+# 3M3 ---------------------------------------------------------------------
+
+# Construct a posterior predictive check for this model and data.This means 
+# simulate the distribution of samples, averaging over the posterior 
+# uncertainty in p. What is the probability of observing 8 water in 15 tosses?
+
+pps <- rbinom(1e4, size = 15, prob = samples)
+
+mean(pps == 8)
+
+# PAra cada posible resultado, de la posterior simulation se obtienen estas
+# probabilidades:
+table(pps) / 1e4
+
+# Comprobemos: la probabilidad de la posterior es:
+p <- p_grid[which.max(posterior)]
+
+# Luego las probabilidades de los diferentes resultados son:
+dbinom(0:15, 15, p)
+
+# Comparemos gráficamente:
+plot(as.vector(table(pps) / 1e4), dbinom(0:15, 15, p),
+     xlab = "PPS", ylab = "POSTERIOR")
+abline(a = 0, b = 1, lty = 2)
+
+# O:
+plot(0:15, as.vector(table(pps) / 1e4), type = "o",
+     ylim = c(0, 0.20),
+     xlab = "Number of Ws", ylab = "Probability")
+lines(0:15, dbinom(0:15, 15, p), col = "red", type = "o")
+legend("topleft", legend = c("Posterior", "PPS"), 
+       # type = "o",
+       lty = 1,
+       col = c(1, "red"),
+       bty = "n")
+
+# 3M4 ---------------------------------------------------------------------
+
+# Using the posterior distribution constructed from the new (8/15) data, now 
+# calculate the probability of observing 6 water in 9 tosses.
+pps <- rbinom(1e4, size = 9, prob = samples)
+
+mean(pps == 6)
+
+# 3M5 ---------------------------------------------------------------------
+
+# Start over at 3M1, but now use a prior that is zero below p = 0.5 and a 
+# constant above p = 0.5. This corresponds to prior information that a majority 
+# of the Earth’s surface is water. Repeat each problem above and compare the 
+# inferences (using both priors) to the true value p = 0.7.
+
+p_grid <- seq(from = 0, to = 1, length.out = 1000)
+prior <- c(rep(0, length(p_grid[p_grid < 0.5])),
+           rep(2, length(p_grid[p_grid >= 0.5])))
+likelihood <- dbinom(8, size = 15, prob = p_grid)
+posterior <- likelihood * prior
+posterior <- posterior / sum(posterior)
+
+plot(p_grid, posterior, type = "l")
+
+# 3M5.2
+set.seed(100)
+samples <- sample(p_grid, prob = posterior, size = 1e4, replace = TRUE)
+
+
+hist(samples, freq = FALSE)
+lines(density(samples), col = "red")
+
+rethinking::HPDI(samples, prob = 0.9) # TODO
+
+# 3M5.3
+pps <- rbinom(1e4, size = 15, prob = samples)
+
+mean(pps == 8)
+
+# 3M5.4
+pps <- rbinom(1e4, size = 9, prob = samples)
+
+mean(pps == 6)
+
+# 3M6 ---------------------------------------------------------------------
+
+# Suppose you want to estimate the Earth’s proportion of water very precisely. 
+# Specifically, you want the 99% percentile interval of the posterior 
+# distribution of p to be only 0.05 wide. This means the distance between the 
+# upper and lower bound of the interval should be 0.05. How many times will you 
+# have to toss the globe to do this?
+
+xxx <- function(n_tosses, p = 0.7, p_i = .99) {
+  
+  p_grid <- seq(from = 0, to = 1, length.out = 1000)
+  prior <- dunif(p_grid, 0, 1)
+  likelihood <- dbinom(n_tosses * p, size = n_tosses, prob = p_grid)
+  posterior <- likelihood * prior
+  posterior <- posterior / sum(posterior)
+  
+  samples <- sample(p_grid, size = 1e4, prob = posterior, replace = TRUE)
+  
+  out <- quantile(samples, c((1-p_i)/2, 1 - (1-p_i)/2))
+  
+  return(as.numeric(diff(out)))
+}
+
+xxx(100)
+xxx(1000)
+xxx(1500)
+xxx(1600)
+xxx(1800)
+xxx(1900)
+xxx(2200)
+
+# Hard --------------------------------------------------------------------
+
+
+
