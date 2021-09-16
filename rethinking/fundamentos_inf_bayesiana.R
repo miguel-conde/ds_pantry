@@ -616,5 +616,117 @@ xxx(2200)
 
 # Hard --------------------------------------------------------------------
 
+# The Hard problems here all use the data below. These data indicate the gender 
+# (male = 1, female = 0) of officially reported first and second born children 
+# in 100 two-child families. So for example, the first family in the data 
+# reported a boy (1) and then a girl (0). The second family reported a girl (0) 
+# and then a boy (1). The third family reported two girls. You can load these 
+# tow vectors into R’s memory by typing:
+
+data(homeworkch3)
+
+birth1 
+birth2 
+
+# Use these vectors as data. So for example to compute the total number of boys 
+# born across all of these births, you could use:
+
+sum(birth1) + sum(birth2)
 
 
+# 3H1 ---------------------------------------------------------------------
+
+# Using grid approximation, compute the posterior distribution for the 
+# probability of a birth being a boy. Assume a uniform prior probability. Which 
+# parameter value maximizes the posterior probability?
+
+n_boys <- sum(birth1) + sum(birth2)
+n_births <- length(birth1) + length(birth2)
+
+p_grid <- seq(0, 1, length.out = 1000)
+
+prior <- dunif(p_grid)
+likelihood <- dbinom(x = n_boys, size = n_births, prob = p_grid)
+posterior <- likelihood * prior
+posterior <- posterior / sum(posterior)
+
+plot(p_grid, posterior, type = "l",
+     xlab = "p",
+     ylab = "p Posterior Distribution")
+
+p_grid[which.max(posterior)]
+
+# 3H2 ---------------------------------------------------------------------
+
+# Using the sample function, draw 10,000 random parameter values from the 
+# posterior distribution you calculated above. Use these sample to estimate the 
+# 50%, 89%, and 97% highest posterior density intervals.
+
+samples <- sample(p_grid, size = 1e4, replace = TRUE, prob = posterior)
+
+rethinking::HPDI(samples, c(.5, .89, .97))
+
+# 3H3 ---------------------------------------------------------------------
+
+# Use rbinom to simulate 10,000 replicates of 200 births. You should end up with 
+# 10,000 numbers, each one a count of boys out of 200 births. Compare the 
+# distribution of predicted numbers of boys to the actual count in the data 
+# (111 boys out of 200 births). There are many good ways to visualize the 
+# simulations, but the dens command (part of the rethinking package) is probably 
+# the easiest way in this case. Does it look like the model fits the data well? 
+# That is, does the distribution of predictions include the actual observation 
+# as a central, likely outcome?
+
+pps <- rbinom(1e4, size = n_births, prob = samples)
+
+mean(pps)
+
+rethinking::dens(pps, show.HPDI = .89)
+abline(v = n_boys, lty = 2, col = "red")
+abline(v = mean(pps), lty = 2)
+
+# Based on this posterior predictive distribution, the model appears to fit well, 
+# with the observed value of 111 in the middle of the distribution.
+
+# 3H4 ---------------------------------------------------------------------
+
+# Now compare 10,000 counts of boys from 100 simulated first borns only the 
+# number of boys in the first births, birth1. How does the model look in this 
+# light?
+
+pps <- rbinom(1e4, size = length(birth1), prob = samples)
+
+mean(pps)
+
+rethinking::dens(pps, show.HPDI = .89)
+abline(v = sum(birth1), lty = 2, col = "red")
+abline(v = mean(pps), lty = 2)
+
+# Based on first births only, the model appears to fit less well. Specifically, 
+# the model appears to be overestimating the number of first births who are boys. 
+# However, it does not appear to be a large discrepancy, as the observed value 
+# is still within the middle 66% interval.
+
+# 3H5 ---------------------------------------------------------------------
+
+# The model assumes that sex of first and second births are independent. To 
+# check this assumption, focus now on second births that followed female first 
+# borns. Compare 10,000 simulated conts of boys to only those second births that 
+# followed girls. To do this correctly, you need to count the number of first 
+# borns who were girls and simulate that many births, 10,000 times. Compare the 
+# counts of boys in your simulations to the actual observed count of boys 
+# following girls. How does the model look in this light? Any guesses what is 
+# going on in these data?
+pps <- rbinom(1e4, size = sum(birth1 == 0), prob = samples)
+
+mean(pps)
+
+obs <- sum(birth2[birth1 == 0])
+
+rethinking::dens(pps, show.HPDI = .89)
+abline(v = obs, lty = 2, col = "red")
+abline(v = mean(pps), lty = 2)
+
+# The model is severely under estimating the number of second-born boys when the 
+# first born child is a girl. Thus, our assumption that births are independent 
+# appears to be violated.
