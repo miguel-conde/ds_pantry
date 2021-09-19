@@ -690,6 +690,51 @@ shade(mu_HPDIs, weight_s_seq, col = col.alpha("blue", alpha = 1))
 # 4 - Región PI de las predicciones o simulaciones
 shade(sim_heights_PIs, weight_s_seq, col = col.alpha("grey", alpha = 1))
 
+# Con ggplot:
+
+gg_data <- data.frame(
+  weight_s_seq = weight_s_seq,
+  mu_mean = mu_mean,
+  min_mu_HPDIs = mu_HPDIs[1,],
+  max_mu_HPDIs = mu_HPDIs[2,],
+  min_sim_PIs = sim_heights_PIs[1,],
+  max_sim_PIs = sim_heights_PIs[2,],
+  min_sim_HPDIs = sim_heights_HPDIs[1,],
+  max_sim_HPDIs = sim_heights_HPDIs[2,]
+)
+
+# Datos
+p <- ggplot() + 
+  geom_point(data = d, mapping = aes(x = weight_s, 
+                                     y = height, 
+                                     color = col.alpha(rangi2, 0.5)))
+
+# Línea de regresión media (MAP line)
+p <- p + 
+  geom_line(data = gg_data,
+            aes(x = weight_s_seq, y = mu_mean)) 
+
+# Región HPDI de la MAP line
+p <- p + 
+  geom_line(data = gg_data,
+            aes(x = weight_s_seq, y = min_mu_HPDIs), linetype = 2) + 
+  geom_line(data = gg_data,
+            aes(x = weight_s_seq, y = max_mu_HPDIs), linetype = 2) +
+  geom_ribbon(data = gg_data,
+              aes(x = weight_s_seq, ymin = min_mu_HPDIs, ymax = max_mu_HPDIs),
+              fill = "blue", alpha = 0.2)
+
+# Región PI de las predicciones o simulaciones
+p <- p  + 
+  geom_line(data = gg_data,
+            aes(x = weight_s_seq, y = min_sim_PIs), linetype = 2) + 
+  geom_line(data = gg_data,
+            aes(x = weight_s_seq, y = max_sim_PIs), linetype = 2) +
+  geom_ribbon(data = gg_data,
+              aes(x = weight_s_seq, ymin = min_sim_PIs, ymax = max_sim_PIs),
+              fill = "gray", alpha = 0.2)
+
+p
 
 # 2. Splines --------------------------------------------------------------
 
@@ -699,4 +744,26 @@ data(cherry_blossoms)
 
 d <- cherry_blossoms
 
-precis(d)
+precis(d, hist = FALSE)
+
+plot(doy ~ year, d)
+
+d2 <- d[complete.cases(d %>% select(doy, year)), ]
+
+num_knots <- 15
+knot_list <- quantile(d2$year, probs = seq(0, 1, length.out = num_knots))
+
+library(splines)
+
+# Cubic spline
+B <- bs(d2$year,
+        knots = knot_list[-c(1, num_knots)],
+        degree = 3, intercept = TRUE)
+
+plot(NULL, 
+     xlim = range(d2$year), 
+     ylim=c(0,1),
+     xlab="year",
+     ylab="basis")
+
+for (i in 1:ncol(B)) lines(d2$year,B[,i])
