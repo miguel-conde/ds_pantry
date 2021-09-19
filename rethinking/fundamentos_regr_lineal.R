@@ -513,3 +513,190 @@ shade(mu_HPDIs, weight_seq, col = col.alpha("blue", alpha = 1))
 
 # 4 - Región PI de las predicciones o simulaciones
 shade(sim_heights_PIs, weight_seq, col = col.alpha("grey", alpha = 1))
+
+# SPLINES -----------------------------------------------------------------
+
+data(Howell1)
+d <- Howell1
+
+# Ahora height ~ weight completo, sin filtrar no adultos
+
+plot(height ~ weight, d)
+
+## STANDARDIZE the PREDICTOR VARIABLE
+# ( the square or cube of a large number can be truly massive)
+
+d$weight_s <- scale(d$weight) %>% as.numeric()
+
+# 1. Polynomial regression ------------------------------------------------
+
+d$weight_s2 <- d$weight_s^2
+
+# a. Stan -----------------------------------------------------------------
+
+stan_code_parabolic <- "
+data {
+  int<lower=0> N;
+  
+  vector [N] weights_s;
+  vector [N] weights_s2;
+  vector [N] heights;
+}
+
+parameters {
+  real<lower=0, upper=50> sigma;
+  real<lower=0> beta1;
+  real beta2;
+  real<lower=0> alpha;
+}
+
+transformed parameters {
+  real<lower=0> mu[N];
+  
+  for ( i in 1:N) {
+    mu[i] = alpha + beta1 * weights_s[i] + beta2 * weights_s2[i];
+  }
+}
+
+model {
+
+  sigma ~ uniform(0, 50);
+  beta1 ~ lognormal(0, 1);
+  beta2 ~ normal(0, 1);
+  alpha ~ normal(180, 20); // Como la mu del modelo anterior
+                           // ya que alfa es el valor que toma mu
+                           // cuando el peso es el peso medio
+  heights ~ normal(mu, sigma);
+
+}
+
+generated quantities {
+  real mu_sim[N];
+  vector[N] heights_sim;
+ 
+  for (i in 1:N) {
+    // POSTERIOR PREDICTIVE SAMPLING (PPS)
+    
+    // mu PPS
+    mu_sim[i] = alpha + beta1 * weights_s[i] + beta2 * weights_s2[i];
+    
+    // heights PPS
+    heights_sim[i] = normal_rng(mu[i], sigma);
+  }
+}
+"
+
+fit_parabolic <- stan(model_code = stan_code_parabolic, 
+                      iter = 1000, chains = 1, 
+                      data = list(N = length(d$height), 
+                                  heights = d$height,
+                                  weights_s = d$weight_s,
+                                  weights_s2 = d$weight_s2),
+                      verbose = TRUE)
+
+print(fit_parabolic, pars = c("beta1", "beta2", "sigma"))
+precis(fit_parabolic)
+
+# Plot
+
+weight_s_seq <- seq(-2.2, 2, length.out = 30)
+
+post_samples <- extract(fit_parabolic, 
+                        pars = c("sigma", "alpha", "beta1", "beta2"))
+
+## PPS de mu - Línea de regresión MAP
+mu <- sapply(weight_s_seq, 
+       function(x) post_samples$alpha + 
+         post_samples$beta1 * x + 
+         post_samples$beta2 * x^2) 
+
+mu_mean <- apply(mu, 2, mean)
+mu_PIs <- apply(mu, 2, PI, 0.89)
+mu_HPDIs <- apply(mu, 2, HPDI, 0.89)
+
+
+## PPS de la respuesta - Predicción o simulación
+
+sim_heights <- sapply(1:ncol(mu),
+                      function(i) {
+                        
+                        rnorm(length(mu[i,]), 
+                              mu[i,], 
+                              post_samples$sigma)
+                      })
+
+sim_heights_means <- apply(sim_heights, 1, mean)
+sim_heights_PIs <- apply(sim_heights, 1, PI, 0.89)
+sim_heights_HPDIs <- apply(sim_heights, 1, HPDI, 0.89)
+
+## # Plot de todo
+
+# 1 - Los datos
+plot(height ~ weight_s, d, col = col.alpha(rangi2, 0.5))
+
+# 2 - La línea de regresión media (MAP line)
+lines(weight_s_seq, mu_mean)
+
+# 3 - Región HPDI de la MAP line
+shade(mu_HPDIs, weight_s_seq, col = col.alpha("blue", alpha = 1))
+
+# 4 - Región PI de las predicciones o simulaciones
+shade(sim_heights_PIs, weight_s_seq, col = col.alpha("grey", alpha = 1))
+
+
+# b. ulam -----------------------------------------------------------------
+
+ulam_parabolic <- ulam(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + b1 * weight_s + b2 * weight_s2,
+    a ~ dnorm(178, 20),
+    b1 ~ dlnorm(0, 1),
+    b2 ~ dnorm(0, 1),
+    sigma ~ dunif(0, 50)
+    
+  ), data = d
+)
+
+precis(ulam_parabolic)
+
+mu <- link(ulam_parabolic, 
+           data = list(weight_s <- weight_s_seq,
+                       weight_s2 <- weight_s_seq^2)) 
+
+mu_mean <- apply(mu, 2, mean)
+mu_PIs <- apply(mu, 2, PI, 0.89)
+mu_HPDIs <- apply(mu, 2, HPDI, 0.89)
+
+sim_heights <- sim(ulam_parabolic, 
+                   data = list(weight_s <- weight_s_seq,
+                               weight_s2 <- weight_s_seq^2))
+
+sim_heights_means <- apply(sim_heights, 2, mean)
+sim_heights_PIs <- apply(sim_heights, 2, PI, 0.89)
+sim_heights_HPDIs <- apply(sim_heights, 2, HPDI, 0.89)
+
+## # Plot de todo
+
+# 1 - Los datos
+plot(height ~ weight_s, d, col = col.alpha(rangi2, 0.5))
+
+# 2 - La línea de regresión media (MAP line)
+lines(weight_s_seq, mu_mean)
+
+# 3 - Región HPDI de la MAP line
+shade(mu_HPDIs, weight_s_seq, col = col.alpha("blue", alpha = 1))
+
+# 4 - Región PI de las predicciones o simulaciones
+shade(sim_heights_PIs, weight_s_seq, col = col.alpha("grey", alpha = 1))
+
+
+# 2. Splines --------------------------------------------------------------
+
+library(rethinking)
+
+data(cherry_blossoms)
+
+d <- cherry_blossoms
+
+precis(d)
