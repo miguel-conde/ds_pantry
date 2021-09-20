@@ -586,6 +586,9 @@ generated quantities {
 }
 "
 
+options(mc.cores = parallel:: detectCores())
+rstan_options(auto_write = TRUE)
+
 fit_parabolic <- stan(model_code = stan_code_parabolic, 
                       iter = 1000, chains = 1, 
                       data = list(N = length(d$height), 
@@ -766,4 +769,86 @@ plot(NULL,
      xlab="year",
      ylab="basis")
 
-for (i in 1:ncol(B)) lines(d2$year,B[,i])
+for (i in 1:ncol(B)) lines(d2$year, B[,i])
+
+
+# a. Stan -----------------------------------------------------------------
+
+stan_code_spline <- "
+data {
+  int<lower = 0> N;
+  int<lower=0> N_yrs;
+  int<lower=0> N_basis;
+  vector[N] doy;
+  matrix[N_yrs, N_basis] B;
+}
+
+parameters {
+  real<lower = 0> a;
+  vector[N_basis] w;
+  real <lower = 0> sigma;
+}
+
+transformed parameters {
+  row_vector[N_yrs] mu;
+  
+  for (i in 1:N_yrs) {
+    mu[i] = a + B[i, ] * w;
+  }
+}
+
+model {
+  a ~ normal(100, 10);
+  w ~ normal(0, 10);
+  sigma ~ exponential(1);
+    
+  doy ~ normal(mu, sigma);
+}
+
+generated quantities {
+  real mu_sim[N];
+  vector[N] doy_sim;
+
+  for (i in 1:N) {
+    // POSTERIOR PREDICTIVE SAMPLING (PPS)
+    
+    // mu PPS
+    // mu_sim[i] = alpha + beta1 * weights_s[i] + beta2 * weights_s2[i];
+    mu_sim[i] = a + B[i, ] * w;
+    
+    // heights PPS
+    doy_sim[i] = normal_rng(mu[i], sigma);
+  }
+}
+
+"
+
+options(mc.cores = parallel:: detectCores())
+rstan_options(auto_write = TRUE)
+
+
+fit_spline <- stan(model_code = stan_code_spline, 
+                   iter = 1000, chains = 1, 
+                   data = list(N = length(d2$doy), 
+                               doy = d2$doy, 
+                               B = B,
+                               N_yrs = nrow(B),
+                               N_basis = ncol(B)),
+                   verbose = TRUE)
+
+print(fit_spline, pars = c("a", "w", "sigma"))
+precis(fit_spline)
+
+# a. ulam -----------------------------------------------------------------
+
+
+ulam_spline <- ulam(
+  alist(
+    D ~ dnorm(mu, sigma),
+    mu <- a + B %*% w,
+    a ~ dnorm(100, 10),
+    w ~ dnorm(0, 10),
+    sigma ~ dexp(1)
+  ), data = list(D = d2$doy, B = B),
+  start = list(w = rep(0, ncol(B)))
+)
