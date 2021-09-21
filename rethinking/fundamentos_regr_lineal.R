@@ -839,6 +839,45 @@ fit_spline <- stan(model_code = stan_code_spline,
 print(fit_spline, pars = c("a", "w", "sigma"))
 precis(fit_spline)
 
+##
+post <- extract.samples(fit_spline)
+w <- apply(post$w, 2, mean)
+
+plot(NULL, xlim=range(d2$year), ylim = c(-6, 6),
+      xlab = "year", ylab = "basis*weight")
+
+for (i in 1:ncol(B)) lines(d2$year, w[i]*B[,i])
+
+##
+
+post_samples <- extract(fit_spline, pars = c("sigma", "a", "w"))
+
+## PPS de mu - Línea de regresión MAP
+mu <- sweep(post_samples$w %*% t(B), 
+            MARGIN = 1, post_samples$a, "+")
+
+mu_mean <- apply(mu, 2, mean)
+mu_PIs <- apply(mu, 2, PI, 0.89)
+mu_HPDIs <- apply(mu, 2, HPDI, 0.89)
+
+## PPS de la respuesta - Predicción o simulación
+
+sim_doys <- sapply(1:nrow(mu),
+                   function(i) {
+                     
+                     rnorm(length(mu[i,]), 
+                           mu[i, ], 
+                           post_samples$sigma)
+                   })
+
+sim_doys_means <- apply(sim_doys, 1, mean)
+sim_doys_PIs <- apply(sim_doys, 1, PI, 0.89)
+sim_doys_HPDIs <- apply(sim_doys, 1, HPDI, 0.89)
+
+plot(d2$year, d2$doy, col = col.alpha(rangi2,0.3), pch=16)
+shade(mu_PIs, d2$year, col = col.alpha("black",0.5))
+shade(sim_doys_PIs, d2$year, col = col.alpha("black",0.5))
+
 # a. ulam -----------------------------------------------------------------
 
 
