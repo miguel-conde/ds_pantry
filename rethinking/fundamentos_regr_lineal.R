@@ -885,9 +885,101 @@ ulam_spline <- ulam(
   alist(
     D ~ dnorm(mu, sigma),
     mu <- a + B %*% w,
+    # mu <-a + sapply(1:827, function(i) sum(B[i,] * w)),
     a ~ dnorm(100, 10),
     w ~ dnorm(0, 10),
     sigma ~ dexp(1)
   ), data = list(D = d2$doy, B = B),
   start = list(w = rep(0, ncol(B)))
 )
+
+# EJERCICIOS --------------------------------------------------------------
+
+
+# Medium ------------------------------------------------------------------
+
+
+# 4M1 ---------------------------------------------------------------------
+
+# For the model definition below, simulate observed y values from the prior 
+# (not the posterior).
+#                      y_i ~ Normal(mu, sigma)
+#                      mu ~ Normal(0, 10)
+#                      sigma ~ Exponential(1)
+
+sigma <- rexp(1e4, 1)
+mu <- rnorm(1e4, 0, 10)
+y <- rnorm(1e4, mu, sigma)
+
+dens(y)
+
+# 4M2 ---------------------------------------------------------------------
+
+# Trasnlate the model just above into a quap formula.
+
+flist_4M2 <- alist(
+  y ~ dnorm(mu, sigma),
+  mu ~ dnorm(0, 10),
+  sigma ~ dexp(1)
+)
+
+# 4M3 ---------------------------------------------------------------------
+
+# Translate the quap model formula below into a mathematical model definition.
+
+alist(y ~ dnorm(mu, sigma),
+      mu <- a + b * x,
+      a ~ dnorm(0, 10),
+      b ~ dunif(0, 1),
+      sigma ~ dexp(1))
+
+# Trivial
+
+# 4M4 ---------------------------------------------------------------------
+
+# A sample of students is measured for height each year for 3 years. After the 
+# third year, you want to fit a linear regression predicting height using year 
+# as a predictor. Write down the mathematical model definition for this 
+# regression, using any variable names and priors you choose. Be prepared to 
+# defend your choice of priors.
+
+# height ~ Normal(mu, sigma)
+# mu = alpha + beta * (year - bar_year)
+# alpha ~ Normal(170, 20)
+# beta ~ lLognormal(0, 1)
+# sigma ~ Exponetial(1)
+
+alpha_prior <- rnorm(1e4, 170, 20)
+beta_prior <- rlnorm(1e4, 0, 1)
+
+plot(NULL, xlim = c(0, 3), ylim = c(0, 220))
+
+for (i in sample(1:1e5, size = 1000)) {
+  curve(alpha_prior[i] + beta_prior[i] * (x - 2), add = TRUE)
+}
+
+# 4M5 ---------------------------------------------------------------------
+
+# Now suppose I remind you that every student got taller each year. Does this 
+# information lead you to change your choice of priors? How?
+
+# 4M6 ---------------------------------------------------------------------
+
+# Now suppose I tell you that the variance among heights for students of the 
+# same age is never more than 64cm. How does this lead you to revise your 
+# priors?
+
+# 4M7 ---------------------------------------------------------------------
+
+# Refit model m4.3 from the chapter, but omit the mean weight xbar this time. 
+# Compare the new model’s posterior to that of the original model. In 
+# particular, look at the covariance among the parameters. What is different? 
+# Then compare the posterior predictions of both models.
+
+# 4M8 ---------------------------------------------------------------------
+
+# In the chapter, we used 15 knots with the cherry blossom spline. Increase the 
+# number of know and observe what happens to the resulting spline. Then adjust 
+# also the width of the prior on the weights—change the standard deviation of 
+# the prior and watch what happens. What do you think the combination of know 
+# number and the prior on the weights controls?
