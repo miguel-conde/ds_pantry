@@ -983,3 +983,94 @@ for (i in sample(1:1e5, size = 1000)) {
 # also the width of the prior on the weights—change the standard deviation of 
 # the prior and watch what happens. What do you think the combination of know 
 # number and the prior on the weights controls?
+
+
+# Hard --------------------------------------------------------------------
+
+
+# 4H1 ---------------------------------------------------------------------
+
+# The weights listed below were recorded in the !Kung census, but heights were 
+# not recorded for these individuals. Provide predicted heights and 89% 
+# intervals for each of these individuals. That is, fill in the table, below, 
+# using model-based predictions.
+
+#   Individual	weight	expected height	89% interval
+#       1	       47.0		
+#       2	       43.7		
+#       3	       64.8		
+#       4	       32.6		
+#       5	       54.6		
+
+data(Howell1)
+
+d <- Howell1
+d2 <- Howell1 %>% filter(age >= 18)
+
+d_pred <- tibble(weight = c(47.0, 43.7, 64.8, 32.6, 54.6))
+
+fit_linear <- stan(model_code = stan_code_linear, 
+                   iter = 1000, chains = 1, 
+                   data = list(N = length(d2$height), 
+                               heights = d2$height, 
+                               weights_bar = mean(d2$weight),
+                               weights = d2$weight),
+                   verbose = TRUE)
+
+post_betas <- extract(fit_linear, "beta")[[1]]
+post_alphas <- extract(fit_linear, "alpha")[[1]]
+post_sigmas <- extract(fit_linear, "sigma")[[1]]
+weights_bar <- d2$weight %>% mean()
+
+post_mus <- sapply(1:length(post_betas),
+                   function(i) {
+                     post_alphas[i] + post_betas[i] * (d_pred$weight - weights_bar)
+                   })
+post_preds <- sapply(1:nrow(post_mus),
+                     function(i) {
+                       rnorm(length(post_mus[i,]), post_mus[i,], post_sigmas[i])
+                     })
+
+apply(post_preds, 2, mean)
+
+apply(post_preds, 2, HPDI) %>% t()
+
+
+# 4H2 ---------------------------------------------------------------------
+
+# Select out all the rows in the Howell1 data with ages below 18 years of age. 
+# If you do it right, you should end up with a new data frame with 192 rows in 
+# it.
+
+
+# a. Fit a linear regression to these data, using quap. Present and interpret  
+# the estimates. For every 10 units of increase in weight, how much taller does  
+# the model predict a child gets?
+
+# b. Plot the raw data, with height on the vertical axis and weight on the 
+# horizontal axis. Superimpose the MAP regression line and 89% interval for the
+# mean. Also superimpose the 89% interval for predicted heights.
+
+# c. What aspects of the model fit concern you? Describe the kinds of 
+# assumptions you would change, if any, to improve the model. You don’t have 
+# to write any new code. Just explain what the model appears to be doing a bad 
+# job of, and what you hypothesize would be a better model.
+
+# 4H3 ---------------------------------------------------------------------
+
+
+# 4H4 ---------------------------------------------------------------------
+
+
+# 4H5 ---------------------------------------------------------------------
+
+
+# 4H6 ---------------------------------------------------------------------
+
+
+# 4H7 ---------------------------------------------------------------------
+
+
+# 4H8 ---------------------------------------------------------------------
+
+
