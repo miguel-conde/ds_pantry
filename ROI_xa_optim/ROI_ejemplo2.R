@@ -28,8 +28,10 @@ optim_bateria <- function(n_hours, p_max, c_max, spot, the_solver = "glpk", ...)
   lp <- OP(objective   = L_objective(spot),
            constraints = L_constraint(A, dir = dir, rhs = rhs),
            types       = NULL, # Default
-           bounds      = V_bound(li = 1:n_hours, ui = 1:n_hours, 
-                                 lb = rep(-p_max, n_hours), ub = rep(p_max, n_hours), 
+           bounds      = V_bound(li = 1:n_hours, 
+                                 ui = 1:n_hours, 
+                                 lb = rep(-p_max, n_hours), 
+                                 ub = rep(p_max, n_hours), 
                                  nobj = n_hours),
            maximum     = TRUE)
   
@@ -61,4 +63,21 @@ res_optim_lpsolve <- optim_bateria(n_hours = N_HOURS,
                                    c_max   = C,
                                    spot    = spot,
                                    the_solver = "lpsolve")
+
+
+res_time_bench <- 
+  res <- lapply(100*(1:30), function(n) {
+    print(n)
+    
+    set.seed(2021)
+    spot <- 40 + cumsum(rnorm(n, 0, 2))
+    
+    x <- optim_bateria(n_hours = n,
+                  p_max   = P_MAX, 
+                  c_max   = C,
+                  spot    = spot,
+                  the_solver = "lpsolve")
+    print(x$time_log)
+    x$time_log
+  })
 
