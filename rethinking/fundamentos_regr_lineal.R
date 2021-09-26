@@ -1035,6 +1035,79 @@ apply(post_preds, 2, mean)
 
 apply(post_preds, 2, HPDI) %>% t()
 
+## Predicción directamente desde Stan:
+# https://medium.com/@alex.pavlakis/making-predictions-from-stan-models-in-r-3e349dfac1ed
+
+stan_code_pred_linear <- "
+data {
+  int<lower=0> N_pred;
+  
+  real weights[N_pred];
+  real weights_bar;
+  
+  int<lower = 0> N_samples;
+  real<lower=0, upper=50> sigma[N_samples];
+  real<lower=0> beta[N_samples];
+  real<lower=0> alpha[N_samples];
+}
+
+parameters {
+
+}
+
+transformed parameters {
+
+}
+
+model {
+
+}
+
+generated quantities {
+  # matrix[N_samples, N_pred] mu_sim;
+  # real heights_sim[N_samples, N_pred];
+  # 
+  # // POSTERIOR PREDICTIVE SAMPLING (PPS)
+  # for (n in 1:N_pred) {
+  #   for (i in 1: N_samples) {
+  #     // mu PPS
+  #     mu_sim[i, n] = beta[i] * (weights[n] - weights_bar) + alpha[i];
+  #     // heights PPS
+  #     heights_sim[i, n] = normal_rng(mu_sim[i, n], sigma)[1];
+  #   }
+  # }
+
+  matrix[N_pred, N_samples] mu_sim;
+  real heights_sim[N_pred, N_samples];
+
+  // POSTERIOR PREDICTIVE SAMPLING (PPS)
+  for (n in 1:N_pred) {
+    for (i in 1: N_samples) {
+      // mu PPS
+      mu_sim[n, i] = beta[i] * (weights[n] - weights_bar) + alpha[i];
+
+    }
+    // heights PPS
+      heights_sim[n] = normal_rng(mu_sim[n], sigma);
+  }
+
+}
+"
+
+pred <- stan(model_code = stan_code_pred_linear, 
+             iter = 1, chains = 1, 
+             data = list(N_pred = length(d2$height), 
+                         weights_bar = mean(d2$weight),
+                         weights = d2$weight,
+                         N_samples = length(post_alphas),
+                         alpha = post_alphas,
+                         beta = post_betas,
+                         sigma = post_sigmas),
+             verbose = TRUE,
+             algorithm = "Fixed_param")
+
+ext_pred <- extract(pred)
+
 
 # 4H2 ---------------------------------------------------------------------
 
