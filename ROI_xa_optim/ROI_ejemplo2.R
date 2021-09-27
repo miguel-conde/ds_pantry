@@ -8,14 +8,16 @@ library(tidyverse)
 N_HOURS <- 1000 #52*7*24
 P_PLANTA <- 130 # MW
 P_MAX <- 0.2 * P_PLANTA
-C <- 4 * P_PLANTA
+CAP_MAX <- 4 * P_PLANTA
 
 set.seed(2021)
 spot <- 40 + cumsum(rnorm(N_HOURS, 0, 2))
 
 
-optim_bateria <- function(n_hours, p_max, c_max, spot, the_solver = "glpk", ...) {
-
+optim_bateria <- function(spot, p_max, c_max, the_solver = "glpk", ...) {
+  
+  n_hours <- length(spot)
+  
   A <- sapply(1:n_hours, 
               function(x) {
                 c(rep(1, x), rep(0, n_hours - x))
@@ -24,7 +26,7 @@ optim_bateria <- function(n_hours, p_max, c_max, spot, the_solver = "glpk", ...)
   
   dir <- c(rep("<=", n_hours), rep(">=", n_hours))
   rhs <- c(rep(c_max, n_hours), rep(0, n_hours))
-
+  
   lp <- OP(objective   = L_objective(spot),
            constraints = L_constraint(A, dir = dir, rhs = rhs),
            types       = NULL, # Default
@@ -46,38 +48,33 @@ optim_bateria <- function(n_hours, p_max, c_max, spot, the_solver = "glpk", ...)
   
 }
 
-res_optim <- optim_bateria(n_hours = N_HOURS,
+res_optim <- optim_bateria(spot    = spot,
                            p_max   = P_MAX, 
-                           c_max   = C,
-                           spot    = spot)
+                           c_max   = CAP_MAX)
 
-res_optim_alabama <- optim_bateria(n_hours = N_HOURS,
-                           p_max   = P_MAX, 
-                           c_max   = C,
-                           spot    = spot,
-                           the_solver = "alabama", 
-                           control = list(start = rlnorm(N_HOURS)))
-
-res_optim_lpsolve <- optim_bateria(n_hours = N_HOURS,
+res_optim_alabama <- optim_bateria(spot    = spot,
                                    p_max   = P_MAX, 
-                                   c_max   = C,
-                                   spot    = spot,
+                                   c_max   = CAP_MAX,
+                                   the_solver = "alabama", 
+                                   control = list(start = rlnorm(N_HOURS)))
+
+res_optim_lpsolve <- optim_bateria(spot    = spot,
+                                   n_hours = N_HOURS,
+                                   p_max   = P_MAX, 
+                                   c_max   = CAP_MAX,
                                    the_solver = "lpsolve")
 
+set.seed(2021)
+spot <- 40 + cumsum(rnorm(3000, 0, 2))
 
 res_time_bench <- 
-  res <- lapply(100*(1:30), function(n) {
-    print(n)
+  res <- lapply(100*(1:30), function(N) {
+    print(N)
     
-    set.seed(2021)
-    spot <- 40 + cumsum(rnorm(n, 0, 2))
-    
-    x <- optim_bateria(n_hours = n,
-                  p_max   = P_MAX, 
-                  c_max   = C,
-                  spot    = spot,
-                  the_solver = "lpsolve")
+    x <- optim_bateria(spot    = spot[1:N],
+                       p_max   = P_MAX, 
+                       c_max   = CAP_MAX,
+                       the_solver = "glpk")
     print(x$time_log)
     x$time_log
   })
-

@@ -63,12 +63,12 @@ model {
 
 generated quantities {
   vector[n] mu_sim;
-  real D_sim;
+  real D_sim[n];
   
   // PPS
   for (i in 1:n) {
     mu_sim[i] = alpha + beta * A[i];
-    D_sim = normal_rng(mu_sim[i], sigma);
+    D_sim[i] = normal_rng(mu_sim[i], sigma);
   }
 }
 "
@@ -323,11 +323,11 @@ dagitty::impliedConditionalIndependencies(DAG_H2)
 # the two predictor variables should be correlated with one another.
 
 # SIMULACIÓN del MODELO REAL
-x1 <- rnorm(1000)
+x1 <- rnorm(100, 1)
 # x1 -> x2
-x2 <- rnorm(1000, x1)
+x2 <- rnorm(100, -x1)
 # x1 -> y <- x2
-y  <- rnorm(1000, x2 - x1)
+y  <- rnorm(100, x1 - x2)
 
 cor(tibble(x1, x2, y))
 
@@ -337,7 +337,7 @@ cor(tibble(x1, x2, y))
 # De esas correlaciones podríamos pensar que el modelo correcto es:
 
 DAG_H1 <- dagitty('
-                  y <- x2 -> x1
+                  dag{y <- x2 -> x1}
                   ')
 plot(DAG_H1)
 
