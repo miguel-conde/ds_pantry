@@ -4,6 +4,8 @@ library(rethinking)
 
 library(tidybayes)
 
+library(dagitty)
+
 options(mc.cores = parallel:: detectCores())
 rstan_options(auto_write = TRUE)
 
@@ -325,11 +327,13 @@ dagitty::impliedConditionalIndependencies(DAG_H2)
 # SIMULACIÓN del MODELO REAL
 x1 <- rnorm(100, 1)
 # x1 -> x2
-x2 <- rnorm(100, -x1)
+x2 <- rnorm(100, x1)
 # x1 -> y <- x2
-y  <- rnorm(100, x1 - x2)
+y  <- rnorm(100, x2 - x1)
 
-cor(tibble(x1, x2, y))
+d1 <- tibble(x1, x2, y)
+
+cor(d1)
 
 # En este caso, aunque x1 es causa de y, su correlación aparece débil, 
 # enmascarada su relación por x2, que es causada también por x1 y es a su vez
@@ -337,13 +341,99 @@ cor(tibble(x1, x2, y))
 # De esas correlaciones podríamos pensar que el modelo correcto es:
 
 DAG_H1 <- dagitty('
-                  dag{y <- x2 -> x1}
+                  dag{x1 -> y <- x2
+                      x1 -> x2}
                   ')
 plot(DAG_H1)
 
 # o cualquiera de sus equivalentes de Markov
 
 equivalenceClass(DAG_H1)
+
+# Por ejemplo:
+
+x2 <- rnorm(100, 1)
+# x2 -> x1
+x1 <- rnorm(100, x2)
+# x1 -> y <- x2
+y  <- rnorm(100, x2 - x1)
+
+d2 <- tibble(x1, x2, y)
+
+cor(d2)
+
+DAG_H2 <- dagitty('
+                  dag{x1 -> y <- x2
+                      x1 <- x2}
+                  ')
+plot(DAG_H2)
+
+# O:
+
+U <- rnorm(100, 1)
+# U -> x2
+x2 <- rnorm(100, U)
+# U -> x1
+x1 <- rnorm(100, U)
+# x1 -> y <- x2
+y  <- rnorm(100, x2 - x1)
+
+d3 <- tibble(U, x1, x2, y)
+
+cor(d3)
+
+DAG_H3 <- dagitty('
+                  dag{x1 -> y <- x2
+                      x1 <- U -> x2}
+                  ')
+plot(DAG_H3)
+
+equivalenceClass(DAG_H3)
+
+## Modelos con solo 1 regresor:
+
+lm1 <- lm(y ~ x1)
+lm2 <- lm(y ~ x2)
+
+summary(lm1)
+summary(lm2)
+
+old_par <- par(mfrow = c(2, 2))
+
+plot(d3 %>% select(x1, y), main = "y ~ x1")
+abline(lm1)
+
+plot(d3 %>% select(x2, y), main = "y ~ x2")
+abline(lm2)
+
+# La asociación entre el regresor y la respuesta es más débil de lo que debería
+# por el efecto del otro regresor (correlado negativamente y no incluido en el
+# modelo) a través de U. Para romper esa influencia podríamos condicionar en U
+# si lo conociéramos:
+summary(lm(y ~ U + x1, d3))
+summary(lm(y ~ U + x2, d3))
+
+## Lo que hay que hacer es incluir los 2 regresores, ya que al condicionar en
+# x1 / x2 (son chains) se rompe la influencia de x2 / x1 a través de U:
+
+lm12 <- lm(y ~ x1 + x2)
+summary(lm12)
+
+# En este la asociación de y con los 2 regresores es mayor que en los modelos
+# con solo 1 regresor. Y prácticamente la misma que en los modelos y ~ x1 + U e
+# y ~ x2 + U
+
+plot(d3 %>% select(x1, y))
+title(main = "y ~ x1 + x2", 
+      sub = "COUNTERFACTUAL x2 = 0")
+abline(a = coef(lm12)[1], b = coef(lm12)[2])
+
+plot(d3 %>% select(x2, y))
+title(main = "y ~ x1 + x2", 
+      sub = "COUNTERFACTUAL x1 = 0")
+abline(a = coef(lm12)[1], b = coef(lm12)[3])
+
+par(old_par)
 
 # 5M3 ---------------------------------------------------------------------
 
