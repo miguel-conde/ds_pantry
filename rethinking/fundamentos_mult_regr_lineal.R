@@ -211,7 +211,7 @@ plot(fit_linear_D_A_M, pars = c("alpha", "beta_A", "beta_M", "sigma"))
 # a. Predictor residual plots ---------------------------------------------
 
 
-# b. Posterios prediction plots -------------------------------------------
+# b. Posterior prediction plots -------------------------------------------
 
 
 # c. Counterfactual plots -------------------------------------------------
@@ -454,12 +454,139 @@ par(old_par)
 # What are the implied conditional independencies of the graph? Are the data 
 # consistent with it?
 
+DAG_5H1 <- dagitty('
+                 dag{M -> A -> D}
+                 ')
+
+plot(DAG_5H1)
+
+impliedConditionalIndependencies(DAG_5H1)
+
+# Al condicionar en A cerramos el pipe y M deja de influir en D
+
+
 # 5H2 ---------------------------------------------------------------------
 
-#  Assuming that the DAG for the divorce example is indeed  M → A → D, fit a 
-# new model and use it ot estimate the counterfactual effect of halving a 
+# Assuming that the DAG for the divorce example is indeed  M → A → D, fit a 
+# new model and use it to estimate the counterfactual effect of halving a 
 # State’s marriage rate M. Using the counterfactual example from the chapter 
 # (starting on page 140) as a template.
+
+data("WaffleDivorce")
+
+d <- WaffleDivorce %>% as_tibble()
+
+d <- d %>% mutate(D = standardize(Divorce),
+                  M = standardize(Marriage),
+                  A = standardize(MedianAgeMarriage))
+
+# Si M -> A -> D es el DAG correcto, hemos visto en el ejercicio anterior que,
+# para obtener el efecto causal de M sobre D, no debemos condicionar en A.
+
+sc_linear_5H2 <- " // Stan code for lineal model D ~ A + M, A ~ M
+data {
+  int<lower=1> n;
+  vector[n] M;
+  vector[n] A;
+  vector[n] D;
+}
+
+parameters {
+  real<lower=0> sigma_DAM;
+  real<lower=0> alpha_DAM;
+  real beta_DAM_A;
+  real beta_DAM_M;
+  
+  
+  real<lower=0> sigma_AM;
+  real<lower=0> alpha_AM;
+  real beta_AM;
+  
+}
+
+transformed parameters {
+  vector[n] mu_DAM;
+  vector[n] mu_AM;
+  
+  mu_DAM = alpha_DAM + beta_DAM_A * A + beta_DAM_M * M;
+  
+  mu_AM = alpha_AM + beta_AM * M;
+}
+
+model {
+
+  sigma_DAM ~ exponential(1);
+  alpha_DAM ~ normal(0, 0.2);
+  beta_DAM_A ~ normal(0, 0.5); 
+  beta_DAM_M ~ normal(0, 0.5); 
+  
+  D ~ normal(mu_DAM, sigma_DAM);
+  
+  sigma_AM ~ exponential(1);
+  alpha_AM ~ normal(0, 0.2);
+  beta_AM ~ normal(0, 0.5); 
+  
+  A ~ normal(mu_AM, sigma_AM);
+}
+
+generated quantities {
+  vector[n] mu_DAM_sim;
+  real D_DAM_sim[n];
+  vector[n] log_lik_DAM;
+  
+  
+  vector[n] mu_AM_sim;
+  real A_AM_sim[n];
+  vector[n] log_lik_AM;
+  
+  // PPS
+  for (i in 1:n) {
+    mu_DAM_sim[i] = alpha_DAM + beta_DAM_A * A[i] + beta_DAM_M * M[i];
+    D_DAM_sim[i] = normal_rng(mu_DAM_sim[i], sigma_DAM);
+    
+    mu_AM_sim[i] = alpha_AM + beta_AM * M[i];
+    A_AM_sim[i] = normal_rng(mu_AM_sim[i], sigma_AM);
+    
+    log_lik_DAM[i] = normal_lpdf(D[i] | mu_DAM[i], sigma_DAM);
+    
+    log_lik_AM[i] = normal_lpdf(A[i] | mu_AM[i], sigma_AM);
+  }
+}
+"
+
+model_linear_5H2 <- stan_model(model_code = sc_linear_5H2)
+
+fit_linear_5H2 <- sampling(model_linear_5H2, 
+                             iter = 1000, chains = 1, 
+                             data = compose_data(d %>% select(D, A, M)),
+                             verbose = TRUE)
+
+print(fit_linear_5H2, pars = c("alpha_DAM", "beta_DAM_M", "beta_DAM_A", "sigma_DAM",
+                               "alpha_AM", "beta_AM", "sigma_AM"))
+precis(fit_linear_5H2)
+
+plot(fit_linear_5H2, pars = c("alpha", "beta_M", "sigma"))
+
+post <- extract(fit_linear_5H2)
+
+M_seq <- seq(-2, 3, length = 30)
+
+sim_dat <- tibble(M = M_seq)
+
+sim_dat$A_sim <- sapply(M_seq, 
+                        function(m) post$alpha_AM + post$beta_AM * m) %>% 
+  apply(2, mean)
+
+sim_dat$D_sim <- sapply(seq_along(M_seq), 
+                        function(i) {
+                          post$alpha_DAM + post$beta_DAM_M * M_seq[i] +
+                            post$beta_DAM_A * sim_dat$A_sim[i]
+                        }) %>% 
+  apply(2, mean)
+
+plot(D ~ M, data = d)
+lines(D_sim ~ M, sim_dat)
+
 
 
 # 5H3 ---------------------------------------------------------------------
