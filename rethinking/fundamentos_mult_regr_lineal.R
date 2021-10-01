@@ -587,7 +587,21 @@ sim_dat$D_sim <- sapply(seq_along(M_seq),
 plot(D ~ M, data = d)
 lines(D_sim ~ M, sim_dat)
 
+lm_AM <- lm(A ~ M, d)
+lm_DAM <- lm(D ~ A + M, d)
 
+sim_D <- coef(lm_DAM)[1] + 
+  (coef(lm_AM)[1] + coef(lm_AM)[2] * M_seq) * coef(lm_DAM)[2] + 
+   coef(lm_DAM)[3] * M_seq
+lines(M_seq, sim_D, col = "red")
+
+effect_M_on_A <- coef(lm_AM)[1] + coef(lm_AM)[2] * M_seq
+total_effect_M_on_D <- (coef(lm_AM)[2] * coef(lm_DAM)[2] + coef(lm_DAM)[3]) * M_seq
+
+old_par <- par(mfrow = c(1, 2))
+plot(M_seq, effect_M_on_A, type = "l")
+plot(M_seq, total_effect, type = "l")
+par(old_par)
 
 # 5H3 ---------------------------------------------------------------------
 
