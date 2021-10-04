@@ -599,14 +599,61 @@ effect_M_on_A <- coef(lm_AM)[1] + coef(lm_AM)[2] * M_seq
 total_effect_M_on_D <- (coef(lm_AM)[2] * coef(lm_DAM)[2] + coef(lm_DAM)[3]) * M_seq
 
 old_par <- par(mfrow = c(1, 2))
-plot(M_seq, effect_M_on_A, type = "l")
-plot(M_seq, total_effect, type = "l")
+plot(M_seq, effect_M_on_A, type = "l", main = "Effect M on A")
+plot(M_seq, total_effect_M_on_D, type = "l", main = "Total effect M on D")
 par(old_par)
 
 # 5H3 ---------------------------------------------------------------------
 
 # Return to the milk energy model, m5.7. Suppose that the true causal 
-# relationship among the variables is: M -> N -K, M -> N
+# relationship among the variables is: M -> K <- N, M -> N
 # Now compute the counterfactual effect on K of doubling M. You will need to 
 # account for both the direct and indirect paths of causation. Use the 
 # counterfactual example from the chapter (starting on page 140) as a template.
+
+data("milk")
+
+d <- milk %>% 
+  select(M = mass, N = neocortex.perc, K = kcal.per.g) %>% 
+  mutate_at(vars(M, N, K), ~ standardize(.)) %>% 
+  as_tibble() %>% 
+  drop_na()
+
+dag_5H3 <- dagitty('dag{M -> K <- N
+                        M -> N}')
+
+plot(dag_5H3)
+
+impliedConditionalIndependencies(dag_5H3)
+adjustedNodes(dag_5H3)
+
+lm_N_M <- lm(N ~ M, d)
+summary(lm_N_M)
+
+lm_K_MN <- lm(K ~ M + N, d)
+summary(lm_K_MN)
+
+seq_M <- seq(-2, 2, length.out = 30)
+
+sims <- tibble(M = seq_M)
+sims$N = predict(lm_N_M, sims)
+sims$K <- predict(lm_K_MN, sims)
+
+old_par <- par(mfrow = c(1, 3))
+plot(N ~ M, data = sims, type = "l", main = "Effect of M on N")
+plot(K ~ M, data = sims, type = "l", main = "Total Effect of M on K")
+plot(K ~ N, data = sims, type = "l", main = "Total Effect of N on K")
+par(old_par)
+
+sims_x_2 <- sims %>% mutate(M = 2 * M)
+sims_x_2$N = predict(lm_N_M, sims_x_2)
+sims_x_2$K <- predict(lm_K_MN, sims_x_2)
+
+old_par <- par(mfrow = c(1, 3))
+plot(N ~ M, data = sims, type = "l", main = "Effect of M on N")
+lines(N ~ M, data = sims_x_2, col = "red", main = "Effect of M on N")
+plot(K ~ M, data = sims, type = "l", main = "Total Effect of M on K")
+lines(K ~ M, data = sims_x_2, col = "red", main = "Total Effect of M on K")
+plot(K ~ N, data = sims, type = "l", main = "Total Effect of N on K")
+lines(K ~ N, data = sims_x_2, col = "red", main = "Total Effect of N on K")
+par(old_par)
