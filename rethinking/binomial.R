@@ -3,6 +3,7 @@ library(rethinking)
 library(brms)
 library(tidybayes)
 library(bayesplot)
+library(rstan)
 
 options(mc.cores = parallel:: detectCores())
 rstan_options(auto_write = TRUE)

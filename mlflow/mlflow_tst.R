@@ -28,9 +28,9 @@ winequality_red <- read_delim("https://archive.ics.uci.edu/ml/machine-learning-d
                               delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 # Split the data into training and test sets. (0.75, 0.25) split.
-sampled <- sample(1:nrow(data), 0.75 * nrow(data))
-train <- data[sampled, ]
-test <- data[-sampled, ]
+sampled <- sample(1:nrow(winequality_red), 0.75 * nrow(winequality_red))
+train <- winequality_red[sampled, ]
+test <- winequality_red[-sampled, ]
 
 # The predicted column is "quality" which is a scalar from [3, 9]
 train_x <- as.matrix(train[, !(names(train) == "quality")])
