@@ -11,9 +11,9 @@ library(mlflow)
 library(glmnet)
 library(carrier)
 
-old_path <- Sys.getenv("PATH") 
+# old_path <- Sys.getenv("PATH") 
 # Sys.setenv(PATH = paste(old_path, "C:\\Users\\mcondedesimon\\AppData\\Local\\Continuum\\anaconda3\\envs\\r-mlflow-1.8.0\\Scripts", sep = ";"))
-Sys.setenv(PATH = paste(old_path, "C:\\Users\\migue\\anaconda3\\envs\\r-mlflow-1.18.0\\Scripts", sep = ";"))
+# Sys.setenv(PATH = paste(old_path, "C:\\Users\\migue\\anaconda3\\envs\\r-mlflow-1.18.0\\Scripts", sep = ";"))
 
 # Mejor en .Renviron
 # Sys.setenv(MLFLOW_PYTHON_BIN = "C:\\Users\\mcondedesimon\\AppData\\Local\\Continuum\\anaconda3\\envs\\r-mlflow-1.8.0\\python.exe")
@@ -22,7 +22,10 @@ Sys.setenv(PATH = paste(old_path, "C:\\Users\\migue\\anaconda3\\envs\\r-mlflow-1
 set.seed(40)
 
 # Read the wine-quality csv file
-data <- read.csv(here::here("mlflow", "data", "winequality-red.csv"), sep = ";")
+# data <- read.csv(here::here("mlflow", "data", "winequality-red.csv"), sep = ";")
+library(readr)
+winequality_red <- read_delim("https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv", 
+                              delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 # Split the data into training and test sets. (0.75, 0.25) split.
 sampled <- sample(1:nrow(data), 0.75 * nrow(data))
@@ -32,8 +35,8 @@ test <- data[-sampled, ]
 # The predicted column is "quality" which is a scalar from [3, 9]
 train_x <- as.matrix(train[, !(names(train) == "quality")])
 test_x <- as.matrix(test[, !(names(train) == "quality")])
-train_y <- train[, "quality"]
-test_y <- test[, "quality"]
+train_y <- train[, "quality", drop = TRUE]
+test_y <- test[, "quality", drop = TRUE]
 
 alpha <- mlflow_param("alpha", 0.5, "numeric")
 lambda <- mlflow_param("lambda", 0.5, "numeric")
