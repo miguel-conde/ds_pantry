@@ -160,7 +160,7 @@ fit_ulam_binom_m_1 <- ulam(
     logit(p) <- a[actor] + b[treatment],
     a[actor] ~ dnorm(0, 1.5),
     b[treatment] ~ dnorm(0, 0.5)
-  ), data = dat_list, chains = 4, log_lik = TRUE)
+  ), data = dat_list, chains = 4, log_lik = TRUE, cmdstan = TRUE)
 
 precis(fit_ulam_binom_m_1, depth = 2)
 
