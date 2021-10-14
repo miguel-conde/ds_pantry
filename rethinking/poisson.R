@@ -191,3 +191,75 @@ loo_m2 <- loo::loo(log_lik(fit_brm_poisson_m2),
                    r_eff = r_eff_m1)
 
 loo_comp <- loo::loo_compare(loo_m1, loo_m2)
+
+# PPS
+post_lambda <- post$sim_lambda %>% 
+  apply(2, tidybayes::mean_hdci, .width = 0.89) %>% 
+  bind_rows()
+
+post_total_tools <- post$sim_total_tools %>% 
+  apply(2, tidybayes::mean_hdci, .width = 0.89) %>% 
+  bind_rows()
+
+plot(NULL, xlim = range(d$population), ylim = c(0,100))
+lines(total_tools ~ population, d, type = "p")
+
+lines(d$population, post_lambda$y)
+lines(d$population, post_lambda$ymin, lty = 2)
+lines(d$population, post_lambda$ymax, lty = 2)
+
+lines(d$population, post_total_tools$y, col = "blue")
+lines(d$population, post_total_tools$ymin, col = "blue", lty = 2)
+lines(d$population, post_total_tools$ymax, col = "blue", lty = 2)
+
+###
+plot(total_tools ~ P, d, type = "p")
+
+lines(d$P, post_lambda$y)
+lines(d$P, post_lambda$ymin, lty = 2)
+lines(d$P, post_lambda$ymax, lty = 2)
+
+lines(d$P, post_total_tools$y, col = "blue")
+lines(d$P, post_total_tools$ymin, col = "blue", lty = 2)
+lines(d$P, post_total_tools$ymax, col = "blue", lty = 2)
+
+## BIEN hecho
+post <- extract(fit_stan_poisson_m_1, pars = c("alpha", "beta"))
+dim(post$alpha)
+dim(post$beta)
+
+idx_samples <- sample(1:2000, 1e4, replace = TRUE)
+
+post_alpha <- post$alpha[idx_samples, ]
+post_beta <- post$beta[idx_samples, ]
+
+post <- extract(fit_stan_poisson_m_1, pars = c("sim_lambda", "sim_total_tools"))
+
+P_seq <- seq(range(d$P)[1], range(d$P)[2], length.out = 1000)
+
+# cid = 1 (LOW contact)
+post_lambda <- sapply(P_seq,
+                      function(p) exp(post_alpha[,1] + 
+                                        post_beta[, 1] * p))
+post_lambda_cis <- post_lambda %>% 
+  apply(2, tidybayes::mean_qi, .width = 0.89) %>% 
+  bind_rows()
+
+plot(total_tools ~ P, d, type = "p")
+
+lines(P_seq, post_lambda_cis$y)
+lines(P_seq, post_lambda_cis$ymin, lty = 2)
+lines(P_seq, post_lambda_cis$ymax, lty = 2)
+
+# cid = 2 (HIGH contact)
+post_lambda <- sapply(P_seq,
+                      function(p) exp(post_alpha[, 2] + 
+                                        post_beta[, 2] * p))
+post_lambda_cis <- post_lambda %>% 
+  apply(2, tidybayes::mean_qi, .width = 0.89) %>% 
+  bind_rows()
+
+lines(P_seq, post_lambda_cis$y, col = "blue")
+lines(P_seq, post_lambda_cis$ymin, col = "blue", lty = 2)
+lines(P_seq, post_lambda_cis$ymax, col = "blue", lty = 2)
+
