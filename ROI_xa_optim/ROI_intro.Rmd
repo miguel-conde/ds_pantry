@@ -1,33 +1,54 @@
-ROI: una infraestructura de optimización en R
-========================================================
-author: 
-date: 
-autosize: false
+---
+title: "ROI"
+subtitle: "Una infraestructura de optimización en R"
+output: 
+  revealjs::revealjs_presentation:
+    theme: solarized
+    highlight: pygments
+    reveal_options:
+      minScale: 1.0
+      maxScale: 1.0
+      slideNumber: true
+---
 
-Intro
-========================================================
 
-- ROI = *R Optimization Infrastructure*
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, fig.align='center')
+```
+
+# Intro
+
+
+ROI = *R Optimization Infrastructure*
+
+<small>
 - Infraestructura ampliable para modelado de problemas de optimización (lineal,
-cuadrática, cónica y no lineal general).
+  cuadrática, cónica y no lineal general).
 - Administra múltiples *solvers*, reformulaciones, colecciones de problemas y 
-funciones para leer y escribir problemas de optimización en varios formatos.
-- [*Paper* de 2019](https:/epub.wu.ac.at/5858/) muy recomendable: 
-  + Apartado 2: resumen de teoría de optimización
-  + Apartado 3: panorámica del software de optimización disponible en R
-  + Apartados 4 y 5: Descripción de la infraestructura y la librería
-  + Apartado 6: Ejemplos
+  funciones para leer y escribir problemas de optimización en varios formatos.
+</small>
   
+[*Paper* de 2019](https:/epub.wu.ac.at/5858/) muy recomendable: 
 
+<small>
+- Apartado 2: resumen de teoría de optimización
+- Apartado 3: panorámica del software de optimización disponible en R
+- Apartados 4 y 5: Descripción de la infraestructura y la librería
+- Apartado 6: Ejemplos
+</small>
+  
+<br><br>
 <center>
 **ROI** es a optimización lo que *caret* a *machine learning*.
 </center>
 
-Ejemplo 1/9 - Definir el problema
-========================================================
+# Ejemplo
+
+## Definir el problema
+
 
 <center>
-```{r, echo=FALSE, out.width="50%", fig.cap="A nice image."}
+```{r, echo=FALSE, out.width="50%"}
 knitr::include_graphics("images/lp.png")
 ```
 </center>
@@ -47,8 +68,8 @@ lp <- OP(objective   = L_objective(c(3, 7, -12)),
          maximum     = TRUE)
 ```
 
-Ejemplo 2/9 - Definición alternativa
-========================================================
+## Definición alternativa
+
 ```{r}
 # ALTERNATIVA:
 
@@ -63,8 +84,7 @@ maximum(lp)     <- TRUE
 lp
 ```
 
-Ejemplo 3/9 - *Solvers* disponibles 
-=========================================================
+## *Solvers* disponibles 
 
 + Para ***este*** problema, la infraestructura ROI tiene disponibles los
 siguientes *solvers*:
@@ -73,8 +93,8 @@ siguientes *solvers*:
 ROI_available_solvers(lp)[, c("Package", "Repository")] %>% head()
 ```
 
-Ejemplo 4/9 - Solvers instalados
-=========================================================
+## *Solvers* instalados
+
 ```{r}
 ROI_installed_solvers()
 ```
@@ -86,8 +106,8 @@ install.packages("ROI.plugin.glpk")
 ```
 
 
-Ejemplo 5/9 - Solvers registrados
-=========================================================
+## *Solvers* registrados
+
 ```{r}
 ROI_registered_solvers() %>% head(15)
 ```
@@ -98,8 +118,8 @@ Para registrarlo la primera vez que lo usas:
 library("ROI.plugin.glpk")
 ```
 
-Ejemplo 6/9 - Resolver el problema
-=========================================================
+## Resolver el problema
+
 ```{r}
 ROI_applicable_solvers(lp)
 
@@ -107,29 +127,29 @@ ROI_applicable_solvers(lp)
 
 ```
 
-Ejemplo 7/9 - Resultados de la optimización
-=========================================================
+## Resultados 
+
 ```{r}
 solution(lp_sol)
 
 objective(lp)(solution(lp_sol))
 ```
 
-Ejemplo 8/9 - Resultados de la optimización
-=========================================================
+## Resultados 
+
 ```{r}
 lp_sol$status
 ```
 
-Ejemplo 9/9 - Resultados de la optimización
-=========================================================
+## Resultados 
+
 ```{r}
 lp_sol$message
 ```
 
 
-Referencias y Recursos
-========================================================
+# Referencias y Recursos
+
 
 - [ROI homepage](https:/roi.r-forge.r-project.org/)
 - [ROI en CRAN](https:/cran.r-project.org/web/packages/ROI/index.html)
