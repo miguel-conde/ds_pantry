@@ -8,6 +8,8 @@ library(rstan)
 options(mc.cores = parallel:: detectCores())
 rstan_options(auto_write = TRUE)
 
+source(here::here("rethinking", "help_functions.R"), encoding = "utf-8")
+
 # Introducció a los modelos multinivel.
 # 
 # Estrategia: partial pooling mediante varying intercepts
@@ -303,7 +305,7 @@ generated quantities {
 stan_m3 <- stan_model(model_code = stan_m3_code)
 
 fit_stan_m3 <- sampling(stan_m3, 
-                        iter = 1000, chains = 4, 
+                        iter = 4000, chains = 1, 
                         data = c(compose_data(d %>% 
                                                 select(actor,
                                                        blk = block,
@@ -457,3 +459,284 @@ m14.1 <- ulam(
   ), data = d, chains = 4, cores = 4)
 
 rethinking::stancode(m14.1)
+
+
+# 13H1 --------------------------------------------------------------------
+
+data(bangladesh)
+
+d <- bangladesh %>% as_tibble()
+
+glimpse(d)
+summary(d)
+
+d <- d %>% mutate(district = as.integer(factor(district))) %>% janitor::clean_names()
+
+stan_code_13H1_pooled <- "
+data {
+  int<lower = 1> n;
+  
+  int<lower = 1> district[n];
+  int<lower = 0, upper = 1> use_contraception[n];
+}
+
+parameters {
+  real alpha;
+}
+
+transformed parameters {
+
+  vector[n] p;
+  
+  for (i in 1:n) {
+    p[i] = alpha;
+    p[i] = inv_logit(p[i]);
+  }
+
+}
+
+model {
+
+  alpha ~ normal(0, 1.5);
+
+  use_contraception ~ binomial(1, p);
+
+}
+
+generated quantities {
+
+  vector[n] log_lik;
+  
+  for (i in 1:n) {
+    log_lik[i] = binomial_lpmf(use_contraception | 1, p[i]);
+  }
+
+}
+
+"
+
+stan_m1_pooled <- stan_model(model_code = stan_code_13H1_pooled)
+
+fit_stan_m1_pooled <- sampling(stan_m1_pooled, 
+                               iter = 2000, chains = 1, 
+                               # control = list(adapt_delta = 0.99),
+                               data = c(compose_data(d %>% 
+                                                       select(district, 
+                                                              use_contraception))),
+                               verbose = TRUE)
+
+the_pars <- c("alpha")
+print(fit_stan_m1_pooled, pars = the_pars)
+plot(fit_stan_m1_pooled, pars = the_pars)
+
+inv_logit(extract(fit_stan_m1_pooled, pars = "alpha")[[1]]) %>% mean()
+inv_logit(extract(fit_stan_m1_pooled, pars = "alpha")[[1]]) %>% tidybayes::median_qi()
+d$use_contraception %>% mean()
+
+stan_code_13H1_non_pooled <- "
+data {
+  int<lower = 1> n;
+  int<lower = 1> N_districts;
+  
+  int<lower = 1> district[n];
+  int<lower = 0, upper = 1> use_contraception[n];
+}
+
+parameters {
+  vector[N_districts] alpha;
+}
+
+transformed parameters {
+
+  vector[n] p;
+  
+  for (i in 1:n) {
+    p[i] = alpha[district[i]];
+    p[i] = inv_logit(p[i]);
+  }
+
+}
+
+model {
+
+  alpha ~ normal(0, 1.5);
+
+  use_contraception ~ binomial(1, p);
+
+}
+
+generated quantities {
+
+  vector[n] log_lik;
+  
+  for (i in 1:n) {
+    log_lik[i] = binomial_lpmf(use_contraception | 1, p[i]);
+  }
+
+}
+
+"
+
+stan_m1_non_pooled <- stan_model(model_code = stan_code_13H1_non_pooled)
+
+fit_stan_m1_non_pooled <- sampling(stan_m1_non_pooled, 
+                                   iter = 2000, chains = 1, 
+                                   # control = list(adapt_delta = 0.99),
+                                   data = c(compose_data(d %>% 
+                                                           select(district, 
+                                                                  use_contraception)),
+                                            N_districts = d$district %>% unique() %>% length()),
+                                   verbose = TRUE)
+
+the_pars <- c("alpha")
+print(fit_stan_m1_non_pooled, pars = the_pars)
+plot(fit_stan_m1_non_pooled, pars = the_pars)
+
+inv_logit(extract(fit_stan_m1_non_pooled, pars = "alpha")[[1]]) %>% 
+  apply(2, mean)
+inv_logit(extract(fit_stan_m1_non_pooled, 
+                  pars = "alpha")[[1]]) %>% apply(2, tidybayes::median_qi) %>% 
+  bind_rows()
+d %>% group_by(district) %>% summarise(p = mean(use_contraception))
+
+stan_code_13H1_semi_pooled <- "
+data {
+  int<lower = 1> n;
+  int<lower = 1> N_districts;
+  
+  int<lower = 1> district[n];
+  int<lower = 0, upper = 1> use_contraception[n];
+}
+
+parameters {
+  real alpha_bar;
+  real<lower = 0> sigma;
+  vector[N_districts] alpha;
+}
+
+transformed parameters {
+
+  vector[n] p;
+  
+  for (i in 1:n) {
+    p[i] = alpha[district[i]];
+    p[i] = inv_logit(p[i]);
+  }
+
+}
+
+model {
+
+  alpha_bar ~ normal(0, 1.5);
+  sigma ~ exponential(1);
+  
+  alpha ~ normal(alpha_bar, sigma);
+
+  use_contraception ~ binomial(1, p);
+
+}
+
+generated quantities {
+
+  vector[n] log_lik;
+  
+  for (i in 1:n) {
+    log_lik[i] = binomial_lpmf(use_contraception | 1, p[i]);
+  }
+
+}
+
+"
+
+stan_m1_semi_pooled <- stan_model(model_code = stan_code_13H1_semi_pooled)
+
+fit_stan_m1_semi_pooled <- sampling(stan_m1_semi_pooled, 
+                                   iter = 2000, chains = 1, 
+                                   # control = list(adapt_delta = 0.99),
+                                   data = c(compose_data(d %>% 
+                                                           select(district, 
+                                                                  use_contraception)),
+                                            N_districts = d$district %>% unique() %>% length()),
+                                   verbose = TRUE)
+
+the_pars <- c("alpha", "alpha_bar", "sigma")
+print(fit_stan_m1_semi_pooled, pars = the_pars)
+plot(fit_stan_m1_semi_pooled, pars = the_pars)
+
+inv_logit(extract(fit_stan_m1_non_pooled, 
+                  pars = "alpha")[[1]]) %>% apply(2, tidybayes::median_qi) %>% 
+  bind_rows()
+
+inv_logit(extract(fit_stan_m1_semi_pooled, 
+                  pars = "alpha_bar")[[1]]) %>% tidybayes::median_qi()
+
+## Plot
+
+pooled_fits <- extract(fit_stan_m1_pooled, pars = "alpha")[[1]] %>% 
+  inv_logit() %>% tidybayes::median_qi(.width = 0.89)
+
+non_pooled_fits <- extract(fit_stan_m1_non_pooled, pars = "alpha")[[1]] %>% 
+  inv_logit() %>% 
+  apply(2, tidybayes::median_qi, .width = 0.89) %>% 
+  bind_rows()
+
+semi_pooled_fits <- extract(fit_stan_m1_semi_pooled, pars = "alpha")[[1]] %>% 
+  inv_logit() %>% 
+  apply(2, tidybayes::median_qi, .width = 0.89) %>% 
+  bind_rows()
+
+probe_plot <- d %>% group_by(district) %>% 
+  summarise(n = n(), use_contraception = mean(use_contraception)) %>% 
+  arrange(n)
+
+plot(use_contraception ~ district, probe_plot, pch = 0)
+abline(h = pooled_fits$y, lty = 2, col = "black", pch = 1)
+lines(probe_plot$district, non_pooled_fits$y, col = "blue", type = "p", pch = 2)
+lines(probe_plot$district, semi_pooled_fits$y, col = "red", type = "p", pch = 3)
+legend("topright",
+       legend = c("Raw", "Pooled", "Non pooled", "Semi-pooled"),
+       pch = c(0, NA, 2, 3), 
+       lty = c(0, 2, 0, 0),
+       col = c("black", "black", "blue", "red"),
+       bty = "n")
+
+plot(use_contraception ~ n, probe_plot, pch = 0)
+abline(h = pooled_fits$y, lty = 2, col = "black", pch = 1)
+lines(probe_plot$n, non_pooled_fits$y, col = "blue", type = "p", pch = 2)
+lines(probe_plot$n, semi_pooled_fits$y, col = "red", type = "p", pch = 3)
+legend("topright",
+       legend = c("Raw", "Pooled", "Non pooled", "Semi-pooled"),
+       pch = c(0, NA, 2, 3), 
+       lty = c(0, 2, 0, 0),
+       col = c("black", "black", "blue", "red"),
+       bty = "n")
+
+waic_comp <- loo::loo_compare(loo::waic(loo::extract_log_lik(fit_stan_m1_pooled)),
+                              loo::waic(loo::extract_log_lik(fit_stan_m1_non_pooled)),
+                              loo::waic(loo::extract_log_lik(fit_stan_m1_semi_pooled)))
+
+print(waic_comp, simplify = FALSE)
+
+psis_comp <- loo::loo_compare(loo::loo(loo::extract_log_lik(fit_stan_m1_pooled)),
+                           loo::loo(loo::extract_log_lik(fit_stan_m1_non_pooled)),
+                           loo::loo(loo::extract_log_lik(fit_stan_m1_semi_pooled)))
+
+print(psis_comp, simplify = FALSE)
+
+tibble(value             = c("difference", "se"),
+       elpd              = m_comp[3, 1:2],
+       conversion_factor = c(-2, 2)) %>% 
+  mutate(waic            = elpd * conversion_factor)
+
+rethinking::compare(fit_stan_m1_pooled,
+                    fit_stan_m1_non_pooled, 
+                    fit_stan_m1_semi_pooled)
+rethinking::compare(fit_stan_m1_pooled,
+                    fit_stan_m1_non_pooled, 
+                    fit_stan_m1_semi_pooled,
+                    func = "PSIS")
+
+compute_lppd(extract(fit_stan_m1_semi_pooled, "log_lik")[[1]])
+compute_pWAIC(extract(fit_stan_m1_semi_pooled, "log_lik")[[1]])
+compute_WAIC(extract(fit_stan_m1_semi_pooled, "log_lik")[[1]]
+             )
