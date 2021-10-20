@@ -533,6 +533,8 @@ inv_logit(extract(fit_stan_m1_pooled, pars = "alpha")[[1]]) %>% mean()
 inv_logit(extract(fit_stan_m1_pooled, pars = "alpha")[[1]]) %>% tidybayes::median_qi()
 d$use_contraception %>% mean()
 
+# Only fixed-effects
+
 stan_code_13H1_non_pooled <- "
 data {
   int<lower = 1> n;
@@ -598,6 +600,8 @@ inv_logit(extract(fit_stan_m1_non_pooled,
                   pars = "alpha")[[1]]) %>% apply(2, tidybayes::median_qi) %>% 
   bind_rows()
 d %>% group_by(district) %>% summarise(p = mean(use_contraception))
+
+# Varying effects  -only intercetps
 
 stan_code_13H1_semi_pooled <- "
 data {
