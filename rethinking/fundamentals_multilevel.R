@@ -667,7 +667,7 @@ the_pars <- c("alpha", "alpha_bar", "sigma")
 print(fit_stan_m1_semi_pooled, pars = the_pars)
 plot(fit_stan_m1_semi_pooled, pars = the_pars)
 
-inv_logit(extract(fit_stan_m1_non_pooled, 
+inv_logit(extract(fit_stan_m1_semi_pooled, 
                   pars = "alpha")[[1]]) %>% apply(2, tidybayes::median_qi) %>% 
   bind_rows()
 
