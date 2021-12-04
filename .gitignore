@@ -4,3 +4,4 @@
 .Ruserdata
 STAN/*.rds
 STAN/*/*.rds
+*.pyc
