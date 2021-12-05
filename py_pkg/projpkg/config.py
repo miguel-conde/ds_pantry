@@ -1,6 +1,9 @@
 from pathlib import Path
+import os
 
-DATA_DIR = Path('/mnt/c/Users/migue/Documents/PROYECTOS DATA SCIENCE/ds_pantry/py_pkg/data')
+dirname = os.path.dirname(__file__)
+PY_HOME = Path(dirname, "..")
+DATA_DIR = Path(PY_HOME, 'data')
 DL_DIR = Path(DATA_DIR, "datalake")
 DW_DIR = Path(DATA_DIR, "datawarehouse")
 

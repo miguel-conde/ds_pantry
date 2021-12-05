@@ -16,5 +16,5 @@ my_p.fun_model_2()
 
 print(my_p.config.DL_DIR)
 
-my_p.gcd.get_housing_data()
+print(my_p.gcd.get_housing_data())
 
