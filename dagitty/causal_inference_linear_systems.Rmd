@@ -6,6 +6,12 @@ editor_options:
     wrap: 72
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
 dag
 
 $d$-separación
@@ -363,31 +369,23 @@ Given the model depicted above, answer the following questions: (All
 answers should be given in terms of regression coefficients in specified
 regression equations.)
 
-1.  Identify three testable implications of this model.
+## a. Identify three testable implications of this model.
 
-2.  Identify a testable implication assuming that only $X$, $Y$, $W_3$,
-    and $Z_3$ are observed.
+```{r}
+dagitty::impliedConditionalIndependencies(fig_3.18_dag, type = "missing.edge")
+```
 
-3.  For each of the parameters in the model, write a regression equation
-    in which one of the coefficients is equal to that parameter.
-    Identify the parameters for which more than one such equation
-    exists.
+## b. Identify a testable implication assuming that only $X$, $Y$, $W_3$, and $Z_3$ are observed. 
 
-4.  Suppose $X$, $Y$, and $W_3$ are the only variables observed. Which
-    parameters can be identified from the data? Can the total effect of
-    $X$ on $Y$ be estimated?
+## c. For each of the parameters in the model, write a regression equation in which one of the coefficients is equal to that parameter. Identify the parameters for which more than one such equation exists. 
 
-5.  If we regress $Z_1$ on all other variables in the model, which
-    regression coefficient will be zero?
+## d. Suppose $X$, $Y$, and  $W_3$ are the only variables observed. Which parameters can be identified from the data? Can the total effect of $X$  on  $Y$ be estimated? 
 
-6.  The model in Figure 3.18 implies that certain regression
-    coefficients will remain invariant when an additional variable is
-    added as a regressor. Identify five such coefficients with their
-    added regressors.
+## e. If we regress  $Z_1$ on all other variables in the model, which regression coefficient will be zero? 
 
-7.  Assume that variables $Z_2$ and $W_2$ cannot be measured. Find a way
-    to estimate $b$ using regression coefficients. (Hint: Find a way to
-    turn $Z_1$ into an instrumental variable for $b$).
+## f. The model in Figure 3.18 implies that certain regression coefficients will remain invariant when an additional variable is added as a regressor. Identify five such coefficients with their added regressors. 
+
+## g. Assume that variables $Z_2$  and  $W_2$  cannot be measured. Find a way to estimate $b$ using regression coefficients. (Hint: Find a way to turn $Z_1$  into an instrumental variable for $b$).
 
 # Referencias
 
