@@ -1,0 +1,454 @@
+---
+title: "Untitled"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+dag
+
+$d$-separación
+
+# Regresión y Modelo Estructural Causal. Efectos causales Directo y Total.
+
+1.  Una **regresión lineal** $y = r_1x + r_2z + \epsilon$ es
+    *descriptiva*; no hace suposiciones sobre causalidad.
+
+    -   Representa simplementa la mejor aproximación lineal de los
+        datos, es decir, la mejor aproximación lineal a $E[y|x,z]$.
+    -   $\epsilon$ son los errores de origen humano debido a la
+        imperfección del ajuste.
+
+2.  Para diferenciar la regresión del **modelo estructural causal**
+    (**SCM**) **lineal** empleamos la notación
+    $y = \beta_1x + \beta_2 z + U$.
+
+    -   Los coeficientes son los de las ecuaciones estructurales del
+        modelo y los llamaremos *edge coefficients* (coeficientes de las
+        aristas) del modelo.
+    -   $U$ son variables latentes o desconocidas que influyen en $Y$
+        pero no son influidas por $Y$.
+
+3.  El papel en general representado por las probabilidades
+    condicionales, en los sistemas lineales lo juegan los coeficientes
+    de regresión.
+
+    -   Las condiciones comprobables que en general se expresan como
+        **independencias condicionales**, en los sistemas lineales
+        corresponden a **coeficientes de regresión nulos**:
+
+        -   Si $r_i =0$, entonces $Y$ es independiente de $X_i$
+            condicionalmente a las otras variables independientes
+
+4.  En un SCM lineal, cada *edge coefficient* indica el ***efecto
+    directo*** de la variable independiente $X$ sobre la variable
+    dependiente $Y$.
+
+5.  En un SCM lineal, el ***efecto total*** de $X$ sobre $Y$
+    (**definición**: cuánto se incrementa $Y$ al incrementar $X$ en 1
+    unidad) es la suma de los productos de los *path coefficients* de
+    cada *nonbackdoor path* de $X$ a $Y$.
+
+    -   Localizar todos los *nonbackdoor paths* de $X$ a $Y$.
+
+    -   En cada uno de esos caminos, obtener el producto de los
+        coeficientes de las aristas que contiene.
+
+    -   El **efecto total** es la suma de esos productos.
+
+Ejemplo. Sea el SCM:
+
+$$
+X = U_X \\
+Z = aX + U_Z \\
+W = bX + cZ + U_W \\
+Y = dZ + eW + U_Y
+$$
+
+```{r}
+library(dagitty)
+
+fig_3.13_dag <- dagitty('dag {
+U_W [latent,pos="-1.276,-1.033"]
+U_X [latent,pos="-0.588,-1.716"]
+U_Y [latent,pos="-0.566,0.326"]
+U_Z [latent,pos="0.191,-1.086"]
+W [pos="-0.999,-0.700"]
+X [pos="-0.585,-1.308"]
+Y [outcome,pos="-0.563,-0.180"]
+Z [exposure,pos="-0.177,-0.717"]
+U_W -> W
+U_X -> X
+U_Y -> Y
+U_Z -> Z
+W -> Y
+X -> W
+X -> Z
+Z -> W
+Z -> Y
+}
+')
+
+plot(fig_3.13_dag)
+```
+
+-   El ***efecto directo** de* $Z$ sobre $Y$ es el coeficiente de la
+    arista $ZY$, es decir, $d$.
+
+-   Para obtener el **efecto total** de $Z$ sobre $Y$
+
+    -   Primero intervenimos en $Z$ para eliminar todas las flechas
+        entrentes en $Z$.
+
+    -   Con el DAG que queda:
+
+$$
+Y = dZ + eW + U_Y = \\
+dZ + e(bX + cZ + U_w) + U_Y = \\
+dZ + e(bU_X + cZ + U_w) + U_Y = \\
+(d + ec)Z + ebU_X + U_Y = \\
+\tau Z + U 
+$$
+
+El efecto total de $Z$ sobre $Y$ es $\tau = (d+ec)$.
+
+Nótese que $\tau$ es la suma de los productos de los *nonbackdoor*
+*paths* de $Z$ a $Y$:
+
+-   $d$ aporta el efecto directo de $Z$ sobre $Y$ mediante el *path*
+    $Z->Y$.
+
+-   $ec$ es el aporte indirecto de $Z$ sobre $Y$ a través del *path*
+    $Z -> W -> Y$.
+
+# Estimación de efectos causales a partir de los datos.
+
+Se trata del Problema de Identificabilidad: tratamos de expresar los
+*path coefficients* asociados a los efectos total y directo de $X$ sobre
+$Y$ en términos de la covarianza $\sigma_{XY}$ o los coeficientes de
+regresión $R_{XY}$.
+
+## Efecto Total
+
+1.  Buscamos el conjunto $Z$ de variables que satisfacen el *backdoor
+    criterion* de $X$ a $Y$ (son las variables que necesitamos ajustar
+    para obtener el efecto causal de $X$ sobre $Y$; es decir, las que
+    cierran todos los *paths* que terminan como flechas entrantes en
+    $X$).
+
+2.  Ajustamos la regresión
+    $Y = r_X X + r_{Z_1} Z_1 +...+ r_{Z_n} Z_n + \epsilon$.
+
+    -   Al introducir las variables de $Z$ (condicionar en $Z$)
+        bloqueamos todos los *nonbackdoor paths* de $X$ a $Y$, evitando
+        que el coeficiente de $X$ absorba la información espúrea que
+        contienen tales *paths*.
+
+3.  $r_X$ representa por tanto el efecto causal total de $X$ sobre $Y$.
+
+```{r}
+dagitty::adjustmentSets(fig_3.13_dag, effect = "total")
+```
+
+## Efecto Directo
+
+1.  Eliminamos (si existe) la arista de $X$ a $Y$ para obtener el DAG
+    $G_\alpha$
+
+2.  En $G_\alpha$ necesitamos bloquear no solo los *backdoor paths*,
+    sino también todos los *paths* indirectos de $X$ a $Y$.
+
+    1.  Identificamos el conjunto $Z$ de variables que $d$-separan $X$
+        de $Y$.
+
+    2.  Si existe, el efecto directo de $X$ en $Y$ es el coeficiente
+        $r_X$ de la regresión
+        $Y = r_X X + r_{Z_1} Z_1 +...+ r_{Z_n} Z_n + \epsilon$
+
+Este procedimiento (*Regla de la Regresión para la Identificabilidad*)
+nos permite determinar si podemos identificar un *edge coefficient*
+concreto mediante regresión linear ordinaria y, en tal caso, qué
+variables deben introducirse en la regresión.
+
+Ejemplo
+
+```{r}
+fig_3.15_dag <- dagitty('dag {
+U_W [latent,pos="-0.232,-0.992"]
+U_X [latent,pos="-0.712,-1.376"]
+U_Y [latent,pos="-0.713,-0.758"]
+U_Z [latent,pos="-0.579,-1.846"]
+W [pos="-0.381,-0.773"]
+X [exposure,pos="-0.578,-1.113"]
+Y [outcome,pos="-0.579,-0.500"]
+Z [pos="-0.578,-1.474"]
+U_W -> W
+U_X -> X
+U_Y -> Y
+U_Z -> Z
+W -> Y
+X -> W
+X -> Y
+Z -> X
+}
+')
+
+plot(fig_3.15_dag)
+```
+
+Eliminamos la arista direct $XY$ para obtener el DAG $G_\alpha$:
+
+```{r}
+fig_3.16_dag <- dagitty('dag {
+U_W [latent,pos="-0.232,-0.992"]
+U_X [latent,pos="-0.712,-1.376"]
+U_Y [latent,pos="-0.713,-0.758"]
+U_Z [latent,pos="-0.579,-1.846"]
+W [pos="-0.381,-0.773"]
+X [exposure,pos="-0.578,-1.113"]
+Y [outcome,pos="-0.579,-0.500"]
+Z [pos="-0.578,-1.474"]
+U_W -> W
+U_X -> X
+U_Y -> Y
+U_Z -> Z
+W -> Y
+X -> W
+Z -> X
+}
+')
+
+plot(fig_3.16_dag)
+```
+
+Como $W$ $d$-separa $X$ e $Y$, el coeficiente $r_X$ de la regresión
+$Y = r_X X + r_W W + \epsilon$ es el efecto directo de $X$ sobre $Y$.
+
+```{r}
+dagitty::adjustmentSets(fig_3.15_dag, effect = "direct")
+```
+
+### Discusión
+
+1.  En sistemas lineales la regresión es la principal herramienta para
+    identificar y estimar efectos causales.
+
+2.  Mientras todas las variables $U$ sean independientes entre ellas y
+    tengamos datos de todas las demás variables en el DAG, todos los
+    parámetros estructurales son identificables.
+
+3.  Si algunas variables $U$ están correlacionadas o carecemos de datos
+    de alguna de las otras variables, la tarea de encontrar una
+    regresión de identificación a partir de las ecuaciones estructurales
+    mismas normalmente sería insuperable; entonces el procedimiento
+    $G_\alpha$ se vuelve indispensable.
+
+### Variables Instrumentales
+
+Supongamos que el conjunto $Z$ de variables que $d$-separas $X$ de $Y$
+es el conjunto vacío.
+
+En este caso particular podemos usar una ***variable instrumental***
+para determinar el efecto directo.
+
+**Definición**: se dice que una variable es un "instrumento" si en
+$G_\alpha$ está $d$-separada de $Y$ pero $d$-conectada a $X$.
+
+```{r}
+fig_3.17_dag <- dagitty('dag {
+U_W [latent,pos="-0.232,-0.992"]
+U_X [latent,pos="-0.712,-1.376"]
+U_Y [latent,pos="-0.713,-0.758"]
+U_Z [latent,pos="-0.579,-1.846"]
+W [pos="-0.381,-0.773"]
+X [exposure,pos="-0.578,-1.113"]
+Y [outcome,pos="-0.579,-0.500"]
+Z [pos="-0.578,-1.474"]
+U_W -> W
+U_X -> X
+U_Y -> Y
+U_Z -> Z
+W -> Y
+X -> W
+Z -> X
+}
+')
+
+plot(fig_3.17_dag)
+```
+
+```{r}
+dagitty::instrumentalVariables(fig_3.17_dag)
+```
+
+1.  Hacemos las regresiones $y = r_1 z$ y $x = r_2z$ .
+
+2.  Al no emitir $Z$ ningún *backdoor,* el coeficiente de regresión$r_2$
+    coincide con el coeficiente estructural de la arista $ZX$. y el
+    coeficiente de regresión $r_1$ será igual al efecto total de $Z$
+    sobre $Y$ (el producto de los coeficientes de las aristas $ZX$ y
+    $XY$).
+
+3.  Por tanto, el efecto directo de $X$ sobre $Y$ será $r_1/r_2$.
+
+# Mediación
+
+En sistemas lineales el sistema causal indirecto se calcula fácilmente
+por diferencia:
+
+$$
+\text{Efecto Indirecto} = \text{Efecto Total} - \text{Efecto Directo}
+$$
+
+# Study Question 3.8.1
+
+$$
+Y = aW_3 + bZ_3 + cW_2 + U \\
+W_3 = c_3X + U^{'}_3 \\
+Z_3 = a_3 Z_1 + b_3Z_2 + U_3 \\
+W_2 = c_2Z_2 + U^{'}_2
+$$
+
+$$
+X = t_1W_1 + t_2Z_3 + U^{'} \\
+W_1 = a^{'}_1Z_1  + U^{'}_1 \\
+Z_1 = U_1
+Z_2 = U_2
+$$
+
+```{r}
+fig_3.18_dag <- dagitty('dag {
+"U*" [latent,pos="-1.159,-0.444"]
+"U*_1" [latent,pos="-1.168,-1.108"]
+"U*_2" [latent,pos="-0.334,-1.131"]
+"U*_3" [latent,pos="-0.743,-0.432"]
+U [latent,pos="-0.327,-0.502"]
+U_1 [latent,pos="-1.175,-1.829"]
+U_2 [latent,pos="-0.338,-1.847"]
+U_3 [latent,pos="-0.759,-1.832"]
+W_1 [pos="-1.057,-1.111"]
+W_2 [pos="-0.444,-1.128"]
+W_3 [pos="-0.745,-0.623"]
+X [pos="-1.051,-0.603"]
+Y [pos="-0.439,-0.646"]
+Z_1 [pos="-1.065,-1.645"]
+Z_2 [pos="-0.446,-1.650"]
+Z_3 [pos="-0.752,-1.113"]
+"U*" -> X
+"U*_1" -> W_1
+"U*_2" -> W_2
+"U*_3" -> W_3
+U -> Y
+U_1 -> Z_1
+U_2 -> Z_2
+U_3 -> Z_3
+W_1 -> X
+W_2 -> Y
+W_3 -> Y
+X -> W_3
+Z_1 -> W_1
+Z_1 -> Z_3
+Z_2 -> W_2
+Z_2 -> Z_3
+Z_3 -> X
+Z_3 -> Y
+}
+')
+
+plot(fig_3.18_dag)
+```
+
+Given the model depicted above, answer the following questions: (All
+answers should be given in terms of regression coefficients in specified
+regression equations.)
+
+1.  Identify three testable implications of this model.
+
+2.  Identify a testable implication assuming that only $X$, $Y$, $W_3$,
+    and $Z_3$ are observed.
+
+3.  For each of the parameters in the model, write a regression equation
+    in which one of the coefficients is equal to that parameter.
+    Identify the parameters for which more than one such equation
+    exists.
+
+4.  Suppose $X$, $Y$, and $W_3$ are the only variables observed. Which
+    parameters can be identified from the data? Can the total effect of
+    $X$ on $Y$ be estimated?
+
+5.  If we regress $Z_1$ on all other variables in the model, which
+    regression coefficient will be zero?
+
+6.  The model in Figure 3.18 implies that certain regression
+    coefficients will remain invariant when an additional variable is
+    added as a regressor. Identify five such coefficients with their
+    added regressors.
+
+7.  Assume that variables $Z_2$ and $W_2$ cannot be measured. Find a way
+    to estimate $b$ using regression coefficients. (Hint: Find a way to
+    turn $Z_1$ into an instrumental variable for $b$).
+
+# Referencias
+
+-   Pearl, Judea; Glymour, Madelyn; Jewell, Nicholas P.. Causal
+    Inference in Statistics (3.8 Causal Inference in Linear Systems).
+    Wiley.
+
+-   [Causal Diagrams Cheat
+    Sheet](http://www.dagitty.net/learn/primer/Dagitty-Cheat-Sheet.pdf)
+
+-   [Testing Graphical Causal Models Using the R Package
+    "dagitty"](https://currentprotocols.onlinelibrary.wiley.com/doi/full/10.1002/cpz1.45):
+    Causal diagrams such as directed acyclic graphs (DAGs) are used in
+    several scientific fields to help design and analyze studies that
+    aim to infer causal effects from observational data; for example,
+    DAGs can help identify suitable strategies to reduce confounding
+    bias. However, DAGs can be difficult to design, and the validity of
+    any DAG-derived strategy hinges on the validity of the postulated
+    DAG itself. Researchers should therefore check whether the
+    assumptions encoded in the DAG are consistent with the data before
+    proceeding with the analysis. Here, we explain how the R package
+    'dagitty', based on the web tool dagitty.net, can be used to test
+    the statistical implications of the assumptions encoded in a given
+    DAG. We hope that this will help researchers discover model
+    specification errors, avoid erroneous conclusions, and build better
+    models.
+
+-   [Robust causal inference using directed acyclic graphs: the R
+    package
+    'dagitty'](https://academic.oup.com/ije/article/45/6/1887/2907796):
+    Directed acyclic graphs (DAGs), which offer systematic
+    representations of causal relationships, have become an established
+    framework for the analysis of causal inference in epidemiology,
+    often being used to determine covariate adjustment sets for
+    minimizing confounding bias. DAGitty is a popular web application
+    for drawing and analysing DAGs. Here we introduce the R package
+    'dagitty', which provides access to all of the capabilities of the
+    DAGitty web application within the R platform for statistical
+    computing, and also offers several new functions. We describe how
+    the R package 'dagitty' can be used to: evaluate whether a DAG is
+    consistent with the dataset it is intended to represent; enumerate
+    'statistically equivalent' but causally different DAGs; and identify
+    exposure-outcome adjustment sets that are valid for causally
+    different but statistically equivalent DAGs. This functionality
+    enables epidemiologists to detect causal misspecifications in DAGs
+    and make robust inferences that remain valid for a range of
+    different DAGs.
+
+-   [DAGitty --- draw and analyze causal
+    diagrams](http://www.dagitty.net/): DAGitty is a browser-based
+    environment for creating, editing, and analyzing causal diagrams
+    (also known as directed acyclic graphs or causal Bayesian networks).
+    The focus is on the use of causal diagrams for minimizing bias in
+    empirical studies in epidemiology and other disciplines. For
+    background information, see the
+    "[learn](http://www.dagitty.net/learn/index.html)" page.
+
+    -   [Launch DAGitty online in your
+        browser.](http://www.dagitty.net/dags.html)
+
+    -   [Causal Inference In Statistics: A Companion for R
+        Users](http://www.dagitty.net/primer/)
+
+\

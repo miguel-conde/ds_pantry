@@ -4,6 +4,8 @@
 
 # http://www.dagitty.net/
 # http://www.dagitty.net/dags.html
+# http://www.dagitty.net/primer/
+
 
 library(tidyverse)
 
