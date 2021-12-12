@@ -36,11 +36,11 @@ $d$-separación
     -   $U$ son variables latentes o desconocidas que influyen en $Y$
         pero no son influidas por $Y$.
 
-3.  El papel en general representado por las probabilidades
-    condicionales, en los sistemas lineales lo juegan los coeficientes
-    de regresión.
+3.  En los sistemas lineales, el papel en general representado por las
+    probabilidades condicionales lo juegan los coeficientes de
+    regresión.
 
-    -   Las condiciones comprobables que en general se expresan como
+    -   Las condiciones comprobables, que en general se expresan como
         **independencias condicionales**, en los sistemas lineales
         corresponden a **coeficientes de regresión nulos**:
 
@@ -375,17 +375,17 @@ regression equations.)
 dagitty::impliedConditionalIndependencies(fig_3.18_dag, type = "missing.edge")
 ```
 
-## b. Identify a testable implication assuming that only $X$, $Y$, $W_3$, and $Z_3$ are observed. 
+## b. Identify a testable implication assuming that only $X$, $Y$, $W_3$, and $Z_3$ are observed.
 
-## c. For each of the parameters in the model, write a regression equation in which one of the coefficients is equal to that parameter. Identify the parameters for which more than one such equation exists. 
+## c. For each of the parameters in the model, write a regression equation in which one of the coefficients is equal to that parameter. Identify the parameters for which more than one such equation exists.
 
-## d. Suppose $X$, $Y$, and  $W_3$ are the only variables observed. Which parameters can be identified from the data? Can the total effect of $X$  on  $Y$ be estimated? 
+## d. Suppose $X$, $Y$, and $W_3$ are the only variables observed. Which parameters can be identified from the data? Can the total effect of $X$ on $Y$ be estimated?
 
-## e. If we regress  $Z_1$ on all other variables in the model, which regression coefficient will be zero? 
+## e. If we regress $Z_1$ on all other variables in the model, which regression coefficient will be zero?
 
-## f. The model in Figure 3.18 implies that certain regression coefficients will remain invariant when an additional variable is added as a regressor. Identify five such coefficients with their added regressors. 
+## f. The model in Figure 3.18 implies that certain regression coefficients will remain invariant when an additional variable is added as a regressor. Identify five such coefficients with their added regressors.
 
-## g. Assume that variables $Z_2$  and  $W_2$  cannot be measured. Find a way to estimate $b$ using regression coefficients. (Hint: Find a way to turn $Z_1$  into an instrumental variable for $b$).
+## g. Assume that variables $Z_2$ and $W_2$ cannot be measured. Find a way to estimate $b$ using regression coefficients. (Hint: Find a way to turn $Z_1$ into an instrumental variable for $b$).
 
 # Referencias
 
