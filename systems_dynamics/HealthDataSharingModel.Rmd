@@ -1,0 +1,267 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+# Simple Health Data Sharing Model in R
+
+Our model that we present in chapter named ***From Causal Loop Diagrams to System Dynamics Models in a Data-rich Ecosystem***, we presented a simple model of data sharing and patient health. The following figure shows the stock and flow diagram. Stock and flow diagrams are developed based on an interdisciplinary effort which can start from a causal loop diagram (CLD).
+
+![](systems_dynamics/StockFlowDataShare.png)
+
+This model is developed based on the premise that patients in hospitals have the option to share their Electronic Medical Records (EMR) data. We have four stock variables in our model: Patients P, Shared EMR Data DS, Health Research Data DR, and Approved Treatments T. These stock and flow variables are mathematically defined as derivatives.
+
+$$
+\begin{align}
+\text{Patients in hospitals (stock):}&\quad  \frac{\mathrm{d}P(t)}{\mathrm{d}t} =  IP(t) - OP(t) \\[1em]
+\text{Admissions (inflow): }&\quad IP(t) = SP(t) \\[1em]
+\text{Discharges (outflow): }&\quad OP(t) = \lambda \cdot P(t) \\[1em]
+\text{Shared EMR Data (stock):}&\quad \frac{\mathrm{d}D_\mathrm{S}(t)}{\mathrm{d}t} = ID_\mathrm{S}(t)  \\[1em]
+\text{Creation of Shared EMR Data (inflow):}&\quad ID_\mathrm{S}(t) = P(t) \cdot \widehat{D}_\mathrm{S}(t)\\[1em]
+\text{Health Research Data (stock):}&\quad \frac{\mathrm{d}D_\mathrm{R}(t)}{\mathrm{d}t} = ID_\mathrm{R}(t)  \\[1em]
+\text{Creation of Health Research Data (inflow):}&\quad ID_\mathrm{R}(t) = CT(t) \cdot \widehat{D}_\mathrm{R}(t) \\[1em]
+\text{Available Treatments (stock):}&\quad \frac{\mathrm{d}T(t)}{\mathrm{d}t} = IT(t) - OT(t) \\[1em]
+\text{Approved Treatments per month (inflow):}&\quad IT(t) = \sigma \cdot RP(t) \cdot CT(t)\\[1em]
+\text{Obsolete Treatments per month (outflow):}&\quad OT(t) = \phi \cdot T(t)
+\end{align}
+$$
+
+Patients stocks are determined by the number of admissions IP and the number of discharges OP. We included an inflow to Shared EMR Data as a variable called IDS. The Health Research Data is represented by the Creation of Health Research Data IDR. The stock, Approved Treatments, has an inflow and outflow variable, Approved Drugs per year IT and Obsolete Treatments per year OT.
+
+We also have several auxiliary variables and these are mathematically defined as:
+
+$$
+\begin{align}
+\text{Security breeches:}&\quad  S(t) = \alpha \cdot D_\mathrm{S}(t)\\[1em]
+\text{Willingness to share EMR data:}&\quad WS(t) = \frac{1}{\beta\cdot S(t)}  \\[1em]
+\text{Data shared per patient:}&\quad \widehat{D}_\mathrm{S}(t) = \gamma \cdot WS(t) \\[1em]
+\text{General health:}&\quad H(t) = \delta \cdot TR(t) \\[1em]
+\text{Sick fraction:}&\quad SF(t) = \min\left(\frac{1}{\zeta \cdot H(t)},\; 1\right) \\[1em]
+\text{Sick population:}&\quad SP(t) = \omega \cdot SF(t) \\[1em]
+\text{Healthy population:}&\quad HP(t) = \omega - SP(t) \\[1em]
+\text{Total data:}&\quad D(t) = D_\mathrm{S}(t) + D_\mathrm{R}(t) \\[1em]
+\text{Research productivity:}&\quad RP(t) = \eta_1 + \eta_2 \cdot \ln(D(t)) \\[1em]
+\text{Motivation to join a trial:}&\quad MT(t) = \theta \cdot SP(t) \\[1em]
+\text{Enrollment per trial:}&\quad EN(t) = HP(t) \cdot MT(t) \\[1em]
+\text{Cost per trial:}&\quad C(t) = \nu \cdot EN(t) \\[1em]
+\text{Data generated per trial:}&\quad \widehat{D}_\mathrm{R} = \mu \cdot EN(t) \\[1em]
+\text{R&D budget:}&\quad R(t) = \rho \cdot \frac{TR(t)}{HP(t)} \\[1em]
+\text{Number of clinical trials:}&\quad CT(t) = \frac{R(t)}{C(t)} 
+\end{align}
+$$
+
+The parameters are represented by greek letters in our model. We've presented a list of parameters in the following table.
+
+| **Variable** | **Definition**                                                     |
+|--------------|--------------------------------------------------------------------|
+| α            | Security Risk (Percentage)                                         |
+| β            | Sensitivity to security risks                                      |
+| γ            | Unrestricted data sharing                                          |
+| δ            | Availability of treatment on general health                        |
+| ζ            | Inverse relationship between general health and sickness frequency |
+| η1           | Data Technology Multiplier                                         |
+| η2           | Data Input Elasticity                                              |
+| ρ            | Market success on R&D budget                                       |
+| ν            | Cost per subject                                                   |
+| σ            | Clinical trials multiplier                                         |
+| θ            | Sick population effect on enrollment motivation                    |
+| λ            | Hospital discharge rate                                            |
+| μ            | Trial enrollment size on data generated per trial                  |
+| ϕ            | Obsolete treatment fraction                                        |
+| ω            | Population                                                         |
+
+## Implementation in R
+
+### Building the Model
+
+In this section, we implement the conceptual system dynamics model that was developed by an interdisciplinary team of researchers. Since a system dynamics model is essentially a system of differential equations, we will employ the **deSolve** library in R. The library includes several different types of solvers like forward/back Euler's method, Runge-Kutta family methods, and other advanced numerical methods. We will also call the commonly used plotting library, ***ggplot2***, to help us visualize our outputs.
+
+```{r}
+library(deSolve)
+library(ggplot2)
+```
+
+We begin by defining the stock variables in the model as a vector in R.
+
+```{r}
+InitStocks <- c(
+    P = 100,                  # Patients (People)
+    DS = 50,                  # Shared EMR Data
+    DR = 100,                 # Health Research Data
+    TR = 10                   # Approved Treatments
+)
+```
+
+We then define the parameters that inform the equations in our model as a vector.
+
+```{r}
+Parms <- c(
+    alpha = 0.1,              # Security Risk (Percentage)
+    beta = 1,                 # Sensitivity to security risks
+    gamma = 10,               # Unrestricted data sharing 
+    delta = 5,                # Availability of treatment on general health
+    zeta = 3,                 # Inverse relationship between general health and sickness frequency
+    eta1 = 0.3,               # Data Technology Multiplier
+    eta2 = 1,                 # Data Input Elasticity 
+    rho = 7.5,                # Market success on R&D budget 
+    nu = 1,                   # Cost per subject
+    sigma = 1,                # Clinical trials multiplier
+    theta = 1,                # Sick population effect on enrollment motivation
+    lambda = 0.8,             # Hospital discharge rate
+    mu = 10,                  # Trial enrollment size on data generated per trial
+    phi = 0.05,               # Obsolete treatment fraction
+    omega = 50000             # Population
+)
+```
+
+The equations of the system dynamics model is defined as a function in the following script. For more information pertaining to the system dynamics in R, please refer to
+
+```{r}
+HealthDataMod <- function(time, stocks, parms){
+    with(as.list(c(stocks, parms)),{ 
+    # Auxiliary Variables
+        S = alpha * DS               # Security breeches
+        WS =  1/(beta * S)           # Willingness to Share Data
+        DShat = gamma * WS           # Data shared per patient
+        H = delta * TR               # General Health 
+        SF = min(1 / (zeta * H), 1)  # Sick fraction
+        SP = omega * SF              # Sick population
+        HP = omega - SP              # Healthy population
+        D = DS + DR                  # Total data
+        RP = eta1 + eta2 * log(D)    # Research productivity
+        MT = theta * SP              # Motivation to join a clinical trial
+        EN = HP * MT                 # Enrollment per trial
+        C = nu * EN                  # Cost per trial
+        DRhat = mu * EN              # Data generated per trial
+        R = rho * TR / HP            # R&D budget
+        CT = R / C                   # Number of clinical trials
+      
+    # Flows
+        IP = omega * SF              # Number of hospital admissions
+        OP = lambda * P              # Number of hospital discharges
+        IDS = P * DShat              # Creation of shared EMR data
+        IDR = CT * DRhat             # Creation of health reasearch data
+        IT =  sigma * RP * CT        # Approved treatments per month
+        OT = phi * TR                # Obsolete treatments per month
+      
+    # Stocks
+        dP_dt = IP - OP              # Patients in Hospitals
+        dDS_dt = IDS                 # Shared EMR Data
+        dDR_dt = IDR                 # Health research data
+        dTR_dt = IT - OT             # Available treatments
+      
+        dstocks = c(dP_dt, dDS_dt, dDR_dt, dTR_dt)
+    # Output
+        return(list(dstocks,
+        H = H,                     # General health
+        WS = WS,                   # Willingness to share
+        R = R,                     # R&D budget
+        MT = MT,                   # Motivation to join a clinical trial
+        S = S                      # Security breeches
+    ))
+  })
+}
+```
+
+After the model's variables and equations are defined, we can initialize and run the model with the following command. The output is stored in the *modout* variable.
+
+```{r}
+t0 = 1
+tf = 100
+tstep = 1
+trange = seq(t0,tf,tstep)
+ModOut = ode(y = InitStocks, times = trange, func = HealthDataMod, parms = Parms, method = 'rk4')
+head(ModOut)
+```
+
+We can plot the output in the following figure using the basic R plotting features.
+
+```{r}
+plot(ModOut)
+```
+
+Now that we have the general behavior of all the output variables. Please note that the output variables include all the stocks and some of the auxiliary variables that we are interested.
+
+### Integrating Data and Parameterization
+
+We can start comparing the model against data once we have the structural equations set up. We begin by parameterizing the against some data that we've created created. In our example, we assumed that there is data for five variables: patients `P`, shared data `DS`, security breaches `S`, approved treatments `TR`, and general health `H`. For demonstration purposes, we've generated a toy dataset that might realistically depict actual behavior of the system. The dataset is loaded into R with the following command.
+
+```{r}
+actualData <- read.csv(file = here::here("systems_dynamics", 'Data.csv'),
+                       fileEncoding = 'UTF-8-BOM')
+head(actualData)
+```
+
+We need to rename our dataset so the series name correspond with the model's variables so the solver can compare each the actual data with the simulated data. We also need to reformat the "wide" table into a "long" table with three columns (*time*, *variable*, and *value*) using the `melt` command from the **reshape** library.
+
+```{r}
+colnames(actualData) <- c('time','P','DS','S','TR','H')
+library(reshape)
+longActualData <- melt(actualData, id.vars = 'time')
+head(longActualData)
+```
+
+The fit of a single variable in a model can oftentimes be measured as a residual, which is a difference between the actual and simulated points for each time step t. There are different types of error measurements but for our model we choose *Sum of Squared Weighted Residuals* (SSR) as our error measure for each variable j in our model. This is defined mathematically as
+
+(26)SSRj=∑t=1T∑i=1N(Y\^jt−Yijtwj)2
+
+$$
+SSR_j = \sum_{t=1}^{T}\sum_{i=1}^{N} \left(\frac{\widehat{Y}_{jt} - Y_{ijt}}{w_{j}}\right)^2    
+$$
+
+For time $t$, we can use the system dynamics model to simulate predicted values $\hat{Y}_{jt}$, and use actual data to represent the true values of our variable $Y_{ijt}$. $\hat{Y}_{jt}$ is a function of the parameters $\beta_j$ and intial conditions $Y^0_j$ -- in other words, $\hat{Y}_{jt} = f(\beta_j, Y^0_j)$. We use $i$ to index each time series. The formulation also includes weights $w_j$ for each variable $j$. We will assume the weights are the mean value of each variable, which will rescale the residuals and normalize all variable to be independent of units. We add another column to our dataframe `longActualData` called *weight* which is the mean value of each observed variable.
+
+```{r}
+modCalVars <- unique(longActualData$variable)
+for(i in modCalVars) {
+    longActualData$weight[longActualData$variable == i] <- mean(longActualData$value
+        [longActualData$variable == i])
+}
+longActualData = longActualData[,c('variable','time','value','weight')]
+head(longActualData)
+```
+
+In order to quantify the fit of our model, we define the model cost $MC$ as the sum of all the variables' $SSR_j$.
+
+$$
+\begin{align}
+MC &= \sum_{j=1}^{M} SSR_j \\&= \sum_{j=1}^{M} \sum_{t=1}^{T}\sum_{i=1}^{N} \left(\frac{\widehat{Y}_{jt} - Y_{ijt}}{w_{j}}\right)^2 \\&= \sum_{j=1}^{M} \sum_{t=1}^{T} \sum_{i=1}^{N} \left(\frac{f\left(\beta_j,Y_j^{0}\right)_{jt} - Y_{ijt}}{w_{j}}\right)^2
+\end{align}
+$$
+We can use the R library **FME** to perform most of our parameter estimation operations. We can also calculate MC for a given set of parameters by using the `modCost` command to define a cost function. We define function `CostFunction` that take in a vector of parameters, `p`, as inputs, which is the set of parameters that are being calibrated (defined as βj in our program) and calculates the model cost MC.
+
+```{r}
+library(FME)
+CostFunction <- function(p,time,stocks,parms,yactual){
+    whichpar <- names(parms)[names(parms) %in% names(p)]
+    parms[whichpar] <- p[whichpar]
+    ysim <- ode(
+        y = stocks, 
+        times = time, 
+        func = HealthDataMod, 
+        parms = parms, 
+        method = 'rk4')
+    MC <- modCost(
+        model = ysim,
+        obs = yactual,
+        x = 'time',
+        y = 'value',
+        err = 'weight')
+    return(MC)
+}
+```
+
+Based on the defined $MC$ cost function, we can develop an optimization program to calibrate our model. We develop a mathematical program which minimizes the cost function with respect the parameters.
+
+$$
+\begin{align}
+\min_{\beta_j} &\quad \sum_{j=1}^{M} \sum_{t=1}^{T}\sum_{i=1}^{N} \left(\frac{f\left(\beta_j,Y_j^{0}\right)_{jt} - Y_{ijt}}{w_{j}}\right)^2 \\
+\text{subject to}: &\quad \underline{\beta_j} \leq \beta_j \leq \overline{\beta_j} \quad j = 1,\ldots,M
+\end{align}
+$$

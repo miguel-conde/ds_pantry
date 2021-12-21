@@ -5,3 +5,4 @@
 STAN/*.rds
 STAN/*/*.rds
 *.pyc
+systems_dynamics/HealthDataSharingModel.html
