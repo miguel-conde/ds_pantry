@@ -233,8 +233,7 @@ $$
 \begin{align}
 MC &= \sum_{j=1}^{M} SSR_j \\&= \sum_{j=1}^{M} \sum_{t=1}^{T}\sum_{i=1}^{N} \left(\frac{\widehat{Y}_{jt} - Y_{ijt}}{w_{j}}\right)^2 \\&= \sum_{j=1}^{M} \sum_{t=1}^{T} \sum_{i=1}^{N} \left(\frac{f\left(\beta_j,Y_j^{0}\right)_{jt} - Y_{ijt}}{w_{j}}\right)^2
 \end{align}
-$$
-We can use the R library **FME** to perform most of our parameter estimation operations. We can also calculate MC for a given set of parameters by using the `modCost` command to define a cost function. We define function `CostFunction` that take in a vector of parameters, `p`, as inputs, which is the set of parameters that are being calibrated (defined as βj in our program) and calculates the model cost MC.
+$$ We can use the R library **FME** to perform most of our parameter estimation operations. We can also calculate MC for a given set of parameters by using the `modCost` command to define a cost function. We define function `CostFunction` that take in a vector of parameters, `p`, as inputs, which is the set of parameters that are being calibrated (defined as βj in our program) and calculates the model cost MC.
 
 ```{r}
 library(FME)
