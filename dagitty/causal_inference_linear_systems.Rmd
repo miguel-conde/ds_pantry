@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Causal Inference in Linear Systems"
 output: html_document
 editor_options: 
   markdown: 
@@ -448,5 +448,17 @@ dagitty::impliedConditionalIndependencies(fig_3.18_dag, type = "missing.edge")
 
     -   [Causal Inference In Statistics: A Companion for R
         Users](http://www.dagitty.net/primer/)
+
+-   [The Effect: An Introduction to Research Design and
+    Causality](https://www.theeffectbook.net/index.html): *The Effect*
+    is a book intended to introduce students (and non-students) to the
+    concepts of research design and causality in the context of
+    observational data. The book is written in an intuitive and
+    approachable way and doesn't overload on technical detail. Why teach
+    regression and research design at the same time when they are
+    fundamentally different things? First learn why you want to
+    structure a design in a certain way, and what it is you want to do
+    to the data, and then afterwards learn the technical details of how
+    to run the appropriate model.
 
 \
