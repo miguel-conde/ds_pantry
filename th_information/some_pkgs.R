@@ -29,3 +29,21 @@ entropy.data(freqs.table = table(discretization(data.df = iris[, "Species"],
                                                 freq = FALSE)))
 
 # https://bioconductor.org/packages/release/bioc/vignettes/Informeasure/inst/doc/Informeasure.html
+
+###
+N <- 1000
+X <- rnorm(N)
+X2 <- rnorm(N)
+Y <- 3*X + rnorm(N, 0, 1)
+Z1 <-X^2 + X^3 + X^4 + X^6 + rnorm(N, 0, 10)
+Z2 <- X^2 + X^3 + X^4 + X^6 + Y^2 + Y^3 + Y^4 + Y^6 + rnorm(N, 0, 10)
+
+probe <- tibble(X, X2, Y, Z1, Z2)
+cor(probe)
+
+
+res <- mutinformation(discretize(probe))
+res
+
+mi.data(X = probe$X, Y = probe$Z1, discretization.method = "kmeans") 
+mi.data(X = probe$X, Y = probe$Z2, discretization.method = "kmeans") 
