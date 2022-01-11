@@ -44,6 +44,7 @@ cor(probe)
 
 res <- mutinformation(discretize(probe))
 res
+res %>% sweep(1, diag(res), "/")
 
 mi.data(X = probe$X, Y = probe$Z1, discretization.method = "kmeans") 
 mi.data(X = probe$X, Y = probe$Z2, discretization.method = "kmeans") 
