@@ -1,0 +1,85 @@
+---
+title: "Más allá de la correlación"
+subtitle: "Teoría de la Información - Entropía e Información Mutua"
+output: 
+  revealjs::revealjs_presentation:
+    theme: solarized
+    highlight: pygments
+    reveal_options:
+      minScale: 1.0
+      maxScale: 1.0
+      slideNumber: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, fig.align='center')
+
+library(tidyverse)
+```
+
+# Ejemplo
+
+## Ejemplo (1/4)
+
+```{r}
+set.seed(2123)
+
+N <- 1000
+X <- rnorm(N)
+X2 <- rnorm(N)
+Y <- exp(X^3 + X^2 + X + 1)^-2 + X^-2 + rnorm(N, 0, 1)
+Z1 <-X^2 + X^3 + X^4 + X^6 + rnorm(N, 0, 1)
+Z2 <- Z1^2 + rnorm(N, 0, 1)
+
+probe <- tibble(X, X2, Y, Z1, Z2)
+```
+
+-   `Y`, `Z1` y `Z2` son función de `X` más ruido
+-   `X2` es independiente de las demás
+
+## Ejemplo (2/4)
+
+```{r, echo = FALSE}
+psych::pairs.panels(probe)
+```
+
+Aunque `Y`, `Z1` y `Z2` son función de `X` la correlación no captura esas relaciones.
+
+# Teoría de la Información
+
+<small>
+
+> [La **teoría de la información**, también conocida como **teoría matemática de la comunicación** ([Inglés](https://es.wikipedia.org/wiki/Idioma_ingl%C3%A9s "Idioma inglés"): *mathematical theory of communication*) o **teoría matemática de la información**, es una propuesta teórica presentada por [Claude E. Shannon](https://es.wikipedia.org/wiki/Claude_Shannon "Claude Shannon") y [Warren Weaver](https://es.wikipedia.org/wiki/Warren_Weaver "Warren Weaver") a finales de la década de los años 1940. Esta teoría está relacionada con las leyes matemáticas que rigen la transmisión y el procesamiento de la información y se ocupa de la medición de la información y de la representación de la misma, así como también de la capacidad de los sistemas de comunicación para transmitir y procesar información. La teoría de la información es una rama de la [teoría de la probabilidad](https://es.wikipedia.org/wiki/Teor%C3%ADa_de_la_probabilidad "Teoría de la probabilidad") que estudia la [información](https://es.wikipedia.org/wiki/Informaci%C3%B3n "Información") y todo lo relacionado con ella: [canales](https://es.wikipedia.org/wiki/Canal_de_comunicaciones "Canal de comunicaciones"), [compresión de datos](https://es.wikipedia.org/wiki/Compresi%C3%B3n_de_datos "Compresión de datos") y [criptografía](https://es.wikipedia.org/wiki/Criptograf%C3%ADa "Criptografía"), entre otros.]{.smallcaps}
+>
+> [Wikipedia, *Teoría de la Información*](https://es.wikipedia.org/wiki/Teor%C3%ADa_de_la_informaci%C3%B3n)
+
+</small>
+
+## Entropía
+
+## Información Mutua
+
+# Información Mutua aplicada
+
+## Ejemplo (3/4)
+
+```{r}
+library(infotheo)
+
+# Información mutua (bits) entre pares de variables
+#                         = cuánta información aprendes de una variable al 
+#                           conocer la otra
+# La diagonal es entropía 
+#                         = información contenida en cada variable 
+#                         = cantidad de incertidumbre ANTES de conocerla
+
+info_mutua <- mutinformation(discretize(probe)) %>% natstobits() 
+info_mutua
+```
+
+## Ejemplo (4/4)
+```{r}
+# % de cada variable explicada al conocer la otra
+
+info_mutua %>% sweep(1, diag(info_mutua), "/")
+```
