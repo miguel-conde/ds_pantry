@@ -85,7 +85,7 @@ $$
 
 $$
 \newcommand{\indep}{\perp \!\!\! \perp} \\
-\newcommand{\nindep}{\not\!\perp\!\!\!\perp} \\
+\newcommand{\nindep}{\not\!\perp\!\!\!\perp} 
 $$
 $$
 I(X; Y) = H(X) - H(X|Y) = H(X) + H(Y) - H(X, Y) \geq 0
