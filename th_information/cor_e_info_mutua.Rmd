@@ -84,6 +84,10 @@ $$
 ## Información Mutua
 
 $$
+\newcommand{\indep}{\perp \!\!\! \perp} \\
+\newcommand{\nindep}{\not\!\perp\!\!\!\perp} \\
+$$
+$$
 I(X; Y) = H(X) - H(X|Y) = H(X) + H(Y) - H(X, Y) \geq 0
 $$
 
@@ -95,7 +99,7 @@ de conocer $Y$ (entropía *condicional*, $H(X|Y)$).
 
 + Es igual a la suma de las entropías de $X$ e $Y$ menos la entropía *conjunta*
 $H(X, Y)$.
-  + Por tanto, $X$ e $Y$ son independientes sii su información mutua es nula: $X \amalg Y \iff I(X;Y) = 0$
+  + Por tanto, $X$ e $Y$ son independientes sii su información mutua es nula: $X \indep Y \iff I(X;Y) = 0$
 
 # Información Mutua aplicada
 
@@ -121,3 +125,17 @@ info_mutua
 
 info_mutua %>% sweep(1, diag(info_mutua), "/")
 ```
+
+## Ventajas y Desventajas
+
++ VENTAJAS
+  + Capta relaciones no lineales entre variables
+  + Puede informarnos más acerca de la independencia de variables:
+    + $X \indep Y \iff I(X;Y) = 0$
+    + Pero la correlación solo $X \indep Y \implies \rho_{XY} = 0$
+  + Como la correlación:
+    + Es interpretable
+    + Es computacionalmente barata
+  
++ DESVENTAJAS
+  + Métodos de cálculo basados en heurísticos
