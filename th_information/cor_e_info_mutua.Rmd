@@ -3,7 +3,7 @@ title: "Más allá de la correlación"
 subtitle: "Teoría de la Información - Entropía e Información Mutua"
 output: 
   revealjs::revealjs_presentation:
-    theme: solarized
+    theme: sky
     highlight: pygments
     reveal_options:
       minScale: 1.0
@@ -34,7 +34,7 @@ Z2 <- Z1^2 + rnorm(N, 0, 1)
 probe <- tibble(X, X2, Y, Z1, Z2)
 ```
 
--   `Y`, `Z1` y `Z2` son función de `X` más ruido
+-   `Y`, `Z1` y `Z2` son función de `X` (más ruido)
 -   `X2` es independiente de las demás
 
 ## Ejemplo (2/4)
@@ -43,7 +43,7 @@ probe <- tibble(X, X2, Y, Z1, Z2)
 psych::pairs.panels(probe)
 ```
 
-Aunque `Y`, `Z1` y `Z2` son función de `X` la correlación no captura esas relaciones.
+Aunque `Y`, `Z1` y `Z2` son función de `X`, la correlación no captura esas relaciones.
 
 # Teoría de la Información
 
@@ -57,7 +57,45 @@ Aunque `Y`, `Z1` y `Z2` son función de `X` la correlación no captura esas rela
 
 ## Entropía
 
+ENTROPÍA de la v.a discreta $X$ con p.m.f. $P(X=x_i) = p_i$:
+
+$$
+H(X) = \sum_i p_i \text{log}(\frac{1}{p_i})
+$$
+
+
+**INTERPRETACIONES**:
+
+1. *Cantidad media de información* al conocer $X$: 
+
+$$
+\begin{align}
+  I(X = x_i) = \text{log}(\frac{1}{p_i}) \\
+  H(X) = \text{E}[I(X)]
+\end{align}
+$$
+
+2. *Ignorancia* o *incertidumbre* ***antes*** de conocer $X$.
+
+3. Grado de *aleatoriedad* de $X$.
+
+
+
 ## Información Mutua
+
+$$
+I(X; Y) = H(X) - H(X|Y) = H(X) + H(Y) - H(X, Y) \geq 0
+$$
+
+La **información mutua** entre las v.a.s $X$ e $Y$, $I(X; Y)$:
+
++ Es la incertidumbre 
+*antes* de conocer $X$ ($H(X)$) *menos* la incertidumbre de $X$ que queda *después*
+de conocer $Y$ (entropía *condicional*, $H(X|Y)$).
+
++ Es igual a la suma de las entropías de $X$ e $Y$ menos la entropía *conjunta*
+$H(X, Y)$.
+  + Por tanto, $X$ e $Y$ son independientes sii su información mutua es nula: $X \amalg Y \iff I(X;Y) = 0$
 
 # Información Mutua aplicada
 
