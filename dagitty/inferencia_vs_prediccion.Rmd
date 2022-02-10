@@ -8,10 +8,15 @@ library(tidyverse)
 library(dagitty)
 library(reticulate)
 Sys.setenv(RETICULATE_PYTHON="")
-reticulate::use_condaenv("ml-course-edix-2")
+options(reticulate.repl.quiet = TRUE)
+reticulate::use_condaenv("ml-course-edix")
 ```
 
 ```{python}
+import warnings
+
+warnings.filterwarnings('ignore')
+
 import numpy as np
 import statsmodels.api as sm
 import pandas as pd
@@ -36,17 +41,19 @@ plot(dag_fork)
 
 ```{python}
 N = 1000
+
+np.random.seed(2022)
+
 Z = np.random.normal(0, 1, N)
 X = np.random.normal(Z, 1, N)
 Y = np.random.normal(Z, 1, N)
+
+fork_df = pd.DataFrame({'X':X, 'Y':Y, 'Z': Z})
 ```
 
 lo que induce una 
 
 ```{python}
-np.random.seed(2022)
-
-fork_df = pd.DataFrame({'X':X, 'Y':Y, 'Z': Z})
 fork_df.corr()
 ```
 
@@ -54,6 +61,7 @@ o, de otra forma:
 
 ```{python}
 fork_lm = sm.OLS(fork_df['Y'], sm.add_constant(fork_df['X'])).fit()
+# fork_lm = sm.OLS(fork_df['Y'], fork_df['X']).fit()
 print(fork_lm.summary())
 ```
 
