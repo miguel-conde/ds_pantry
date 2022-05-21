@@ -40,8 +40,18 @@ as.POSIXct(-3600, origin = "1970-01-01 00:00:00", tz = "Europe/Madrid") %>% lubr
 
 
 # Si paso un string no necesito origin, la guardará como el número de segundos
-# desde 1970-01-01 00:00:00 GMT
+# desde 1970-01-01 00:00:00 GMT hasta la fecha-hora (que entiende que está en la 
+# tz del sistema si no especificamos otra)
+as.POSIXct("2022-05-19 00:00:00")
 as.POSIXct("2022-05-19 00:00:00", tz = "Europe/Madrid")
+as.POSIXct("2022-05-19 00:00:00", tz = "America/New_York")
+
+as.POSIXct("2022-05-19 00:00:00") %>% as.numeric()
+as.POSIXct("2022-05-19 00:00:00", tz = "Europe/Madrid") %>% as.numeric()
+as.POSIXct("2022-05-19 00:00:00", tz = "America/New_York") %>% as.numeric()
+
+
+
 as.POSIXct("2022-05-19 00:00:00", tz = "Europe/Madrid") %>% base::as.Date()
 as.POSIXct("2022-05-19 00:00:00", tz = "Europe/Madrid") %>% lubridate::as_date()
 
