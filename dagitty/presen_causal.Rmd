@@ -1,0 +1,403 @@
+---
+title: "Inferencia y Predicción"
+subtitle: '¿Modelos "clásicos" o modelos *machine learning*?'
+output: 
+  revealjs::revealjs_presentation:
+    theme: solarized
+    highlight: pygments
+    center: false
+    reveal_options:
+      minScale: 1.0
+      maxScale: 1.0
+      slideNumber: true
+---
+
+<style type="text/css">
+  .reveal p {
+    text-align: left;
+  }
+  .reveal ul {
+    display: block;
+  }
+  .reveal ol {
+    display: block;
+  }  
+</style>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.align='center')
+```
+
+
+
+```{r}
+library(tidyverse, quietly = TRUE)
+library(dagitty)
+library(reticulate)
+Sys.setenv(RETICULATE_PYTHON="")
+options(reticulate.repl.quiet = TRUE)
+reticulate::use_condaenv("ml-course-edix-2")
+```
+
+```{python}
+import warnings
+
+warnings.filterwarnings('ignore')
+
+import numpy as np
+import statsmodels.api as sm
+import pandas as pd
+from sklearn.metrics import mean_absolute_error
+```
+
+# Bifurcaciones (*forks*)
+
+## Caso 1
+
+
+```{python}
+N = 1000
+
+np.random.seed(2022)
+
+Z = np.random.normal(0, 1, N)
+X = np.random.normal(Z, 1, N)
+Y = np.random.normal(Z, 1, N)
+
+fork_df = pd.DataFrame({'X':X, 'Y':Y, 'Z': Z})
+```
+
+- Variables: `X`, `Y`
+
+::: fragment
+- Objetivo: modelo de `Y`
+:::
+
+::: fragment
+- Correlaciones:
+```{python}
+fork_df[['X', 'Y']].corr()
+```
+:::
+
+::: fragment
+- Modelo $Y \sim X$:
+:::
+
+::: fragment
+```{python}
+fork_lm = sm.OLS(fork_df['Y'], fork_df['X']).fit()
+str_beta_X = "Coef. X: {:.3f}".format(fork_lm.params['X'])
+print(str_beta_X)
+```
+
+```{python}
+str_p_value_x = "pValor X: {:.3g}".format(fork_lm.pvalues['X'])
+print(str_p_value_x)
+```
+:::
+
+::: fragment
++ Podemos predecir `Y` a partir de `X`
+:::
+
+::: fragment
++ Pero si intervenimos en `X` no pasa nada en `Y` ¿?
+:::
+
+## *Backstage* - Caso 1
+
+```{r, fig.height=2, fig.width=2}
+dag_fork <- dagitty('dag {
+bb="0,0,1,1"
+X [pos="0.3,0.2"]
+Y [pos="0.5,0.2"]
+Z [pos="0.4,0.15"]
+Z -> X
+Z -> Y
+}')
+
+plot(dag_fork)
+```
+
+::: fragment
++ Las v.a.'s `X` e `Y` se generan a partir de `Z` (*confounder*).
+:::
+::: fragment
++ Esa es la razón de que `X` e `Y` no sean independientes.
+:::
+::: fragment
++ La correlación entre `X` e `Y` es "inducida" por `Z` 
+:::
+::: fragment
++ Pero `X` no es causa de `Y`.
+:::
+
+
+## Caso 2 - Colinealidad
+
+```{python}
+np.random.seed(2022)
+
+Z = np.linspace(-100, 100, N)
+X1 = np.random.normal(.9*Z, 10, N)
+X2 = np.random.normal(.7*Z, 15, N)
+Y = np.random.normal(0.5*X1, 20, N)
+
+colin_df = pd.DataFrame({'X1':X1, 'X2':X2, 'Y':Y, 'Z': Z})
+```
+
+- Variables: `X1`, `X2`, `Y`
+
+::: fragment
+- Objetivo: modelo de `Y`
+:::
+
+::: fragment
+- Correlaciones:
+```{python}
+colin_df[['X1', 'X2', 'Y']].corr()
+```
+:::
+
+::: fragment
+- Modelo $Y \sim X1 + X2$:
+:::
+
+::: fragment
+```{python}
+colin_lm = sm.OLS(colin_df['Y'], colin_df[['X1', 'X2']]).fit()
+str_beta_X1_X2 = "Coef. X1: {:.3f}, Coef X2: {:.3f}".format(colin_lm.params['X1'], colin_lm.params['X2'])
+print(str_beta_X1_X2)
+```
+
+```{python}
+str_p_values_x1_x2 = "pValor X1: {:.3g}, pValor X2: {:.3g}".format(colin_lm.pvalues['X1'], colin_lm.pvalues['X2'])
+print(str_p_values_x1_x2)
+```
+
+:::
+
+<small>
+
+::: fragment
++ `X2` no es significativa. 
+:::
+::: fragment
++ Lo normal es que pensemos, en este caso acertadamente, que debemos excluir `X2` del modelo. 
+:::
+::: fragment
++ Si no lo hiciéramos, el modelo seguiría prediciendo `Y` razonablemente bien, pero nos llevaría a
+estimar erróneamente el efecto sobre `Y` al intervenir en `X2`.
+:::
+
+</small>
+
+
+
+
+## *Backstage* - Caso 2
+
+```{r, fig.height=2, fig.width=2}
+dag_colin <- dagitty('dag {
+bb="0,0,1,1"
+X1 [pos="0.3,0.2"]
+X2 [pos="0.4,0.2"]
+Z  [pos="0.35,0.15"]
+Y  [pos="0.3,0.3"]
+Z -> X1
+Z -> X2
+X1 -> Y
+}')
+
+plot(dag_colin)
+```
+
+<small>
+
+::: fragment
++ Pero atención: si hacemos modelos univariable resulta que **predicen más o menos igual** 
+(de hecho, a veces podrían ¡hasta predecir mejor!)
+  + $Y \sim X1$
+  + $Y \sim X2$
+:::
+
+::: fragment
++ Otro peligro sería que no dispusiéramos de los datos `X1`. 
+:::
+
+::: fragment
++ En ese caso probaríamos el modelo $Y \sim X2$ y comprobaríamos que ahora `X2`
+funciona bien. 
+:::
+
+::: fragment
++ Pero si intentáramos influir en `Y` interviniendo sobre `X2`, fracasaríamos. 
+:::
+
+::: fragment
++ Sin embargo, si solo queremos predecir `Y`, el modelo funcionaría razonablemente bien.
+:::
+
+</small>
+
+# Cadenas (*chains*)
+
+```{python}
+np.random.seed(2022)
+
+X1 = np.linspace(-100, 100, N)
+X2 = np.random.normal(.9*X1, 10, N)
+Y = np.random.normal(0.5*X2, 20, N)
+
+chain_df = pd.DataFrame({'X1':X1, 'X2':X2,'Y': Y})
+```
+
+## Caso 3
+
+:::fragment
++ Variables: `X1`, `X2`, `Y`
+:::
+:::fragment
++ Objetivo: modelo de `Y`
+:::
+:::fragment
++ Correlaciones:
+:::
+:::fragment
+
+```{python}
+chain_df[['X1', 'X2', 'Y']].corr()
+```
+:::
+
+:::fragment
++ `X1`, `X2`, `Y` correlan bien entre ellos
+:::
+:::fragment
++ Probamos el modelo $Y \sim X1+X2$.
+:::
+:::fragment
++ Pero descubrimos que `X1` sale no sigificativa.
+:::
+
+## *Backstage* - Caso 3
+
+```{r, fig.height=2, fig.width=2}
+dag_chain <- dagitty('dag {
+bb="0,0,1,1"
+X1 [pos="0.3,0.2"]
+X2 [pos="0.4,0.2"]
+Y [pos="0.5,0.2"]
+X1 -> X2
+X2 -> Y
+}')
+
+plot(dag_chain)
+```
+
++ Si queremos conocer el efecto total (que es indirecto) de `X1` sobre `Y`
+no debemos incluir `X2` en el modelo para que el camino entre `X1` e
+`Y` quede expedito
+  + $Y \sim X1$
+
+# Colisionadores (*colliders*)
+
+```{python}
+np.random.seed(2022)
+
+X = np.random.normal(0, 10, N)
+Y = np.random.normal(0, 10, N)
+Z = np.random.normal(-0.9*X + 0.5*Y, 1, N)
+
+collider_df = pd.DataFrame({'X':X, 'Y':Y,'Z': Z})
+```
+
+## Caso 4
+
+- Variables: `X`, `Y`
+
+::: fragment
+- Objetivo: modelo de `Y`
+:::
+
+::: fragment
+- Correlaciones:
+```{python}
+print(collider_df[['X', 'Y']].corr())
+```
+
+:::
+
+:::fragment
++ No hay correlación entre `X` e `Y` ¿Qué hacemos?
+:::
+
+
+## *Backstage* - Caso 4
+
+```{r, fig.height=2, fig.width=2}
+dag_collider <- dagitty('dag {
+bb="0,0,1,1"
+X [pos="0.3,0.15"]
+Y [pos="0.5,0.15"]
+Z [pos="0.4,0.2"]
+X -> Z
+Y -> Z
+}')
+
+plot(dag_collider)
+```
+
+::: fragment
++ Si se nos ocurre incluir `X` también ($Y \sim Z + X$), resulta que tanto `X` 
+como `Z` salen significativas. 
+:::
+
+::: fragment
++ Intervenir en `X` o `Z` tampoco tendría efecto en `Y` pero como modelo 
+predictivo sí funcionaría.
+:::
+
+# Conclusiones
+
+<small>
+
+::: fragment
++ Usar un modelo causalmente incorrecto (es decir, creado basándonos solo
+en las correlaciones) no es un problema a efectos meramente **predictivos**, 
+como hemos visto. 
+  + Si lo único que queremos es predecir, no hace falta que le demos muchas 
+  vueltas al modelo. Podemos emplear la táctica *machine learning* - meter todas 
+  las variables, buscar el modelo que mejor prediga - y ¡hala! a predecir.
+:::
+
+:::fragment
++ Pero si es un problema desde un punto de vista **inferencial** -
+*entender cómo funcionan las cosas* -, ya que, a efectos explicativos,
+podemos terminar con una idea errónea de qué causa qué. 
+  + Y esto es particularmente grave si queremos usar el modelo para **intervenir**.
+:::
+
+:::fragment
++ Si queremos explicar y/o intervenir tenemos que poner más cabeza en el
+modelo, empleando metodologías que tengan en cuenta la causalidad para
+crear modelos causalmente correctos.
+:::
+
+</small>
+
+# Análisis causal
+
+:::fragment
++ Proponer y validar modelo causal
+  + *Implied conditional dependencies*
+  + *Counterfactuals*
+:::
+
+:::fragment
++ Calcular efectos causales - Total, Directo, Indirecto
+  + *Backdoor Criterion*
+:::
+
