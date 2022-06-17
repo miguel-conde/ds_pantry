@@ -1,0 +1,1 @@
+plumber::plumb("plumber.R", "vetiver/")$run(swagger = TRUE, host = '127.0.0.1', port = 8080)
