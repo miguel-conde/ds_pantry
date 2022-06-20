@@ -11,8 +11,8 @@ if (FALSE) {
     library(stats)
     library(workflows)
 }
-b <- board_folder(path = "C:/Users/migue/AppData/Local/Temp/Rtmp0kgvZS/pins-2f8075fa12fb")
-v <- vetiver_pin_read(b, "cars_mpg", version = "20220617T182905Z-0a720")
+b <- board_folder(path = "C:/Users/migue/AppData/Local/Temp/Rtmp0kv5wb/pins-5b2c57d51742")
+v <- vetiver_pin_read(b, "cars_mpg", version = "20220618T054100Z-0a720")
 
 #* @plumber
 function(pr) {
