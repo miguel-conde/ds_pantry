@@ -17,4 +17,6 @@ v <- vetiver_pin_read(b, "cars_mpg", version = "20220618T054100Z-0a720")
 #* @plumber
 function(pr) {
     pr %>% vetiver_api(v)
+  
+  
 }
