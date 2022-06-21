@@ -68,3 +68,42 @@ myMvd <- mvdc(copula=myCop, margins=c("gamma", "beta", "t"),
 Z2 <- rMvdc(2000, myMvd)
 colnames(Z2) <- c("x1", "x2", "x3")
 pairs.panels(Z2)
+
+
+# 2 - Elegir Cópulas Matemáticas en R. Ejemplo en Forex -------------------
+
+#install.packages("quantmod")
+library(quantmod)
+#install.packages("tseries")
+library(tseries)
+#install.packages("fImport")
+library(fImport)
+
+# library(httr)    
+# set_config(use_proxy(url="10.74.255.120", port=8080, username = "mcondedesimon", password = rstudioapi::askForPassword()))
+
+getSymbols("CADCHF=X",src="yahoo",from = "2017-02-18")
+getSymbols("AUDNZD=X",src="yahoo",from = "2017-02-18")
+getSymbols("AUDUSD=X",src="yahoo",from = "2017-02-18")
+getSymbols("EURCHF=X",src="yahoo",from = "2017-02-18")
+getSymbols("EURGBP=X",src="yahoo",from = "2017-02-18")
+getSymbols("EURJPY=X",src="yahoo",from = "2017-02-18")
+getSymbols("EURNZD=X",src="yahoo",from = "2017-12-18")
+getSymbols("EURUSD=X",src="yahoo",from = "2017-02-18")
+getSymbols("GBPCHF=X",src="yahoo",from = "2017-02-18")
+getSymbols("NZDCAD=X",src="yahoo",from = "2017-02-18")
+
+#precios de cierre
+
+CADCHF= `CADCHF=X`[,4]
+AUDNZD= `AUDNZD=X`[,4]
+AUDUSD= `AUDUSD=X`[,4]
+EURCHF= `EURCHF=X`[,4]
+EURGBP= `EURGBP=X`[,4]
+EURJPY= `EURJPY=X`[,4]
+EURNZD= `EURNZD=X`[,4]
+EURUSD= `EURUSD=X`[,4]
+GBPCHF= `GBPCHF=X`[,4]
+NZDCAD= `NZDCAD=X`[,4]
+
+
