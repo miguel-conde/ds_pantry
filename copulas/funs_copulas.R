@@ -1,3 +1,5 @@
+library(copula)
+
 
 best_pdf_orig <- function(annual_series) {
   
@@ -20,10 +22,12 @@ best_pdf_orig <- function(annual_series) {
     
     options(warn = -1)
     
-    bic.vari <- c(gofstat(fitdist(annual_series, "norm"))$bic,
+    bic.vari <- c(tryCatch(gofstat(fitdist(annual_series, "norm"))$bic,
+                           error = function(e) { return(Inf) }),
                   tryCatch(gofstat(fitdist(annual_series, "lnorm"))$bic,
                            error = function(e) { return(Inf) }),
-                  gofstat(fitdist(annual_series, "weibull"))$bic,
+                  tryCatch(gofstat(fitdist(annual_series, "weibull"))$bic,
+                            error = function(e) { return(Inf) }),
                   tryCatch(gofstat(fitdist(annual_series, "gev",
                                            start = list(loc = mu.ge,
                                                         scale = sigma.ge,
