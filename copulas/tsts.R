@@ -94,3 +94,18 @@ sd_dif_peso_precio_semanal
 #### Autocorrelación de las diferencias
 #### Aplicamos acf a cada serie anual (fila) en dif_peso_precio_semanal
 autoc_dif_semana
+
+
+
+# ACF ---------------------------------------------------------------------
+
+probe_acf <- all_data$app_data$hist_pv %>% 
+  select(fundao) 
+
+for (i in 1:24) {
+  probe_acf <- probe_acf %>% mutate(!!sym(paste0("lag_", i)) := lag(fundao, i))
+}
+
+probe_acf <- probe_acf %>% drop_na()
+
+res_acf <- get_copula_sim(probe_acf, n_sim = 1000)

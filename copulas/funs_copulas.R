@@ -224,7 +224,7 @@ get_copula_sim <- function(in_data, n_sim = 1000, seed = NULL) {
   
   # Simulación -  random generator for the multivariate distribution via copula 
   #               and parametric margins
-  ful_simul <- rMvdc(2000, copula_sim)
+  ful_simul <- rMvdc(n_sim, copula_sim)
   
   dimnames(ful_simul) <- list(n_sim = NULL, instal = colnames(stats$corr_matrix))
   
