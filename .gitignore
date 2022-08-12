@@ -6,3 +6,8 @@ STAN/*.rds
 STAN/*/*.rds
 *.pyc
 systems_dynamics/HealthDataSharingModel.html
+quarto/authoring-complete_files/
+quarto/computations_files/
+quarto/computations-complete_cache/
+quarto/computations-complete_files/
+quarto/hello_files/
