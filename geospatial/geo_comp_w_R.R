@@ -1078,6 +1078,7 @@ zion_transect = cbind(c(-113.2, -112.9), c(37.45, 37.2)) %>%
 # ‘elevation profile’ of the route 
 transect = raster::extract(srtm, zion_transect,
                            along = TRUE, cellnumbers = TRUE)
+
 head(transect[[1]])
 # Note the use of along = TRUE and cellnumbers = TRUE arguments to return cell IDs
 # along the path. The result is a list containing a matrix of cell IDs in the first
