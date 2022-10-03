@@ -214,6 +214,44 @@ my_2d_dens_plot <- function(dataset, x, y,
   return(p)
 }
 
+my_2d_dens_plot <- function(dataset, x, y, show_points = TRUE, 
+                            title = "", 
+                            x_label = quo_name(x), y_label = quo_name(y)) {
+  
+  x <- enquo(x)
+  y <- enquo(y)
+  
+  p <- dataset %>% 
+    ggplot(aes(x = !!x, y = !!y))  +
+    geom_density_2d_filled(alpha = 0.5, show.legend = FALSE) +
+    geom_density_2d(n = 200, size = 0.25, colour = "black", show.legend = FALSE)
+  
+  if (show_points == TRUE) {
+    p <- p +
+      geom_point(size = 2, alpha = .1) +
+      geom_smooth(aes(color = NULL), se = TRUE)
+  }
+  
+  p <- p +
+    geom_xsidedensity(
+      aes(y = after_stat(density)),
+      alpha = 0.5,
+      size = 1,
+      position = "stack"
+    ) +
+    geom_ysidedensity(
+      aes(x = after_stat(density)),
+      alpha = 0.5,
+      size = 1,
+      position = "stack"
+    ) +
+    scale_color_tq() + 
+    scale_fill_tq() +
+    theme_tq() +
+    labs(title = title, x = x_label, y = y_label) 
+  
+  return(p)
+}
 
 # SCALERS -----------------------------------------------------------------
 
