@@ -160,10 +160,11 @@ lx_norm <- function(dataset, ..., p = 2) {
 
 # 2D DENSITY PLOT FUNCTION ------------------------------------------------
 
-my_2d_dens_plot <- function(dataset, x, y, use_density = TRUE, 
+my_2d_dens_plot <- function(dataset, x, y, 
                             title = "", 
-                            x_label = quo_name(x), y_label = quo_name(y)) {
-  
+                            x_label = quo_name(x), y_label = quo_name(y), 
+                            fix_axis = FALSE,
+                            use_density = TRUE) {
   x <- enquo(x)
   y <- enquo(y)
   
@@ -180,6 +181,17 @@ my_2d_dens_plot <- function(dataset, x, y, use_density = TRUE,
       geom_smooth(aes(color = NULL), se = TRUE) 
   }
   
+  if(fix_axis == TRUE) {
+    # browser()
+    x_min <- min(dataset %>% select(!!x, !!y), na.rm = TRUE)
+    x_max <- max(dataset %>% select(!!x, !!y), na.rm = TRUE)
+    y_min <- x_min
+    y_max <- x_max
+    
+    p <- p +
+      scale_x_continuous(limits = c(x_min, x_max)) +
+      scale_y_continuous(limits = c(y_min, y_max))
+  }
   
   p <- p +
     geom_xsidedensity(
@@ -225,6 +237,13 @@ dataset <- tibble(norm_samp = norm_sample, skew_samp = skew_sample)
 
 
 # TEST --------------------------------------------------------------------
+
+dataset %>% 
+  mutate(x = norm_samp, y = skew_samp) %>% 
+  my_2d_dens_plot(x, y, 
+                  title   = "No Scaling", 
+                  x_label = "Normal Distribution",
+                  y_label = "Skewed Distribution")
 
 dataset %>% 
   mutate(x = abs_max(norm_samp), y = abs_max(skew_samp)) %>% 
