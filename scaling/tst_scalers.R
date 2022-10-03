@@ -253,9 +253,6 @@ my_2d_dens_plot <- function(dataset, x, y, show_points = TRUE,
   return(p)
 }
 
-# SCALERS -----------------------------------------------------------------
-
-
 # MOCK DATA ---------------------------------------------------------------
 
 
@@ -339,4 +336,78 @@ dataset %>%
                   title   = "L1 Scaling", 
                   x_label = "Normal Distribution",
                   y_label = "Skewed Distribution")
+
+
+# SCALERS FOR SCORING -----------------------------------------------------
+
+# MOCK DATA ---------------------------------------------------------------
+
+
+set.seed(2022)
+
+N_days <- 100
+N_results_day <- rpois(100, lambda = 10)
+
+
+sapply(1:N_days,
+       function(d) {
+         data.frame(mentions = rpois(N_results_day[d], lambda = 5)) %>% 
+           mutate(day = d, .before = 1)
+       }) %>% head() 
+
+l_res <- vector(mode = "list", length = N_days)
+for (d in 1:N_days) {
+  
+  l_res[[d]] <- tibble(mentions = rpois(N_results_day[d], lambda = 1)) %>% 
+    mutate(day = d, .before = 1)
+}
+
+res <- bind_rows(l_res) %>% 
+  mutate(id = 1:nrow(.), .before = 1)
+
+
+# TF-IDF  -----------------------------------------------------------------
+
+tf_idf <- tibble()
+for (w in 1:N_days) {
+  aux <- res %>% 
+    filter(day <= w) %>% 
+    mutate(window = paste0("1_", w),
+           n = n(),
+           with_mentions = sum(mentions > 0),
+           tf = mentions,
+           idf = log(n / (1 + with_mentions)),
+           tf_idf = tf * idf,
+           max_min = (mentions - min(mentions)) / ((max(mentions) - min(mentions))),
+           log_max_min = log(1+max_min),
+           z_score = (mentions - mean(mentions)) / sd(mentions),
+           max_min_log = (log(mentions+1) - min(log(mentions+1))) / (max(log(mentions+1)) - min(log(mentions+1)))) 
+  
+  tf_idf <- tf_idf %>% bind_rows(aux %>% filter(day == w))
+}
+
+tf_idf %>% arrange(desc(tf_idf))
+tf_idf$tf_idf %>% summary()
+tf_idf$tf_idf %>% hist()
+
+tf_idf %>% select(tf_idf:max_min_log) %>% cor()
+
+ggplot(tf_idf, aes(x = mentions, y = log_max_min)) + 
+  geom_point() + 
+  geom_smooth(method="gam", formula = y ~ s(x, bs = "cs", k=5))
+
+tf_idf %>% 
+  group_by(mentions) %>% 
+  summarise(avg_score = mean(log_max_min)) %>% 
+  pull(avg_score) %>% diff()
+
+## 
+ggplot(tf_idf, aes(x = mentions, y = max_min_log)) + 
+  geom_point() + 
+  geom_smooth(method="gam", formula = y ~ s(x, bs = "cs", k=5))
+
+tf_idf %>% 
+  group_by(mentions) %>% 
+  summarise(avg_score = mean(max_min_log)) %>% 
+  pull(avg_score) %>% diff()
 
