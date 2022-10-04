@@ -317,7 +317,7 @@ dataset %>%
                   y_label = "Skewed Distribution")
 
 dataset %>% 
-  mutate(x = robust(norm_samp), y = standarization(skew_samp)) %>% 
+  mutate(x = robust(norm_samp), y = robust(skew_samp)) %>% 
   my_2d_dens_plot(x, y, 
                   title   = "Robust Scaling", 
                   x_label = "Normal Distribution",
