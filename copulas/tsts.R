@@ -8,15 +8,15 @@ source("copulas/funs_copulas.R", encoding = "utf8")
 n_sim <- 1000
 
 probe <- readRDS("data/xa_copulas.Rds")
-all_data <- readRDS("C:/Users/mcondedesimon/OneDrive - Deloitte (O365D)/PROYECTOS/PLAYGROUND/ds_pantry/data/all_data_copulas.Rds")
+all_data <- readRDS("data/probe_copulas.Rds")
 
 
 res <- get_copula_sim(probe, n_sim = 1000)
 
 ###
-sunny <- all_data$app_data$annual_hourly_profile_h_eq_pv %>% 
+sunny <- all_data$annual_hourly_profile_h_eq_pv %>% 
   select(1) %>% 
-  bind_cols(all_data$app_data$annual_hourly_profile_h_eq_pv %>% 
+  bind_cols(all_data$annual_hourly_profile_h_eq_pv %>% 
               select(-1) %>% 
               sapply(function(x) ifelse(x == as_units(0.0, "h"), FALSE, TRUE)) %>% 
               as_tibble()) %>% 
@@ -25,24 +25,24 @@ sunny <- all_data$app_data$annual_hourly_profile_h_eq_pv %>%
 
 
 
-probe_2 <- all_data$app_data$hist_pv %>% 
-  full_join(all_data$app_data$hist_eo, by = "datetime") %>% 
-  full_join(all_data$omip_data$omip, by = "datetime") %>% 
+probe_2 <- all_data$hist_pv %>% 
+  full_join(all_data$hist_eo, by = "datetime") %>% 
+  full_join(all_data$omip_raw, by = "datetime") %>% 
   arrange(datetime) %>% 
   drop_na() %>% 
   mutate(wk = week(datetime)) %>% 
   mutate(hr = hour(datetime) + (yday(datetime)-1)*24) %>% 
   filter(wk != 53) %>%
   full_join(sunny, by = c("wk", "hr" = "hour"), suffix = c("", "_sunny")) %>% 
-  mutate(fundao    = fundao    * as_units(as.integer(fundao_sunny)),
-         almagro   = almagro   * as_units(as.integer(almagro_sunny)),
-         zalea     = zalea     * as_units(as.integer(zalea_sunny)),
-         aldehuela = aldehuela * as_units(as.integer(aldehuela_sunny)),
-         la_vega   = la_vega   * as_units(as.integer(la_vega_sunny))) %>% 
+  mutate(pv1    = pv1    * as_units(as.integer(pv1_sunny)),
+         pv2   = pv2   * as_units(as.integer(pv2_sunny)),
+         pv3     = pv3     * as_units(as.integer(pv3_sunny)),
+         pv4 = pv4 * as_units(as.integer(pv4_sunny)),
+         pv5   = pv5   * as_units(as.integer(pv5_sunny))) %>% 
   # mutate_at(vars(fundao, almagro, zalea, aldehuela, la_vega), 
   #           ~ ifelse(. <= as_units(0, "h*megawatt"), 
   #                    as_units(1e-16, "h*megawatt"), .)) %>% 
-  mutate_at(vars(fundao, almagro, zalea, aldehuela, la_vega, sierra_de_aguas, sierra_de_banos, price), 
+  mutate_at(vars(pv1, pv2, pv3, pv4, pv5, eo1, eo2, price), 
             ~ as.numeric(.))
          
 res_2 <- get_copula_sim(probe_2 %>% 
