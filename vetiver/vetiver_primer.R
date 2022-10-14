@@ -1,4 +1,6 @@
 # https://www.rstudio.com/blog/announce-vetiver/
+# https://www.youtube.com/watch?v=oFQANK13-k4
+# https://isabelizimm.github.io/rstudioconf2022-mlops/#/section
 
 library(tidyverse)
 library(vetiver)
