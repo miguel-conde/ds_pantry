@@ -517,9 +517,7 @@ ggplot(data = demo) +
 
 ::: columns
 ::: {.column width="40%"}
-
-You might want to override the default mapping from transformed variables to aesthetics. For example, you might want to display a bar chart of proportion, rather than count.
-To find the variables computed by the stat, look for the help section titled \"computed variables\".
+You might want to override the default mapping from transformed variables to aesthetics. For example, you might want to display a bar chart of proportion, rather than count. To find the variables computed by the stat, look for the help section titled "computed variables".
 :::
 
 ::: {.column width="60%"}
@@ -534,8 +532,7 @@ ggplot(data = diamonds) +
 
 ::: columns
 ::: {.column width="40%"}
-
-You might want to draw greater attention to the statistical transformation in your code. For example, you might use `stat_summary()`, which summarises the y values for each unique x value, to draw attention to the summary that you\'re computing
+You might want to draw greater attention to the statistical transformation in your code. For example, you might use `stat_summary()`, which summarises the y values for each unique x value, to draw attention to the summary that you're computing
 :::
 
 ::: {.column width="60%"}

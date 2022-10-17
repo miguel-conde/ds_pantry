@@ -425,22 +425,150 @@ ggplot(data = diamonds) +
 
 # Position adjustments ----------------------------------------------------
 
-# TODO
+# x = cut = colour
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, colour = cut))
+# x = cut = fill
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = cut))
 
+# x = cut, fill = clarity
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = clarity))
+
+# The stacking is performed automatically by the position adjustment specified 
+# by the position argument. If you don’t want a stacked bar chart, you can use 
+# one of three other options: "identity", "dodge" or "fill".
+
+# identity will place each object exactly where it falls in the context of the 
+# graph. This is not very useful for bars, because it overlaps them.
+# The identity position adjustment is more useful for 2d geoms, like points, 
+# where it is the default.
+ggplot(data = diamonds, mapping = aes(x = cut, fill = clarity)) + 
+  geom_bar(alpha = 1/5, position = "identity")
+ggplot(data = diamonds, mapping = aes(x = cut, colour = clarity)) + 
+  geom_bar(fill = NA, position = "identity")
+
+# position = "fill" works like stacking, but makes each set of stacked bars the 
+# same height. This makes it easier to compare proportions across groups.
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = clarity), position = "fill")
+
+# position = "dodge" places overlapping objects directly beside one another. 
+# This makes it easier to compare individual values.
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = clarity), position = "dodge")
+
+
+# There’s one other type of adjustment that’s not useful for bar charts, but it 
+# can be very useful for scatterplots.You can avoid OVERPLOTTING gridding by 
+# setting the position adjustment to “jitter”. position = "jitter" adds a small 
+# amount of random noise to each point. 
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy), position = "jitter")
+
+# To learn more about a position adjustment, look up the help page associated 
+# with each adjustment: 
+# ?position_dodge, ?position_fill, ?position_identity, ?position_jitter, and 
+# ?position_stack.
 
 # Exercises ---------------------------------------------------------------
 
-# TODO
+# What is the problem with this plot? How could you improve it?
+  
+ggplot(data = mpg, mapping = aes(x = cty, y = hwy)) + 
+  geom_point()
+ggplot(data = mpg, mapping = aes(x = cty, y = hwy)) + 
+  geom_jitter()
 
+# What parameters to geom_jitter() control the amount of jittering?
+
+# Compare and contrast geom_jitter() with geom_count().
+ggplot(data = mpg, mapping = aes(x = cty, y = hwy)) + 
+  geom_count()
+
+# What’s the default position adjustment for geom_boxplot()? Create a 
+# visualisation of the mpg dataset that demonstrates it.
+ggplot(data = mpg, mapping = aes(x = manufacturer, y = hwy)) + 
+  geom_boxplot()
+ggplot(data = mpg, mapping = aes(x = manufacturer, y = hwy)) + 
+  geom_boxplot(position = "dodge")
+ggplot(data = mpg, mapping = aes(x = manufacturer, y = hwy)) + 
+  geom_boxplot(position = "fill")
+ggplot(data = mpg, mapping = aes(x = manufacturer, y = hwy)) + 
+  geom_boxplot(position = "identity")
+ggplot(data = mpg, mapping = aes(x = manufacturer, y = hwy)) + 
+  geom_boxplot(position = "stack")
+ggplot(data = mpg, mapping = aes(x = manufacturer, y = hwy)) + 
+  geom_boxplot(position = "jitter")
 
 # Coordinate systems ------------------------------------------------------
 
-# TODO
+# The default coordinate system is the Cartesian coordinate system where the x 
+# and y positions act independently to determine the location of each point. 
+# There are a number of other coordinate systems that are occasionally helpful.
 
+# coord_flip() switches the x and y axes. 
+
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) + 
+  geom_boxplot()
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) + 
+  geom_boxplot() +
+  coord_flip()
+
+# coord_quickmap() sets the aspect ratio correctly for maps. 
+nz <- map_data("nz")
+
+ggplot(nz, aes(long, lat, group = group)) +
+  geom_polygon(fill = "white", colour = "black")
+
+ggplot(nz, aes(long, lat, group = group)) +
+  geom_polygon(fill = "white", colour = "black") +
+  coord_quickmap()
+
+# coord_polar() uses polar coordinates.
+bar <- ggplot(data = diamonds) + 
+  geom_bar(
+    mapping = aes(x = cut, fill = cut), 
+    show.legend = FALSE,
+    width = 1
+  ) + 
+  theme(aspect.ratio = 1) +
+  labs(x = NULL, y = NULL)
+
+bar + coord_flip()
+bar + coord_polar()
 
 # Exercises ---------------------------------------------------------------
 
-# TODO
+# Turn a stacked bar chart into a pie chart using coord_polar().
+bar <- ggplot(data = diamonds) + 
+  geom_bar(
+    mapping = aes(x = factor(1), fill = clarity), 
+    show.legend = TRUE,
+    width = 1
+  ) + 
+  theme(aspect.ratio = 1) +
+  labs(x = NULL, y = NULL)
+
+bar + coord_polar(theta = "y")
+# 
+# What does labs() do? Read the documentation.
+# 
+# What’s the difference between coord_quickmap() and coord_map()?
+#   
+# What does the plot below tell you about the relationship between city and 
+# highway mpg? Why is coord_fixed() important? What does geom_abline() do?
+  
+ggplot(data = mpg, mapping = aes(x = cty, y = hwy)) +
+  geom_point() + 
+  geom_abline() +
+  coord_fixed()
+
+# If you don't give any arguments, geom_abline() uses default values, 
+# intercept = 0 and slope = 1.
+# A fixed scale coordinate system forces a specified ratio between the physical 
+# representation of data units on the axes.
 
 
 # The layered grammar of graphics -----------------------------------------
