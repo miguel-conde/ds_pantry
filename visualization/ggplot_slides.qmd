@@ -13,9 +13,15 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FAL
 library(tidyverse)
 ```
 
-# DATA VISUALISATION
+# Introduction
 
-## Intro
+## Visualisation and Communication in Data Science Projects
+
+![](imgs/data-science.png){fig-align="center"}
+
+-   **Visualisation** is a fundamentally human activity. A good visualisation will show you things that you did not expect, or raise new questions about the data. A good visualisation might also hint that you're asking the wrong question, or you need to collect different data. Visualisations can surprise you, but don't scale particularly well because they require a human to interpret them.
+
+-   The last step of data science is **communication**, an absolutely critical part of any data analysis project. It doesn't matter how well your models and visualisation have led you to understand the data unless you can also communicate your results to others.
 
 ## Datasets
 
@@ -32,6 +38,8 @@ mpg %>% DT::datatable()
 diamonds %>% DT::datatable()
 ```
 :::
+
+# DATA VISUALISATION
 
 ## First Steps
 
@@ -489,7 +497,7 @@ There are three reasons you might need to use a stat explicitly:
 ::: {.column width="40%"}
 -   You might want to override the default stat.
 
--   Here, I change the stat of `geom_bar()` from count (the default) to identity \^\[This is the default for `geom_col()]`.
+-   Here, I change the stat of `geom_bar()` from count (the default) to identity[^1].
 
 -   This lets me map the height of the bars to the raw values of a yy variable.
 
@@ -498,14 +506,7 @@ There are three reasons you might need to use a stat explicitly:
 
 ::: {.column width="60%"}
 ```{r}
-demo <- tribble(
-  ~cut,         ~freq,
-  "Fair",       1610,
-  "Good",       4906,
-  "Very Good",  12082,
-  "Premium",    13791,
-  "Ideal",      21551
-)
+demo <- diamonds %>% group_by(cut) %>% summarise(freq = n())
 
 ggplot(data = demo) +
   geom_bar(mapping = aes(x = cut, y = freq), stat = "identity")
@@ -517,7 +518,11 @@ ggplot(data = demo) +
 
 ::: columns
 ::: {.column width="40%"}
-You might want to override the default mapping from transformed variables to aesthetics. For example, you might want to display a bar chart of proportion, rather than count. To find the variables computed by the stat, look for the help section titled "computed variables".
+-   You might want to override the default mapping from transformed variables to aesthetics.
+
+-   For example, you might want to display a bar chart of proportion, rather than count.
+
+-   To find the variables computed by the stat, look for the help section titled "computed variables".
 :::
 
 ::: {.column width="60%"}
@@ -532,7 +537,9 @@ ggplot(data = diamonds) +
 
 ::: columns
 ::: {.column width="40%"}
-You might want to draw greater attention to the statistical transformation in your code. For example, you might use `stat_summary()`, which summarises the y values for each unique x value, to draw attention to the summary that you're computing
+-   You might want to draw greater attention to the statistical transformation in your code.
+
+-   For example, you might use `stat_summary()`, which summarises the y values for each unique x value, to draw attention to the summary that you're computing
 :::
 
 ::: {.column width="60%"}
@@ -549,17 +556,444 @@ ggplot(data = diamonds) +
 :::
 :::
 
-## Position Adjustments
+[^1]: This is the default for `geom_col()`
+
+## Position Adjustments (I)
+
+::: columns
+::: {.column width="50%"}
+You can colour a bar chart using either the `colour` aesthetic, or, more usefully, `fill`:
+
+```{r}
+library(patchwork)
+
+p1 <- ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, colour = cut))
+p2 <- ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = cut))
+
+p1 + p2
+```
+:::
+
+::: {.column width="50%"}
+Note what happens if you map the fill aesthetic to another variable, like `clarity`: the bars are automatically stacked. Each colored rectangle represents a combination of `cut` and `clarity`.
+
+```{r}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = clarity))
+```
+:::
+:::
+
+## Position Adjustments (II)
+
+The stacking is performed automatically by the position adjustment specified by the position argument. If you don't want a stacked bar chart, you can use one of three other options: "identity", "dodge" or "fill".
+
+::: panel-tabset
+## identity
+
+::: columns
+::: {.column width="60%"}
+```{r}
+p1 <- ggplot(data = diamonds, mapping = aes(x = cut, fill = clarity)) + 
+  geom_bar(alpha = 1/5, position = "identity")
+p2 <- ggplot(data = diamonds, mapping = aes(x = cut, colour = clarity)) + 
+  geom_bar(fill = NA, position = "identity")
+
+p1 + p2
+```
+:::
+
+::: {.column width="40%"}
+-   `position = "identity"` will place each object exactly where it falls in the context of the graph.
+
+-   This is not very useful for bars, because it overlaps them.
+
+-   To see that overlapping we either need to make the bars slightly transparent by setting `alpha` to a small value, or completely transparent by setting `fill = NA`.
+:::
+:::
+
+## fill
+
+::: columns
+::: {.column width="60%"}
+```{r}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = clarity), position = "fill")
+```
+:::
+
+::: {.column width="40%"}
+-   `position = "fill"` works like stacking, but makes each set of stacked bars the same height.
+
+-   This makes it easier to compare proportions across groups.
+:::
+:::
+
+## dodge
+
+::: columns
+::: {.column width="60%"}
+```{r}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut, fill = clarity), position = "dodge")
+```
+:::
+
+::: {.column width="40%"}
+-   `position = "dodge"` places overlapping objects directly *beside* one another.
+
+-   This makes it easier to compare individual values.
+:::
+:::
+:::
+
+## Position Adjustments (III)
+
+::: columns
+::: {.column width="50%"}
+There's one other type of adjustment that's not useful for bar charts, but it can be very useful for scatterplots. Recall our first scatterplot. Did you notice that the plot displays only 126 points, even though there are 234 observations in the dataset?
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy))
+```
+:::
+
+::: {.column width="50%"}
+The values of `hwy` and `displ` are rounded so the points appear on a grid and many points overlap each other. This problem is known as **overplotting**. This arrangement makes it hard to see where the mass of the data is.
+
+You can avoid this gridding by setting the position adjustment to "jitter". `position = "jitter"` adds a small amount of random noise to each point.
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy), position = "jitter")
+```
+:::
+:::
 
 ## Coordinate Systems
 
-## The layered grammar of graphics
+::: panel-tabset
+## `coord_flip()`
+
+::: columns
+::: {.column width="40%"}
+-   `coord_flip()` switches the x and y axes.
+
+-   This is useful (for example), if you want horizontal boxplots.
+
+-   It's also useful for long labels: it's hard to get them to fit without overlapping on the x-axis.
+:::
+
+::: {.column width="60%"}
+```{r}
+p1 <- ggplot(data = mpg, mapping = aes(x = class, y = hwy)) + 
+  geom_boxplot()
+p2 <- ggplot(data = mpg, mapping = aes(x = class, y = hwy)) + 
+  geom_boxplot() +
+  coord_flip()
+
+p1 + p2
+```
+:::
+:::
+
+## `coord_quickmap()`
+
+::: columns
+::: {.column width="40%"}
+-   `coord_quickmap()` sets the aspect ratio correctly for maps.
+
+-   This is very important if you're plotting spatial data with ggplot2.
+:::
+
+::: {.column width="60%"}
+```{r}
+nz <- map_data("nz")
+
+p1 <- ggplot(nz, aes(long, lat, group = group)) +
+  geom_polygon(fill = "white", colour = "black")
+
+p2 <- ggplot(nz, aes(long, lat, group = group)) +
+  geom_polygon(fill = "white", colour = "black") +
+  coord_quickmap()
+
+p1 + p2
+```
+:::
+:::
+
+## `coord_polar()`
+
+::: columns
+::: {.column width="40%"}
+-   `coord_polar()` uses polar coordinates. Polar coordinates reveal an interesting connection between a bar chart and a Coxcomb chart.
+:::
+
+::: {.column width="60%"}
+```{r}
+bar <- ggplot(data = diamonds) + 
+  geom_bar(
+    mapping = aes(x = cut, fill = cut), 
+    show.legend = FALSE,
+    width = 1
+  ) + 
+  theme(aspect.ratio = 1) +
+  labs(x = NULL, y = NULL)
+
+p1 <- bar + coord_flip()
+p2 <- bar + coord_polar()
+
+p1 + p2
+```
+:::
+:::
+:::
+
+## The layered grammar of graphics {smaller="false"}
+
+In the previous sections, you learned much more than how to make scatterplots, bar charts, and boxplots. You learned a foundation that you can use to make *any* type of plot with ggplot2. To see this, let's add position adjustments, stats, coordinate systems, and faceting to our code template
+
+    ggplot(data = <DATA>) +
+       <GEOM_FUNCTION>(
+          mapping = aes(<MAPPINGS>),
+          stat = <STAT>,
+          position = <POSITION>
+       ) +
+       <COORDINATE_FUNCTION> +
+       <FACET_FUNCTION>
 
 # GRAPHICS FOR COMMUNICATION
 
 ## Label
 
-## Annotations
+::: panel-tabset
+## `labs()`
+
+::: columns
+::: {.column width="60%"}
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Fuel efficiency generally decreases with engine size")
+```
+:::
+
+::: {.column width="40%"}
+-   The easiest place to start when turning an exploratory graphic into an expository graphic is with good labels.
+
+-   You add labels with the [`labs()`](https://ggplot2.tidyverse.org/reference/labs.html) function. This example adds a plot title.
+
+-   The purpose of a plot title is to summarise the main finding. Avoid titles that just describe what the plot is, e.g. "A scatterplot of engine displacement vs. fuel economy".
+:::
+:::
+
+## + `labs()`
+
+::: columns
+::: {.column width="60%"}
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) +
+  labs(
+    title = "Fuel efficiency generally decreases with engine size",
+    subtitle = "Two seaters (sports cars) are an exception because of their light weight",
+    caption = "Data from fueleconomy.gov",
+    x = "Engine displacement (L)",
+    y = "Highway fuel economy (mpg)",
+    colour = "Car type"
+  )
+```
+:::
+
+::: {.column width="40%"}
+-   If you need to add more text, there are two other useful labels that you can use):
+
+    -   `subtitle` adds additional detail in a smaller font beneath the title.
+
+    -   `caption` adds text at the bottom right of the plot, often used to describe the source of the data.
+
+-   You can also use [`labs()`](https://ggplot2.tidyverse.org/reference/labs.html) to replace the axis and legend titles.
+
+    -   t's usually a good idea to replace short variable names with more detailed descriptions, and to include the units.
+:::
+:::
+
+## Eqs
+
+::: columns
+::: {.column width="60%"}
+```{r}
+df <- tibble(
+  x = runif(10),
+  y = runif(10)
+)
+
+ggplot(df, aes(x, y)) +
+  geom_point() +
+  labs(
+    x = quote(sum(x[i] ^ 2, i == 1, n)),
+    y = quote(alpha + beta + frac(delta, theta))
+  )
+```
+:::
+
+::: {.column width="40%"}
+-   It's possible to use mathematical equations instead of text strings. Just switch `""` out for [`quote()`](https://rdrr.io/r/base/substitute.html) and read about the available options in [`?plotmath`](https://rdrr.io/r/grDevices/plotmath.html)
+:::
+:::
+:::
+
+## Annotations (I)
+
+::: panel-tabset
+## `geom_text()`
+
+::: columns
+::: {.column width="40%"}
+-   In addition to labelling major components of your plot, it's often useful to label individual observations or groups of observations.
+
+-   The first tool you have at your disposal is [`geom_text()`](https://ggplot2.tidyverse.org/reference/geom_text.html).
+
+-   [`geom_text()`](https://ggplot2.tidyverse.org/reference/geom_text.html) is similar to [`geom_point()`](https://ggplot2.tidyverse.org/reference/geom_point.html), but it has an additional aesthetic: `label`. This makes it possible to add textual labels to your plots.
+:::
+
+::: {.column width="60%"}
+```{r}
+best_in_class <- mpg %>%
+  group_by(class) %>%
+  filter(row_number(desc(hwy)) == 1)
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) +
+  geom_text(aes(label = model), data = best_in_class)
+```
+:::
+:::
+
+## `geom_label()`
+
+::: columns
+::: {.column width="40%"}
+-   This is hard to read because the labels overlap with each other, and with the points.
+
+-   We can make things a little better by switching to [`geom_label()`](https://ggplot2.tidyverse.org/reference/geom_text.html) which draws a rectangle behind the text.
+
+-   We also use the `nudge_y` parameter to move the labels slightly above the corresponding points:
+:::
+
+::: {.column width="60%"}
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) +
+  geom_label(aes(label = model), data = best_in_class, nudge_y = 2, alpha = 0.5)
+```
+:::
+:::
+
+## `geom_label_repel()`
+
+::: columns
+::: {.column width="40%"}
+-   That helps a bit, but if you look closely in the top-left hand corner, you'll notice that there are two labels practically on top of each other.
+
+-   This happens because the highway mileage and displacement for the best cars in the compact and subcompact categories are exactly the same.
+
+-   There's no way that we can fix these by applying the same transformation for every label.
+
+-   Instead, we can use the **ggrepel** package by Kamil Slowikowski. This useful package will automatically adjust labels so that they don't overlap.
+
+-   Note another handy technique used here: I added a second layer of large, hollow points to highlight the points that I've labelled
+:::
+
+::: {.column width="60%"}
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) +
+  geom_point(size = 3, shape = 1, data = best_in_class) +
+  ggrepel::geom_label_repel(aes(label = model), data = best_in_class)
+```
+:::
+:::
+
+## Replace the legend
+
+::: columns
+::: {.column width="40%"}
+-   You can sometimes use the same idea to replace the legend with labels placed directly on the plot. It's not wonderful for this plot, but it isn't too bad.
+
+-   (`theme(legend.position = "none"`) turns the legend off
+:::
+
+::: {.column width="60%"}
+```{r}
+class_avg <- mpg %>%
+  group_by(class) %>%
+  summarise(
+    displ = median(displ),
+    hwy = median(hwy)
+  )
+
+ggplot(mpg, aes(displ, hwy, colour = class)) +
+  ggrepel::geom_label_repel(aes(label = class),
+    data = class_avg,
+    size = 6,
+    label.size = 0,
+    segment.color = NA
+  ) +
+  geom_point() +
+  theme(legend.position = "none")
+```
+:::
+:::
+
+## Single label
+
+::: columns
+::: {.column width="40%"}
+-   Alternatively, you might just want to add a single label to the plot, but you'll still need to create a data frame.
+
+-   Often, you want the label in the corner of the plot, so it's convenient to create a new data frame using `summarise()` to compute the maximum values of x and y.
+:::
+
+::: {.column width="60%"}
+```{r}
+label <- mpg %>%
+  summarise(
+    displ = max(displ),
+    hwy = max(hwy),
+    label = "Increasing engine size is \nrelated to decreasing fuel economy."
+  )
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point() +
+  geom_text(aes(label = label), data = label, vjust = "top", hjust = "right")
+```
+:::
+:::
+:::
+
+## Annotations (II)
+
+In addition to [`geom_text()`](https://ggplot2.tidyverse.org/reference/geom_text.html), you have many other geoms in ggplot2 available to help annotate your plot. A few ideas:
+
+-   Use [`geom_hline()`](https://ggplot2.tidyverse.org/reference/geom_abline.html) and [`geom_vline()`](https://ggplot2.tidyverse.org/reference/geom_abline.html) to add reference lines.
+
+    -   I often make them thick (`size = 2`) and white (`colour = white`), and draw them underneath the primary data layer.
+
+    -   That makes them easy to see, without drawing attention away from the data.
+
+-   Use [`geom_rect()`](https://ggplot2.tidyverse.org/reference/geom_tile.html) to draw a rectangle around points of interest.
+
+    -   The boundaries of the rectangle are defined by aesthetics `xmin`, `xmax`, `ymin`, `ymax`.
+
+-   Use [`geom_segment()`](https://ggplot2.tidyverse.org/reference/geom_segment.html) with the `arrow` argument to draw attention to a point with an arrow.
+
+    -   Use aesthetics `x` and `y` to define the starting location, and `xend` and `yend` to define the end location.
 
 ## Scales
 
