@@ -292,14 +292,16 @@ dataset %>%
   my_2d_dens_plot(x, y, 
                   title   = "Min - Max Scaling", 
                   x_label = "Normal Distribution",
-                  y_label = "Skewed Distribution")
+                  y_label = "Skewed Distribution") +
+  coord_fixed()
 
 dataset %>% 
   mutate(x = normalization(norm_samp), y = normalization(skew_samp)) %>% 
   my_2d_dens_plot(x, y, 
                   title   = "Normalization Scaling, using mean", 
                   x_label = "Normal Distribution",
-                  y_label = "Skewed Distribution")
+                  y_label = "Skewed Distribution") +
+  coord_fixed()
 
 dataset %>% 
   mutate(x = normalization(norm_samp, FUN = median), 
@@ -307,35 +309,40 @@ dataset %>%
   my_2d_dens_plot(x, y, 
                   title   = "Normalization Scaling, using median", 
                   x_label = "Normal Distribution",
-                  y_label = "Skewed Distribution")
+                  y_label = "Skewed Distribution") +
+  coord_fixed()
 
 dataset %>% 
   mutate(x = standarization(norm_samp), y = standarization(skew_samp)) %>% 
   my_2d_dens_plot(x, y, 
                   title   = "Standarization (z-scores) Scaling", 
                   x_label = "Normal Distribution",
-                  y_label = "Skewed Distribution")
+                  y_label = "Skewed Distribution") +
+  coord_fixed()
 
 dataset %>% 
   mutate(x = robust(norm_samp), y = robust(skew_samp)) %>% 
   my_2d_dens_plot(x, y, 
                   title   = "Robust Scaling", 
                   x_label = "Normal Distribution",
-                  y_label = "Skewed Distribution")
+                  y_label = "Skewed Distribution") +
+  coord_fixed()
 
 dataset %>% 
   lx_norm(norm_samp, skew_samp) %>% 
   my_2d_dens_plot(norm_samp, skew_samp, 
                   title   = "L2 Scaling", 
                   x_label = "Normal Distribution",
-                  y_label = "Skewed Distribution")
+                  y_label = "Skewed Distribution") +
+  coord_fixed()
 
 dataset %>% 
   lx_norm(norm_samp, skew_samp, p = 1) %>% 
   my_2d_dens_plot(norm_samp, skew_samp, 
                   title   = "L1 Scaling", 
                   x_label = "Normal Distribution",
-                  y_label = "Skewed Distribution")
+                  y_label = "Skewed Distribution") +
+  coord_fixed()
 
 
 # SCALERS FOR SCORING -----------------------------------------------------
