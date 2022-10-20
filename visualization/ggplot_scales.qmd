@@ -7,14 +7,78 @@ format:
 editor: visual
 ---
 
-## **Continuous colour scales**
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FALSE)
+library(tidyverse)
+```
+
+# **Continuous colour scales**
 
 The default scale for continuous fill scales is [`scale_fill_continuous()`](https://ggplot2.tidyverse.org/reference/scale_colour_continuous.html) which in turn defaults to [`scale_fill_gradient()`](https://ggplot2.tidyverse.org/reference/scale_gradient.html).
 
 ```{r}
+#| layout-ncol: 3
+#| fig-cap: 
+#|   - "Default"
+#|   - "Continuous"
+#|   - "Gradient"
 erupt <- ggplot(faithfuld, aes(waiting, eruptions, fill = density)) +
   geom_raster() +
   scale_x_continuous(NULL, expand = c(0, 0)) + 
   scale_y_continuous(NULL, expand = c(0, 0)) + 
   theme(legend.position = "none")
+
+erupt
+erupt + scale_fill_continuous() 
+erupt + scale_fill_gradient() 
+```
+
+Gradient scales provide a robust method for creating any colour scheme you like. All you need to do is specify two or more reference colours, and ggplot2 will interpolate linearly between them. There are three functions that you can use for this purpose:
+
+-   [`scale_fill_gradient()`](https://ggplot2.tidyverse.org/reference/scale_gradient.html) produces a two-colour gradient
+
+-   [`scale_fill_gradient2()`](https://ggplot2.tidyverse.org/reference/scale_gradient.html) produces a three-colour gradient with specified midpoint
+
+-   [`scale_fill_gradientn()`](https://ggplot2.tidyverse.org/reference/scale_gradient.html) produces an n-colour gradient
+
+```{r}
+#| layout-ncol: 3
+#| fig-cap: 
+#|   - "gradient"
+#|   - "gradient2"
+#|   - "gradientn"
+erupt + scale_fill_gradient(low = "grey", high = "brown")
+
+erupt + 
+  scale_fill_gradient2(
+    low = "grey", 
+    mid = "white", 
+    high = "brown", 
+    midpoint = .02
+  )
+
+erupt + scale_fill_gradientn(colours = terrain.colors(7))
+```
+
+# Discrete colour scales
+
+The default scale for discrete colours is [`scale_fill_discrete()`](https://ggplot2.tidyverse.org/reference/scale_colour_discrete.html) which in turn defaults to [`scale_fill_hue()`](https://ggplot2.tidyverse.org/reference/scale_hue.html) so these are identical plots
+
+```{r}
+#| layout-ncol: 3
+#| fig-cap: 
+#|   - "Default"
+#|   - "Discrete"
+#|   - "Hue"
+df <- data.frame(x = c("a", "b", "c", "d"), y = c(3, 4, 1, 2))
+
+bars <- ggplot(df, aes(x, y, fill = x)) + 
+  geom_bar(stat = "identity") + 
+  labs(x = NULL, y = NULL) +
+  theme(legend.position = "none")
+
+bars
+bars + scale_fill_discrete()
+bars + scale_fill_hue()
 ```
