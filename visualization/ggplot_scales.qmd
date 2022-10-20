@@ -1,0 +1,20 @@
+---
+title: "GGPlot Scales"
+format: 
+  html:
+    toc: true
+    number-sections: true
+editor: visual
+---
+
+## **Continuous colour scales**
+
+The default scale for continuous fill scales is [`scale_fill_continuous()`](https://ggplot2.tidyverse.org/reference/scale_colour_continuous.html) which in turn defaults to [`scale_fill_gradient()`](https://ggplot2.tidyverse.org/reference/scale_gradient.html).
+
+```{r}
+erupt <- ggplot(faithfuld, aes(waiting, eruptions, fill = density)) +
+  geom_raster() +
+  scale_x_continuous(NULL, expand = c(0, 0)) + 
+  scale_y_continuous(NULL, expand = c(0, 0)) + 
+  theme(legend.position = "none")
+```

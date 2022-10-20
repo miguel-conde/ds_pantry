@@ -6,6 +6,7 @@ library(tidyverse)
 # https://github.com/jrnold/ggthemes
 # vignette("ggplot2-specs") = https://cran.r-project.org/web/packages/ggplot2/vignettes/ggplot2-specs.html
 # http://rstudio.com/resources/cheatsheets
+# http://ggplot2-book.org/
 
 
 # 1. DATA VISUALISATION ---------------------------------------------------
