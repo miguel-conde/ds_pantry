@@ -7,7 +7,6 @@ format:
 editor: visual
 ---
 
-
 ```{r, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FALSE)
 library(tidyverse)
@@ -61,6 +60,50 @@ erupt +
 erupt + scale_fill_gradientn(colours = terrain.colors(7))
 ```
 
+## Particular Continuous Scales
+
+There are multiple ways to specify continuous colour scales. There are many \"hand picked\" palettes available. For example, ggplot2 supplies two scale functions that bundle pre-specified palettes, [`scale_fill_viridis_c()`](https://ggplot2.tidyverse.org/reference/scale_viridis.html) and [`scale_fill_distiller()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html). The viridis scales are designed to be perceptually uniform in both colour and when reduced to black and white, and to be perceptible to people with various forms of colour blindness.
+
+```{r}
+#| layout-ncol: 3
+#| fig-cap: 
+#|   - "Default"
+#|   - "viridis::viridis"
+#|   - "viridis::magma"
+erupt
+erupt + scale_fill_viridis_c()
+erupt + scale_fill_viridis_c(option = "magma")
+```
+
+```{r}
+#| layout-ncol: 3
+#| fig-cap: 
+#|   - "Default"
+#|   - "brewer::1"
+#|   - "brewer::BrBG"
+erupt
+erupt + scale_fill_distiller()
+erupt + scale_fill_distiller(palette = "BrBG")
+```
+
+There are many other packages that provide useful colour palettes. For example, scico^38^ provides more palettes that are perceptually uniform and suitable for scientific visualisation:
+
+```{r}
+#| layout-ncol: 3
+erupt + scico::scale_fill_scico(palette = "bilbao") # the default
+erupt + scico::scale_fill_scico(palette = "vik")
+erupt + scico::scale_fill_scico(palette = "lajolla")
+```
+
+However, as there are a great many palette packages in R, a particularly useful package is paletteer, which aims to provide a common interface:
+
+```{r}
+#| layout-ncol: 2
+erupt + paletteer::scale_fill_paletteer_c("viridis::plasma")
+erupt + paletteer::scale_fill_paletteer_c("scico::tokyo")
+# erupt + paletteer::scale_fill_paletteer_c("gameofthrones::targaryen")
+```
+
 # Discrete colour scales
 
 The default scale for discrete colours is [`scale_fill_discrete()`](https://ggplot2.tidyverse.org/reference/scale_colour_discrete.html) which in turn defaults to [`scale_fill_hue()`](https://ggplot2.tidyverse.org/reference/scale_hue.html) so these are identical plots
@@ -82,3 +125,64 @@ bars
 bars + scale_fill_discrete()
 bars + scale_fill_hue()
 ```
+
+## Brewer Discrete Scales
+
+scale_colour_brewer() is a discrete colour scale that---along with the continuous analog [`scale_colour_distiller()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html) and binned analog [`scale_colour_fermenter()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html)---uses handpicked \"ColorBrewer\" colours taken from <http://colorbrewer2.org/>. These colours have been designed to work well in a wide variety of situations, although the focus is on maps and so the colours tend to work better when displayed in large areas.
+
+-   Sequential (= [scale_colour_distiller()](https://ggplot2.tidyverse.org/reference/scale_brewer.html) for continuous data)
+
+-   Qualitative: for unordered categorical data, the palettes of most interest are those in the second group. \'Set1\' and \'Dark2\' are particularly good for points, and \'Set2\', \'Pastel1\', \'Pastel2\' and \'Accent\' work well for areas.
+
+-   Diverging
+
+```{r}
+#| fig-height: 10
+RColorBrewer::display.brewer.all()
+```
+
+# Binned colour scales
+
+Colour scales also come in binned versions. The default scale is [`scale_fill_binned()`](https://ggplot2.tidyverse.org/reference/scale_colour_continuous.html) which in turn defaults to [`scale_fill_steps()`](https://ggplot2.tidyverse.org/reference/scale_steps.html). As with the binned position scales discussed in Section [10.4](https://ggplot2-book.org/scale-position.html#binned-position) these scales have an `n.breaks` argument that controls the number of discrete colour categories created by the scale. Counterintuitively---because the human visual system is very good at detecting edges---this can sometimes make a continuous colour gradient easier to perceive:
+
+```{r}
+#| layout-ncol: 3
+erupt + scale_fill_binned()
+erupt + scale_fill_steps()
+erupt + scale_fill_steps(n.breaks = 8)
+```
+
+In other respects [`scale_fill_steps()`](https://ggplot2.tidyverse.org/reference/scale_steps.html) is analogous to [`scale_fill_gradient()`](https://ggplot2.tidyverse.org/reference/scale_gradient.html), and allows you to construct your own two-colour gradients. There is also a three-colour variant [`scale_fill_steps2()`](https://ggplot2.tidyverse.org/reference/scale_steps.html) and n-colour scale variant [`scale_fill_stepsn()`](https://ggplot2.tidyverse.org/reference/scale_steps.html) that behave similarly to their continuous counterparts:
+
+```{r}
+#| layout-ncol: 3
+erupt + scale_fill_steps(low = "grey", high = "brown")
+erupt + 
+  scale_fill_steps2(
+    low = "grey", 
+    mid = "white", 
+    high = "brown", 
+    midpoint = .02
+  )
+erupt + scale_fill_stepsn(n.breaks = 12, colours = terrain.colors(12))
+```
+
+The viridis palettes can be used in the same way, by calling the palette generating functions directly when specifying the `colours` argument to [`scale_fill_stepsn()`](https://ggplot2.tidyverse.org/reference/scale_steps.html):
+
+```{r}
+#| layout-ncol: 3
+erupt + scale_fill_stepsn(n.breaks = 9, colours = viridis::viridis(9))
+erupt + scale_fill_stepsn(n.breaks = 9, colours = viridis::magma(9))
+erupt + scale_fill_stepsn(n.breaks = 9, colours = viridis::inferno(9))
+```
+
+Alternatively, a brewer analog for binned scales also exists, and is called [`scale_fill_fermenter()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html):
+
+```{r}
+#| layout-ncol: 3
+erupt + scale_fill_fermenter(n.breaks = 9)
+erupt + scale_fill_fermenter(n.breaks = 9, palette = "Oranges")
+erupt + scale_fill_fermenter(n.breaks = 9, palette = "PuOr")
+```
+
+Note that like the discrete [`scale_fill_brewer()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html)---and unlike the continuous [`scale_fill_distiller()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html)---the binned function [`scale_fill_fermenter()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html) does not interpolate between the brewer colours, and if you set `n.breaks` larger than the number of colours in the palette a warning message will appear and some colours will not be displayed.
