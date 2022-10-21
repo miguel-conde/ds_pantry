@@ -1163,7 +1163,7 @@ ggplot(mpg, aes(displ, hwy)) +
 
 ## Scales (IV) - Replacing a Scale
 
-Instead of just tweaking the details a little, you can instead replace the scale altogether. There are two types of scales you\'re mostly likely to want to switch out: continuous position scales and colour scales.
+Instead of just tweaking the details a little, you can instead replace the scale altogether. There are two types of scales you're mostly likely to want to switch out: continuous position scales and colour scales.
 
 ::: panel-tabset
 ## `log10(carat)`
@@ -1181,9 +1181,9 @@ ggplot(diamonds, aes(log10(carat), log10(price))) +
 :::
 
 ::: {.column width="40%"}
--   It\'s very useful to plot transformations of your variable.
+-   It's very useful to plot transformations of your variable.
 
--   For example, in diamond prices it\'s easier to see the precise relationship between `carat` and `price` if we log transform them
+-   For example, in diamond prices it's easier to see the precise relationship between `carat` and `price` if we log transform them
 
 -   However, the disadvantage of this transformation is that the axes are now labelled with the transformed values, making it hard to interpret the plot.
 :::
