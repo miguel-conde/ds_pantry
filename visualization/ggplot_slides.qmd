@@ -1,5 +1,10 @@
 ---
 title: "GGplot"
+toc: true
+toc-depth: 1
+number-sections: true
+number-depth: 1 
+slide-number: c/t
 format:
   revealjs:
     smaller: true
@@ -13,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FAL
 library(tidyverse)
 ```
 
-# Introduction
+# INTRODUCTION
 
 ## Visualisation and Communication in Data Science Projects
 
@@ -995,7 +1000,216 @@ In addition to [`geom_text()`](https://ggplot2.tidyverse.org/reference/geom_text
 
     -   Use aesthetics `x` and `y` to define the starting location, and `xend` and `yend` to define the end location.
 
-## Scales
+## Scales (I)
+
+::: columns
+::: {.column width="60%"}
+```{r}
+#| layout-ncol: 2
+#| fig-cap: 
+#|   - "Default"
+#|   - "Explicit"
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class))
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) +
+  scale_x_continuous() +
+  scale_y_continuous() +
+  scale_colour_discrete()
+
+```
+:::
+
+::: {.column width="40%"}
+-   The third way you can make your plot better for communication is to **adjust the scales**.
+
+    -   Scales control the **mapping** from **data values** to **things that you can perceive**.
+
+    -   Normally, ggplot2 **automatically** adds **default scales** for you.
+
+-   Note the naming scheme for scales: **`scale_`** followed by the name of the **aesthetic**, then `_`, then the name of the **scale**.
+
+    -   The default scales are named according to the type of variable they align with: **continuous**, **discrete**, **datetime**, or **date**.
+
+-   There are lots of **non-default scales** which you'll learn about below.
+:::
+:::
+
+## Scales (II) - Axis Ticks
+
+::: columns
+::: {.column width="40%"}
+-   There are two primary arguments that affect the appearance of the ticks on the axes and the keys on the legend: **`breaks`** and **`labels`**.
+
+    -   **Breaks** controls the **position of the ticks**, or the **values** associated with the keys.
+
+        -   The most common use of `breaks` is to override the default choice
+
+    -   **Labels** controls the text label associated with each tick/key.
+
+        -   You can use `labels` in the same way (a character vector the same length as `breaks`), but you can also set it to `NULL` to suppress the labels altogether.
+:::
+
+::: {.column width="60%"}
+::: panel-tabset
+## Breaks
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point() +
+  scale_y_continuous(breaks = seq(15, 40, by = 5))
+```
+
+## Labels
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point() +
+  scale_x_continuous(labels = NULL) +
+  scale_y_continuous(labels = NULL)
+```
+:::
+:::
+:::
+
+## Scales (III) - Legend Keys
+
+::: columns
+::: {.column width="60%"}
+::: panel-tabset
+## Original
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_count()
+```
+
+## Tweaked
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_count() + 
+  scale_size(breaks = c(5, 10), labels = c("small", "large")) + 
+  labs(size = "Size")
+```
+:::
+:::
+
+::: {.column width="40%"}
+-   You can also use `breaks` and `labels` to control the appearance of legends.
+
+-   Collectively axes and legends are called **guides**.
+
+    -   Axes are used for x and y aesthetics; legends are used for everything else.
+:::
+:::
+
+## Scales (III) - Legend Layout
+
+::: panel-tabset
+## `theme()`
+
+::: columns
+::: {.column width="40%"}
+-   To control the overall position of the legend, you need to use a [`theme()`](https://ggplot2.tidyverse.org/reference/theme.html) setting.
+
+    -   They control the non-data parts of the plot.
+
+    -   The theme setting `legend.position` controls where the legend is drawn
+
+    -   You can also use `legend.position = "none"` to suppress the display of the legend altogether.
+:::
+
+::: {.column width="60%"}
+```{r}
+#| layout-ncol: 2
+#| layout-nrow: 2
+base <- ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class))
+
+base + theme(legend.position = "left")
+base + theme(legend.position = "top")
+base + theme(legend.position = "bottom")
+base + theme(legend.position = "right") # the default
+```
+:::
+:::
+
+## `theme() + guides()`
+
+::: columns
+::: {.column width="40%"}
+-   To control the display of individual legends, use [`guides()`](https://ggplot2.tidyverse.org/reference/guides.html) along with [`guide_legend()`](https://ggplot2.tidyverse.org/reference/guide_legend.html) or [`guide_colourbar()`](https://ggplot2.tidyverse.org/reference/guide_colourbar.html).
+
+    -   The following example shows two important settings:
+
+        -   Controlling the number of rows the legend uses with `nrow`
+
+        -   And overriding one of the aesthetics to make the points bigger. This is particularly useful if you have used a low `alpha` to display many points on a plot.
+:::
+
+::: {.column width="60%"}
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) +
+  geom_smooth(se = FALSE) +
+  theme(legend.position = "bottom") +
+  guides(colour = guide_legend(nrow = 1, override.aes = list(size = 4)))
+```
+:::
+:::
+:::
+
+## Scales (IV) - Replacing a Scale
+
+Instead of just tweaking the details a little, you can instead replace the scale altogether. There are two types of scales you\'re mostly likely to want to switch out: continuous position scales and colour scales.
+
+::: panel-tabset
+## `log10(carat)`
+
+::: columns
+::: {.column width="60%"}
+```{r}
+#| layout-ncol: 2
+ggplot(diamonds, aes(carat, price)) +
+  geom_bin2d()
+
+ggplot(diamonds, aes(log10(carat), log10(price))) +
+  geom_bin2d()
+```
+:::
+
+::: {.column width="40%"}
+-   It\'s very useful to plot transformations of your variable.
+
+-   For example, in diamond prices it\'s easier to see the precise relationship between `carat` and `price` if we log transform them
+
+-   However, the disadvantage of this transformation is that the axes are now labelled with the transformed values, making it hard to interpret the plot.
+:::
+:::
+
+## `scale_x_log10()`
+
+::: columns
+::: {.column width="60%"}
+```{r}
+ggplot(diamonds, aes(carat, price)) +
+  geom_bin2d() + 
+  scale_x_log10() + 
+  scale_y_log10()
+```
+:::
+
+::: {.column width="40%"}
+-   Instead of doing the transformation in the aesthetic mapping, we can instead do it with the scale.
+
+-   This is visually identical, except the axes are labelled on the original data scale.
+:::
+:::
+:::
+
+## Scales (V) - Replacing a Color Scale
 
 ## Zooming
 
