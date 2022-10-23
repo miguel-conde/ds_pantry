@@ -62,7 +62,7 @@ erupt + scale_fill_gradientn(colours = terrain.colors(7))
 
 ## Particular Continuous Scales
 
-There are multiple ways to specify continuous colour scales. There are many \"hand picked\" palettes available. For example, ggplot2 supplies two scale functions that bundle pre-specified palettes, [`scale_fill_viridis_c()`](https://ggplot2.tidyverse.org/reference/scale_viridis.html) and [`scale_fill_distiller()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html). The viridis scales are designed to be perceptually uniform in both colour and when reduced to black and white, and to be perceptible to people with various forms of colour blindness.
+There are multiple ways to specify continuous colour scales. There are many "hand picked" palettes available. For example, ggplot2 supplies two scale functions that bundle pre-specified palettes, [`scale_fill_viridis_c()`](https://ggplot2.tidyverse.org/reference/scale_viridis.html) and [`scale_fill_distiller()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html). The viridis scales are designed to be perceptually uniform in both colour and when reduced to black and white, and to be perceptible to people with various forms of colour blindness.
 
 ```{r}
 #| layout-ncol: 3
@@ -128,11 +128,11 @@ bars + scale_fill_hue()
 
 ## Brewer Discrete Scales
 
-scale_colour_brewer() is a discrete colour scale that---along with the continuous analog [`scale_colour_distiller()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html) and binned analog [`scale_colour_fermenter()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html)---uses handpicked \"ColorBrewer\" colours taken from <http://colorbrewer2.org/>. These colours have been designed to work well in a wide variety of situations, although the focus is on maps and so the colours tend to work better when displayed in large areas.
+scale_colour_brewer() is a discrete colour scale that---along with the continuous analog [`scale_colour_distiller()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html) and binned analog [`scale_colour_fermenter()`](https://ggplot2.tidyverse.org/reference/scale_brewer.html)---uses handpicked "ColorBrewer" colours taken from <http://colorbrewer2.org/>. These colours have been designed to work well in a wide variety of situations, although the focus is on maps and so the colours tend to work better when displayed in large areas.
 
 -   Sequential (= [scale_colour_distiller()](https://ggplot2.tidyverse.org/reference/scale_brewer.html) for continuous data)
 
--   Qualitative: for unordered categorical data, the palettes of most interest are those in the second group. \'Set1\' and \'Dark2\' are particularly good for points, and \'Set2\', \'Pastel1\', \'Pastel2\' and \'Accent\' work well for areas.
+-   Qualitative: for unordered categorical data, the palettes of most interest are those in the second group. 'Set1' and 'Dark2' are particularly good for points, and 'Set2', 'Pastel1', 'Pastel2' and 'Accent' work well for areas.
 
 -   Diverging
 
