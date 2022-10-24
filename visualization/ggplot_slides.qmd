@@ -1211,6 +1211,103 @@ ggplot(diamonds, aes(carat, price)) +
 
 ## Scales (V) - Replacing a Color Scale
 
+### Discrete
+
+::: panel-tabset
+## ColorBrewer
+
+::: columns
+::: {.column width="40%"}
+-   Another scale that is frequently customised is colour.
+
+-   The default categorical scale picks colours that are evenly spaced around the colour wheel.
+
+-   Useful alternatives are the ColorBrewer scales which have been hand tuned to work better for people with common types of colour blindness.
+
+-   The two plots here look similar, but there is enough difference in the shades of red and green that the dots on the right can be distinguished even by people with red-green colour blindness.
+
+-   Don\'t forget simpler techniques.
+
+-   If there are just a few colours, you can add a redundant shape mapping.
+
+-   This will also help ensure your plot is interpretable in black and white.
+:::
+
+::: {.column width="60%"}
+```{r}
+#| layout-ncol: 2
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = drv))
+
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = drv, shape = drv)) +
+  scale_colour_brewer(palette = "Set1")
+```
+:::
+:::
+
+## Manual
+
+::: columns
+::: {.column width="40%"}
+-   When you have a predefined mapping between values and colours, use [`scale_colour_manual()`](https://ggplot2.tidyverse.org/reference/scale_manual.html).
+
+-   For example, if we map presidential party to colour, we want to use the standard mapping of red for Republicans and blue for Democrats:
+:::
+
+::: {.column width="60%"}
+```{r}
+presidential %>%
+  mutate(id = 33 + row_number()) %>%
+  ggplot(aes(start, id, colour = party)) +
+    geom_point() +
+    geom_segment(aes(xend = end, yend = id)) +
+    scale_colour_manual(values = c(Republican = "red", Democratic = "blue"))
+```
+:::
+:::
+:::
+
+## Scales (VI) - Replacing a Color Scale
+
+### Continuous
+
+::: columns
+::: {.column width="60%"}
+```{r}
+#| layout-ncol: 2
+df <- tibble(
+  x = rnorm(10000),
+  y = rnorm(10000)
+)
+ggplot(df, aes(x, y)) +
+  geom_hex() +
+  coord_fixed()
+
+ggplot(df, aes(x, y)) +
+  geom_hex() +
+  viridis::scale_fill_viridis() +
+  coord_fixed()
+```
+:::
+
+::: {.column width="40%"}
+-   For continuous colour, you can use the built-in [`scale_colour_gradient()`](https://ggplot2.tidyverse.org/reference/scale_gradient.html) or [`scale_fill_gradient()`](https://ggplot2.tidyverse.org/reference/scale_gradient.html).
+
+-   If you have a diverging scale, you can use [`scale_colour_gradient2()`](https://ggplot2.tidyverse.org/reference/scale_gradient.html).
+
+    -   That allows you to give, for example, positive and negative values different colours.
+
+    -   That\'s sometimes also useful if you want to distinguish points above or below the mean.
+
+-   Another option is `scale_colour_viridis()` provided by the **viridis** package.
+
+    -   It\'s a continuous analog of the categorical ColorBrewer scales.
+
+    -   It's carefully tailored a continuous colour scheme that has good perceptual properties.
+:::
+:::
+
 ## Zooming
 
 ## Themes
