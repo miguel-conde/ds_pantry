@@ -1416,6 +1416,6 @@ ggsave("my-plot.pdf")
 #> Saving 7 x 4.33 in image
 ```
 
-If you don\'t specify the `width` and `height` they will be taken from the dimensions of the current plotting device. For reproducible code, you\'ll want to specify them.
+If you don't specify the `width` and `height` they will be taken from the dimensions of the current plotting device. For reproducible code, you'll want to specify them.
 
 Generally, however, I think you should be assembling your final reports using R Markdown, so I want to focus on the important code chunk options that you should know about for graphics. You can learn more about [`ggsave()`](https://ggplot2.tidyverse.org/reference/ggsave.html) in the documentation.
