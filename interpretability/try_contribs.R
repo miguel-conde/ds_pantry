@@ -349,18 +349,40 @@ curve(lm_res_all$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Bosto
       add = TRUE, col = "red")
 
 #########
-library(xgboost)
+library(caret)
 
-Boston_xgboost <- model.matrix(medv ~., Boston)
-
-m_xgboost <- xgboost(data =  Boston_xgboost, 
-                     label = Boston$medv, 
-                     max_depth = 2,
-                     eta = 1, 
-                     nthread = 2, 
-                     nrounds = 2, 
-                     objective = "reg:squarederror")
+m_xgboost <- train(medv ~ ., Boston, 
+                   method = "xgbTree",
+                   trControl = trainControl(method = "none"))
 
 res_all_xgboost <- pdp_contribs(m_xgboost, Boston, 
                                 Boston %>% select(-medv) %>% names(), 
                                 pdp_pred_xgboost)
+
+res_all_xgboost$contribs
+
+probe_xgboost <- res_all_xgboost$contribs %>% mutate(y_hat = rowSums(.))
+probe_xgboost
+
+xgboost_predictions <- predict(m_xgboost, Boston)
+plot(xgboost_predictions, probe_xgboost$y_hat)
+abline(a= 0, b = 1)
+
+probe_xgboost %>% summarise_all(~ sum(.))
+sum(xgboost_predictions)
+
+contribs_lm %>% summarise_all(~ sum(.))
+
+curve(res_all_xgboost$contrib_funs$crim(x), from = min(Boston$crim), to = max(Boston$crim))
+curve(res_all_xgboost$contrib_funs$zn(x), from = min(Boston$zn), to = max(Boston$zn))
+curve(res_all_xgboost$contrib_funs$indus(x), from = min(Boston$indus), to = max(Boston$indus))
+curve(res_all_xgboost$contrib_funs$chas(x), from = min(Boston$chas), to = max(Boston$chas))
+curve(res_all_xgboost$contrib_funs$nox(x), from = min(Boston$nox), to = max(Boston$nox))
+curve(res_all_xgboost$contrib_funs$rm(x), from = min(Boston$rm), to = max(Boston$rm))
+curve(res_all_xgboost$contrib_funs$age(x), from = min(Boston$age), to = max(Boston$age))
+curve(res_all_xgboost$contrib_funs$dis(x), from = min(Boston$dis), to = max(Boston$dis))
+curve(res_all_xgboost$contrib_funs$rad(x), from = min(Boston$rad), to = max(Boston$rad))
+curve(res_all_xgboost$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$tax))
+curve(res_all_xgboost$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio))
+curve(res_all_xgboost$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black))
+curve(res_all_xgboost$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
