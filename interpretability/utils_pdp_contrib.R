@@ -1,6 +1,8 @@
 library(pdp)
 library(dplyr)
 library(ranger)
+library(ggplot2)
+library(patchwork)
 
 pdp_pred_lm <- function(object, newdata)  {
   results <- mean(as.vector(predict(object, newdata)))
@@ -33,9 +35,10 @@ pdp_1_contrib <- function(in_model, in_data, pred_var, pred_fun, grid_resolution
   X_aux_0 <- in_data %>% mutate_all(~ 0)
   X_aux_1 <- X_aux_0  %>% mutate(!!sym(pred_var) := avg_x)
   
-  # aux_y <- avg_y_hat - pred_fun(in_model, X_aux)
-  
+  # La distancia es la media de:
+  #          fitted - fitted cuando todos valen 0 menos el de interés
   dist <- avg_y_hat - (pred_fun(in_model, X_aux_1) - pred_fun(in_model, X_aux_0))
+  
   out <- pd_values %>% 
     mutate(yhat = yhat - dist)
   
@@ -80,9 +83,50 @@ pdp_contribs <- function(in_model,
     mutate(baseline = pred_fun(in_model, 
                                in_data %>% mutate_all(~ 0)), .before = 1)
   
+  # Regularización para que las contribuciones sumen lo mismo que las 
+  # predicciones
+  k <- pred_fun(in_model, in_data) * nrow(in_data) / sum(tbl_contribs)
+  
+  tbl_contribs <- (tbl_contribs * k) %>% as_tibble()
+  
   out <- list(contribs     = tbl_contribs, 
               contrib_grid = contrib_grid, 
               contrib_funs = contrib_funs)
   
   return(out)
+}
+
+ggplot_1_contrib <- function(res_all, in_data, tgt_var, 
+                             title = NULL,
+                             x_units = "", y_units = "", 
+                             n_x = 100,
+                             the_theme = theme_bw) {
+  
+  enquo_tgt_var <- enquo(tgt_var)
+  name_tgt_var  <- quo_name(enquo_tgt_var)
+  
+  the_x_data    <- pull(in_data, !!enquo_tgt_var)
+  
+  data_tbl <- tibble(x = seq(from       = min(the_x_data), 
+                             to         = max(the_x_data), 
+                             length.out = n_x),
+                     y = res_all$contrib_funs[[name_tgt_var]](x))
+  
+  the_title <-  ifelse(is.null(title), 
+                       paste(name_tgt_var, "contributions"), 
+                       title)
+  x_lab <- paste(name_tgt_var,   x_units)
+  y_lab <- paste("Contribution", y_units)
+  
+  p <- ggplot(data = data_tbl, mapping = aes(x, y)) +
+    geom_line() +
+    labs(title = the_title, x = x_lab, y = y_lab) +
+    the_theme()
+  
+  return(p)
+  
+}
+
+ggplot_contribs <- function(res_all) {
+  
 }
