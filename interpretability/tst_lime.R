@@ -2,6 +2,8 @@ library(tidyverse)
 #### LIME PACKAGE
 library(lime)
 
+data("Boston", package = "MASS")
+
 m_lm <- caret::train(medv ~ ., Boston, method = "lm")
 
 predict_model.lm <- function(x, new_data, type, ...) {
@@ -31,7 +33,13 @@ res_ex <- explanation %>% select(case, feature, feature_weight) %>%
   inner_join(explanation %>% select(case, prediction) %>% 
                distinct(), by = "case")
 
-res_ex %>% summarise_at(vars(-case), ~mean(., na.rm = TRUE)) %>% 
-  gather(key, value)
-m_lm$finalModel %>% summary()
+avg_contribs <- res_ex %>% summarise_at(vars(-case), ~mean(., na.rm = TRUE)) %>% 
+  rename(`(Intercept)` = model_intercept) %>% 
+  bind_rows(model.matrix(medv ~ ., Boston) %>% sweep(2, coef(m_lm$finalModel), "*") %>% 
+              apply(2, mean)) %>% 
+  mutate(model = c("lime", "lm"), .before = 1) %>% 
+  gather(key, value, -model) %>% 
+  spread(model, value) %>% 
+  drop_na()
 
+avg_contribs
