@@ -39,8 +39,15 @@ pdp_1_contrib <- function(in_model, in_data, pred_var, pred_fun, grid_resolution
   #          fitted - fitted cuando todos valen 0 menos el de interés
   dist <- avg_y_hat - (pred_fun(in_model, X_aux_1) - pred_fun(in_model, X_aux_0))
   
-  out <- pd_values %>% 
-    mutate(yhat = yhat - dist)
+  # aux_class <- class(pd_values)
+  # out <- pd_values %>%
+  #   as_tibble() %>%
+  #   mutate(yhat = yhat - dist) %>% 
+  #   as.data.frame()
+  # class(out) <- aux_class
+  
+  out <- pd_values
+  out$yhat <- out$yhat - dist
   
   return(out)
 }

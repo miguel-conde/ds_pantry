@@ -34,7 +34,7 @@ m_rf <- ranger(medv ~ ., Boston)
 predictions_rf <- predict(m_rf, Boston)$predictions
 Metrics::rmse(Boston$medv, predictions_rf)
 
-plot(Boston$medv, predicitons_rf, xlab = "Actual", ylab = "Predicted")
+plot(Boston$medv, predictions_rf, xlab = "Actual", ylab = "Predicted")
 abline(a = 0, b = 1)
 
 # Caret - XgBoost ---------------------------------------------------------
@@ -185,7 +185,7 @@ res_all_rf <- pdp_contribs(m_rf, Boston,
 
 autoplot(res_all_rf$contrib_grid$crim) +
   geom_abline(intercept = 0, slope = as.numeric(coef(m_lm)["crim"]), color = "red") +
-  geom_point(data = tibble(x = seq(0:100), y = res_all$contrib_funs$crim(seq(0:100))),
+  geom_point(data = tibble(x = seq(0:100), y = res_all_rf$contrib_funs$crim(seq(0:100))),
              aes(x = x, y = y), alpha = .1) +
   coord_cartesian(ylim = c(-20, 30))
 
@@ -208,11 +208,11 @@ autoplot(res_all_rf$contrib_grid$chas) +
 probe_rf <- res_all_rf$contribs %>% mutate(y_hat = rowSums(.))
 probe_rf
 
-plot(predicitons_rf, probe$y_hat)
+plot(predictions_rf, probe_rf$y_hat)
 abline(a= 0, b = 1)
 
 probe_rf %>% summarise_all(~ sum(.))
-sum(predicitons_rf)
+sum(predictions_rf)
 
 contribs_lm %>% summarise_all(~ sum(.))
 
