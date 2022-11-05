@@ -232,11 +232,11 @@ curve(res_all_rf$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Bosto
 
 
 ### LM
-lm_res_all <- pdp_contribs(m_lm, Boston, 
+res_all_lm <- pdp_contribs(m_lm, Boston, 
                         Boston %>% select(-medv) %>% names(), 
                         pdp_pred_lm)
 
-probe_lm <- lm_res_all$contribs %>% mutate(y_hat = rowSums(.))
+probe_lm <- res_all_lm$contribs %>% mutate(y_hat = rowSums(.))
 probe_lm
 
 plot(predictions_lm, probe_lm$y_hat)
@@ -247,83 +247,83 @@ sum(predictions_lm)
 
 contribs_lm %>% summarise_all(~ sum(.))
 
-curve(lm_res_all$contrib_funs$crim(x), from = min(Boston$crim), to = max(Boston$crim))
-curve(lm_res_all$contrib_funs$zn(x), from = min(Boston$zn), to = max(Boston$zn))
-curve(lm_res_all$contrib_funs$indus(x), from = min(Boston$indus), to = max(Boston$indus))
-curve(lm_res_all$contrib_funs$chas(x), from = min(Boston$chas), to = max(Boston$chas))
-curve(lm_res_all$contrib_funs$nox(x), from = min(Boston$nox), to = max(Boston$nox))
-curve(lm_res_all$contrib_funs$rm(x), from = min(Boston$rm), to = max(Boston$rm))
-curve(lm_res_all$contrib_funs$age(x), from = min(Boston$age), to = max(Boston$age))
-curve(lm_res_all$contrib_funs$dis(x), from = min(Boston$dis), to = max(Boston$dis))
-curve(lm_res_all$contrib_funs$rad(x), from = min(Boston$rad), to = max(Boston$rad))
-curve(lm_res_all$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$tax))
-curve(lm_res_all$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio))
-curve(lm_res_all$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black))
-curve(lm_res_all$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
+curve(res_all_lm$contrib_funs$crim(x), from = min(Boston$crim), to = max(Boston$crim))
+curve(res_all_lm$contrib_funs$zn(x), from = min(Boston$zn), to = max(Boston$zn))
+curve(res_all_lm$contrib_funs$indus(x), from = min(Boston$indus), to = max(Boston$indus))
+curve(res_all_lm$contrib_funs$chas(x), from = min(Boston$chas), to = max(Boston$chas))
+curve(res_all_lm$contrib_funs$nox(x), from = min(Boston$nox), to = max(Boston$nox))
+curve(res_all_lm$contrib_funs$rm(x), from = min(Boston$rm), to = max(Boston$rm))
+curve(res_all_lm$contrib_funs$age(x), from = min(Boston$age), to = max(Boston$age))
+curve(res_all_lm$contrib_funs$dis(x), from = min(Boston$dis), to = max(Boston$dis))
+curve(res_all_lm$contrib_funs$rad(x), from = min(Boston$rad), to = max(Boston$rad))
+curve(res_all_lm$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$tax))
+curve(res_all_lm$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio))
+curve(res_all_lm$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black))
+curve(res_all_lm$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
 
 
 # LM vs RF ----------------------------------------------------------------
 curve(res_all_rf$contrib_funs$crim(x), from = min(Boston$crim), to = max(Boston$crim),
       ylim = c(-2, 1.5))
-curve(lm_res_all$contrib_funs$crim(x), from = min(Boston$crim), to = max(Boston$crim),
+curve(res_all_lm$contrib_funs$crim(x), from = min(Boston$crim), to = max(Boston$crim),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$zn(x), from = min(Boston$zn), to = max(Boston$zn),
       ylim = c(-0.2, 4.5))
-curve(lm_res_all$contrib_funs$zn(x), from = min(Boston$zn), to = max(Boston$zn),
+curve(res_all_lm$contrib_funs$zn(x), from = min(Boston$zn), to = max(Boston$zn),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$indus(x), from = min(Boston$indus), to = max(Boston$indus))
-curve(lm_res_all$contrib_funs$indus(x), from = min(Boston$indus), to = max(Boston$indus),
+curve(res_all_lm$contrib_funs$indus(x), from = min(Boston$indus), to = max(Boston$indus),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$chas(x), from = min(Boston$chas), to = max(Boston$chas),
       ylim = c(0, 3))
-curve(lm_res_all$contrib_funs$chas(x), from = min(Boston$chas), to = max(Boston$chas),
+curve(res_all_lm$contrib_funs$chas(x), from = min(Boston$chas), to = max(Boston$chas),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$nox(x), from = min(Boston$nox), to = max(Boston$nox),
       ylim = c(-14, 0.8))
-curve(lm_res_all$contrib_funs$nox(x), from = min(Boston$nox), to = max(Boston$nox),
+curve(res_all_lm$contrib_funs$nox(x), from = min(Boston$nox), to = max(Boston$nox),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$rm(x), from = min(Boston$rm), to = max(Boston$rm),
       ylim = c(-1, 35))
-curve(lm_res_all$contrib_funs$rm(x), from = min(Boston$rm), to = max(Boston$rm),
+curve(res_all_lm$contrib_funs$rm(x), from = min(Boston$rm), to = max(Boston$rm),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$age(x), from = min(Boston$age), to = max(Boston$age))
-curve(lm_res_all$contrib_funs$age(x), from = min(Boston$age), to = max(Boston$age),
+curve(res_all_lm$contrib_funs$age(x), from = min(Boston$age), to = max(Boston$age),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$dis(x), from = min(Boston$dis), to = max(Boston$dis),
       ylim = c(-20, 3))
-curve(lm_res_all$contrib_funs$dis(x), from = min(Boston$dis), to = max(Boston$dis),
+curve(res_all_lm$contrib_funs$dis(x), from = min(Boston$dis), to = max(Boston$dis),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$rad(x), from = min(Boston$rad), to = max(Boston$rad),
       ylim = c(-0.2, 7))
-curve(lm_res_all$contrib_funs$rad(x), from = min(Boston$rad), to = max(Boston$rad),
+curve(res_all_lm$contrib_funs$rad(x), from = min(Boston$rad), to = max(Boston$rad),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$tax),
       ylim = c(-9, -1))
-curve(lm_res_all$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$tax),
+curve(res_all_lm$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$tax),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio),
       ylim = c(-22, 0.5))
-curve(lm_res_all$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio),
+curve(res_all_lm$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black),
       ylim = c(0, 4))
-curve(lm_res_all$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black),
+curve(res_all_lm$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black),
       add = TRUE, col = "red")
 
 curve(res_all_rf$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat),
       ylim = c(-20, 2))
-curve(lm_res_all$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat),
+curve(res_all_lm$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat),
       add = TRUE, col = "red")
 
 # XgBoost -----------------------------------------------------------------
@@ -364,18 +364,86 @@ curve(res_all_xgboost$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(
 
 p1 <- ggplot_1_contrib(res_all_rf, Boston, "crim", 
                  x_units = "\n(per capita crime rate by town)",
-                 y_units = "\n(to the median value of owner-occupied homes in $1000s)")
+                 y_units = "Contributions\n(to the median value of owner-occupied homes in $1000s)")
 p1
 
 p2 <- ggplot_1_contrib(res_all_rf, Boston, "lstat", 
                  x_units = "\n(lower status of the population (percent))",
-                 y_units = "\n(to the median value of owner-occupied homes in $1000s)")
+                 y_units = "Contributions\n(to the median value of owner-occupied homes in $1000s)")
 p2
 
 p3 <- ggplot_1_contrib(res_all_rf, Boston, "rm", 
                        x_units = "\n(average number of rooms per dwelling)",
-                       y_units = "\n(to the median value of owner-occupied homes in $1000s)")
+                       y_units = "Contributions\n(to the median value of owner-occupied homes in $1000s)")
 p3
 
 p <- p1 + p2 + p3 + p2 + p1 + p3 + p1 + p2 + p3 + p2 + p1 + p3 + p1
 p
+
+p_rf <- ggplot_contribs(res_all_rf, Boston %>% select(-medv), y_units = "$1000") + 
+  plot_annotation(
+      title = "Boston - Random Forest Model Contributions",
+      subtitle = "(to the median value of owner-occupied homes in $1000s)",
+      caption = "Source: mpg dataset in ggplot2"
+  )
+
+p_rf
+
+p_xgboost <- ggplot_contribs(res_all_xgboost, Boston %>% select(-medv), y_units = "$1000") + 
+  plot_annotation(
+    title = "Boston - XgBoost Model Contributions",
+    subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2"
+  )
+
+p_xgboost
+
+p_lm <- ggplot_contribs(res_all_lm, Boston %>% select(-medv), y_units = "$1000") + 
+  plot_annotation(
+    title = "Boston - Linear Model Contributions",
+    subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2"
+  )
+
+p_lm
+
+p_rf | p_lm
+p_xgboost | p_lm
+p_rf | p_xgboost
+
+p_rf + scale_y_continuous(limits = c(-10, 7))
+
+library(RColorBrewer)
+colourCount = length(names(Boston))
+my_colors = colorRampPalette(brewer.pal(8, "Set2"))(colourCount)
+my_colors = colorRampPalette(brewer.pal(9, "Pastel1"))(colourCount)
+my_colors = colorRampPalette(brewer.pal(8, "pastel2"))(colourCount)
+my_colors = colorRampPalette(brewer.pal(8, "Accent"))(colourCount)
+
+res_all_rf$contribs %>% 
+  mutate(obs = 1:nrow(res_all_rf$contribs), .before = 1) %>% 
+  gather(term, contribution, -obs) %>% 
+  ggplot(aes(x = obs, y = contribution, fill = term)) +
+  # geom_area(colour = "black", size = .2, alpha = .4)  +
+  geom_area(position = "fill") +
+  scale_fill_manual(values = my_colors) + 
+  labs(fill = "Variable")
+
+
+res_all_lm$contribs %>% 
+  mutate(obs = 1:nrow(res_all_rf$contribs), .before = 1) %>% 
+  gather(term, contribution, -obs) %>% 
+  ggplot(aes(x = obs, y = contribution, fill = term)) +
+  # geom_area(colour = "black", size = .2, alpha = .4)  +
+  geom_area() +
+  scale_fill_manual(values = my_colors) + 
+  labs(fill = "Variable")
+
+res_all_xgboost$contribs %>% 
+  mutate(obs = 1:nrow(res_all_rf$contribs), .before = 1) %>% 
+  gather(term, contribution, -obs) %>% 
+  ggplot(aes(x = obs, y = contribution, fill = term)) +
+  # geom_area(colour = "black", size = .2, alpha = .4)  +
+  geom_area() +
+  scale_fill_manual(values = my_colors) + 
+  labs(fill = "Variable")

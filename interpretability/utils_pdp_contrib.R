@@ -120,13 +120,14 @@ ggplot_1_contrib <- function(res_all, in_data, tgt_var,
                      y = res_all$contrib_funs[[name_tgt_var]](x))
   
   the_title <-  ifelse(is.null(title), 
-                       paste(name_tgt_var, "contributions"), 
+                       paste(name_tgt_var, ""), 
                        title)
   x_lab <- paste(name_tgt_var,   x_units)
-  y_lab <- paste("Contribution", y_units)
+  y_lab <- paste("", y_units)
   
   p <- ggplot(data = data_tbl, mapping = aes(x, y)) +
     geom_line() +
+    geom_hline(yintercept = 0, linetype = 2) +
     labs(title = the_title, x = x_lab, y = y_lab) +
     the_theme()
   
@@ -134,6 +135,23 @@ ggplot_1_contrib <- function(res_all, in_data, tgt_var,
   
 }
 
-ggplot_contribs <- function(res_all) {
+ggplot_contribs <- function(res_all, in_data, tgt_vars = NULL, y_units = "", ...) {
   
+  tgt_vars = if(is.null(tgt_vars)) {
+    names(in_data)
+  } else {
+    tgt_vars
+  }
+  
+  p_list <- vector(mode = "list", length = length(tgt_vars))
+  names(p_list) <- tgt_vars
+  for (i in seq_along(p_list)) {
+    p_list[[i]] <- ggplot_1_contrib(res_all, in_data, !!sym(tgt_vars[[i]]),
+                                    y_units = y_units, ...)
+  }
+  
+  out <- p_list[[1]]
+  for (i in 2:length(p_list)) out <- out + p_list[[i]]
+  
+  return(out)
 }
