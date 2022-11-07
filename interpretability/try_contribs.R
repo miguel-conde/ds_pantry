@@ -4,6 +4,8 @@ library(caret)
 
 library(pdp)
 
+library(ggfortify)
+
 source("interpretability/utils_pdp_contrib.R")
 
 # DATA --------------------------------------------------------------------
@@ -57,6 +59,17 @@ predictions_xgboost <- predict(m_xgboost$finalModel,
 Metrics::rmse(Boston$medv, predictions_xgboost)
 
 plot(Boston$medv, predictions_xgboost, xlab = "Actual", ylab = "Predicted")
+abline(a = 0, b = 1)
+
+
+# glm - lognormal ---------------------------------------------------------
+
+m_glm <- glm(medv ~ ., Boston, family = gaussian(link = log))
+
+predictions_glm <- predict(m_glm, Boston, type = "response") 
+Metrics::rmse(Boston$medv, predictions_glm)
+
+plot(Boston$medv, predictions_glm, xlab = "Actual", ylab = "Predicted")
 abline(a = 0, b = 1)
 
 # MY PDP ------------------------------------------------------------------
@@ -360,19 +373,51 @@ curve(res_all_xgboost$contrib_funs$black(x), from = min(Boston$black), to = max(
 curve(res_all_xgboost$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
 
 
+# Glm ---------------------------------------------------------------------
+res_all_glm <- pdp_contribs(m_glm, Boston, 
+                                Boston %>% select(-medv) %>% names(), 
+                                pdp_pred_glm)
+
+res_all_glm$contribs
+
+probe_glm <- res_all_glm$contribs %>% mutate(y_hat = rowSums(.))
+probe_glm
+
+plot(predictions_glm, probe_glm$y_hat)
+abline(a= 0, b = 1)
+
+probe_glm %>% summarise_all(~ sum(.))
+sum(predictions_glm)
+
+contribs_lm %>% summarise_all(~ sum(.))
+
+curve(res_all_glm$contrib_funs$crim(x), from = min(Boston$crim), to = max(Boston$crim))
+curve(res_all_glm$contrib_funs$zn(x), from = min(Boston$zn), to = max(Boston$zn))
+curve(res_all_glm$contrib_funs$indus(x), from = min(Boston$indus), to = max(Boston$indus))
+curve(res_all_glm$contrib_funs$chas(x), from = min(Boston$chas), to = max(Boston$chas))
+curve(res_all_glm$contrib_funs$nox(x), from = min(Boston$nox), to = max(Boston$nox))
+curve(res_all_glm$contrib_funs$rm(x), from = min(Boston$rm), to = max(Boston$rm))
+curve(res_all_glm$contrib_funs$age(x), from = min(Boston$age), to = max(Boston$age))
+curve(res_all_glm$contrib_funs$dis(x), from = min(Boston$dis), to = max(Boston$dis))
+curve(res_all_glm$contrib_funs$rad(x), from = min(Boston$rad), to = max(Boston$rad))
+curve(res_all_glm$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$tax))
+curve(res_all_glm$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio))
+curve(res_all_glm$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black))
+curve(res_all_glm$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
+
 # Plots -------------------------------------------------------------------
 
-p1 <- ggplot_1_contrib(res_all_rf, Boston, "crim", 
+p1 <- ggplot_1_contrib(res_all_rf, "crim", 
                  x_units = "\n(per capita crime rate by town)",
                  y_units = "Contributions\n(to the median value of owner-occupied homes in $1000s)")
 p1
 
-p2 <- ggplot_1_contrib(res_all_rf, Boston, "lstat", 
+p2 <- ggplot_1_contrib(res_all_rf, "lstat", 
                  x_units = "\n(lower status of the population (percent))",
                  y_units = "Contributions\n(to the median value of owner-occupied homes in $1000s)")
 p2
 
-p3 <- ggplot_1_contrib(res_all_rf, Boston, "rm", 
+p3 <- ggplot_1_contrib(res_all_rf, "rm", 
                        x_units = "\n(average number of rooms per dwelling)",
                        y_units = "Contributions\n(to the median value of owner-occupied homes in $1000s)")
 p3
@@ -380,7 +425,7 @@ p3
 p <- p1 + p2 + p3 + p2 + p1 + p3 + p1 + p2 + p3 + p2 + p1 + p3 + p1
 p
 
-p_rf <- ggplot_contribs(res_all_rf, Boston %>% select(-medv), y_units = "$1000") + 
+p_rf <- ggplot_contribs(res_all_rf, y_units = "$1000") + 
   plot_annotation(
       title = "Boston - Random Forest Model Contributions",
       subtitle = "(to the median value of owner-occupied homes in $1000s)",
@@ -389,7 +434,7 @@ p_rf <- ggplot_contribs(res_all_rf, Boston %>% select(-medv), y_units = "$1000")
 
 p_rf
 
-p_xgboost <- ggplot_contribs(res_all_xgboost, Boston %>% select(-medv), y_units = "$1000") + 
+p_xgboost <- ggplot_contribs(res_all_xgboost, y_units = "$1000") + 
   plot_annotation(
     title = "Boston - XgBoost Model Contributions",
     subtitle = "(to the median value of owner-occupied homes in $1000s)",
@@ -398,7 +443,7 @@ p_xgboost <- ggplot_contribs(res_all_xgboost, Boston %>% select(-medv), y_units 
 
 p_xgboost
 
-p_lm <- ggplot_contribs(res_all_lm, Boston %>% select(-medv), y_units = "$1000") + 
+p_lm <- ggplot_contribs(res_all_lm, y_units = "$1000") + 
   plot_annotation(
     title = "Boston - Linear Model Contributions",
     subtitle = "(to the median value of owner-occupied homes in $1000s)",
@@ -406,6 +451,15 @@ p_lm <- ggplot_contribs(res_all_lm, Boston %>% select(-medv), y_units = "$1000")
   )
 
 p_lm
+
+p_glm <- ggplot_contribs(res_all_glm, y_units = "$1000") + 
+  plot_annotation(
+    title = "Boston - Generalised Linear Model Contributions",
+    subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2"
+  )
+
+p_glm
 
 p_rf | p_lm
 p_xgboost | p_lm
@@ -447,3 +501,170 @@ res_all_xgboost$contribs %>%
   geom_area() +
   scale_fill_manual(values = my_colors) + 
   labs(fill = "Variable")
+
+
+# ROI ---------------------------------------------------------------------
+
+pdp_1_roi(res_all_lm, m_lm, Boston, "lstat", pdp_pred_lm) %>% 
+  ggplot(aes(x = lstat, y = roi)) +
+  geom_line()
+
+pdp_1_roi(res_all_rf, m_rf, Boston, "lstat", pdp_pred_rf) %>% 
+  ggplot(aes(x = lstat, y = roi)) +
+  geom_line()
+
+pdp_1_roi(res_all_xgboost, m_xgboost, Boston, "lstat", pdp_pred_xgboost) %>% 
+  ggplot(aes(x = lstat, y = roi)) +
+  geom_line()
+
+pdp_1_roi(res_all_glm, m_glm, Boston, "lstat", pdp_pred_glm) %>% 
+  ggplot(aes(x = lstat, y = roi)) +
+  geom_line()
+
+## LM
+rois_all_lm <- pdp_rois(res_all_lm, m_lm, Boston, 
+                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_lm)
+
+ggplot_1_roi(rois_all_lm, "lstat", 
+             x_units = "\nlower status of the population (%)",
+             y_units = "ROI ($1000 / 1%)")
+
+ggplot_rois(rois_all_lm, y_units = "ROI") + 
+  plot_annotation(
+    title = "Boston - LM Model ROIs",
+    # subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2")
+
+## RF
+rois_all_rf <- pdp_rois(res_all_rf, m_rf, Boston, 
+                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_rf)
+
+ggplot_1_roi(rois_all_rf, "lstat", 
+             x_units = "\nlower status of the population (%)",
+             y_units = "ROI ($1000 / 1%)")
+
+ggplot_rois(rois_all_rf, y_units = "ROI") + 
+  plot_annotation(
+    title = "Boston - RF Model ROIs",
+    # subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2")
+
+## XGBOOST
+rois_all_xgboost <- pdp_rois(res_all_xgboost, m_xgboost, Boston, 
+                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_xgboost)
+
+ggplot_1_roi(rois_all_xgboost, "lstat", 
+             x_units = "\nlower status of the population (%)",
+             y_units = "ROI ($1000 / 1%)")
+
+ggplot_rois(rois_all_xgboost, y_units = "ROI") + 
+  plot_annotation(
+    title = "Boston - XgBoost Model ROIs",
+    # subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2")
+
+## GLM
+rois_all_glm <- pdp_rois(res_all_glm, m_glm, Boston, 
+                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_glm)
+
+ggplot_1_roi(rois_all_glm, "lstat", 
+             x_units = "\nlower status of the population (%)",
+             y_units = "ROI ($1000 / 1%)")
+
+ggplot_rois(rois_all_glm, y_units = "ROI") + 
+  plot_annotation(
+    title = "Boston - GLM Model ROIs",
+    # subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2")
+
+# Numeric -----------------------------------------------------------------
+
+library(numDeriv)
+
+curve(res_all_glm$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
+
+x <- seq(1.73+.1, 37.97-.1, length.out = 100)
+the_grad <- grad(res_all_glm$contrib_funs$lstat, x)
+
+plot(x, the_grad, type = "l")
+curve(grad(res_all_glm$contrib_funs$lstat, x), 1.73+.1, 37.97-.10)
+
+
+# COMPLETE EXAMPLE --------------------------------------------------------
+
+
+# Setup -------------------------------------------------------------------
+
+
+# Model
+m_glm <- glm(medv ~ ., Boston, family = gaussian(link = log))
+
+# Contributions
+contribs_glm <- pdp_contribs(m_glm, Boston, 
+                             Boston %>% select(-medv) %>% names(), 
+                             pdp_pred_glm)
+
+# ROIs
+rois_all_glm <- pdp_rois(contribs_glm, m_glm, Boston, 
+                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_glm)
+
+
+# Model Analysis ----------------------------------------------------------
+
+predictions_glm <- predict(m_glm, Boston, type = "response") 
+Metrics::rmse(Boston$medv, predictions_glm)
+
+plot(Boston$medv, predictions_glm, xlab = "Actual", ylab = "Predicted")
+abline(a = 0, b = 1)
+
+autoplot(m_glm)
+
+# Contributions -----------------------------------------------------------
+
+contribs_glm$contribs
+
+probe_glm <- contribs_glm$contribs %>% mutate(y_hat = rowSums(.))
+probe_glm
+
+plot(predictions_glm, probe_glm$y_hat)
+abline(a= 0, b = 1)
+
+probe_glm %>% summarise_all(~ sum(.))
+sum(predictions_glm)
+
+contribs_lm %>% summarise_all(~ sum(.))
+
+
+# Plot contributions ------------------------------------------------------
+
+ggplot_1_contrib(contribs_glm, "lstat", 
+                 x_units = "\n(lower status of the population (percent))",
+                 y_units = "Contributions\n(to the median value of owner-occupied homes in $1000s)")
+
+
+p_glm <- ggplot_contribs(contribs_glm, y_units = "$1000") + 
+  plot_annotation(
+    title = "Boston - Generalised Linear Model Contributions",
+    subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2"
+  )
+
+p_glm
+
+
+# ROIs --------------------------------------------------------------------
+
+pdp_1_roi(contribs_glm, m_glm, Boston, "lstat", pdp_pred_glm) 
+
+
+# Plot ROIs ---------------------------------------------------------------
+
+ggplot_1_roi(rois_all_glm, "lstat", 
+             x_units = "\nlower status of the population (%)",
+             y_units = "ROI ($1000 / 1%)")
+
+ggplot_rois(rois_all_glm, y_units = "ROI") + 
+  plot_annotation(
+    title = "Boston - GLM Model ROIs",
+    # subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2")
