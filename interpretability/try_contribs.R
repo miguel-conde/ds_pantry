@@ -162,6 +162,35 @@ autoplot(res) +
   geom_abline(intercept = 0, slope = as.numeric(coef(m_lm)["black"]), color = "red") +
   coord_cartesian(ylim = c(-20, 30))
 
+res_all_lm <- pdp_contribs(m_lm, Boston, 
+                           Boston %>% select(-medv) %>% names(), 
+                           pdp_pred_lm)
+
+probe_lm <- res_all_lm$contribs %>% mutate(y_hat = rowSums(.))
+probe_lm
+
+plot(predictions_lm, probe_lm$y_hat)
+abline(a= 0, b = 1)
+
+probe_lm %>% summarise_all(~ sum(.))
+sum(predictions_lm)
+
+contribs_lm %>% summarise_all(~ sum(.))
+
+curve(res_all_lm$contrib_funs$crim(x), from = min(Boston$crim), to = max(Boston$crim))
+curve(res_all_lm$contrib_funs$zn(x), from = min(Boston$zn), to = max(Boston$zn))
+curve(res_all_lm$contrib_funs$indus(x), from = min(Boston$indus), to = max(Boston$indus))
+curve(res_all_lm$contrib_funs$chas(x), from = min(Boston$chas), to = max(Boston$chas))
+curve(res_all_lm$contrib_funs$nox(x), from = min(Boston$nox), to = max(Boston$nox))
+curve(res_all_lm$contrib_funs$rm(x), from = min(Boston$rm), to = max(Boston$rm))
+curve(res_all_lm$contrib_funs$age(x), from = min(Boston$age), to = max(Boston$age))
+curve(res_all_lm$contrib_funs$dis(x), from = min(Boston$dis), to = max(Boston$dis))
+curve(res_all_lm$contrib_funs$rad(x), from = min(Boston$rad), to = max(Boston$rad))
+curve(res_all_lm$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$tax))
+curve(res_all_lm$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio))
+curve(res_all_lm$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black))
+curve(res_all_lm$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
+
 
 # Random Forest -----------------------------------------------------------
 
@@ -244,35 +273,7 @@ curve(res_all_rf$contrib_funs$black(x), from = min(Boston$black), to = max(Bosto
 curve(res_all_rf$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
 
 
-### LM
-res_all_lm <- pdp_contribs(m_lm, Boston, 
-                        Boston %>% select(-medv) %>% names(), 
-                        pdp_pred_lm)
 
-probe_lm <- res_all_lm$contribs %>% mutate(y_hat = rowSums(.))
-probe_lm
-
-plot(predictions_lm, probe_lm$y_hat)
-abline(a= 0, b = 1)
-
-probe_lm %>% summarise_all(~ sum(.))
-sum(predictions_lm)
-
-contribs_lm %>% summarise_all(~ sum(.))
-
-curve(res_all_lm$contrib_funs$crim(x), from = min(Boston$crim), to = max(Boston$crim))
-curve(res_all_lm$contrib_funs$zn(x), from = min(Boston$zn), to = max(Boston$zn))
-curve(res_all_lm$contrib_funs$indus(x), from = min(Boston$indus), to = max(Boston$indus))
-curve(res_all_lm$contrib_funs$chas(x), from = min(Boston$chas), to = max(Boston$chas))
-curve(res_all_lm$contrib_funs$nox(x), from = min(Boston$nox), to = max(Boston$nox))
-curve(res_all_lm$contrib_funs$rm(x), from = min(Boston$rm), to = max(Boston$rm))
-curve(res_all_lm$contrib_funs$age(x), from = min(Boston$age), to = max(Boston$age))
-curve(res_all_lm$contrib_funs$dis(x), from = min(Boston$dis), to = max(Boston$dis))
-curve(res_all_lm$contrib_funs$rad(x), from = min(Boston$rad), to = max(Boston$rad))
-curve(res_all_lm$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$tax))
-curve(res_all_lm$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio))
-curve(res_all_lm$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black))
-curve(res_all_lm$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
 
 
 # LM vs RF ----------------------------------------------------------------
@@ -668,3 +669,98 @@ ggplot_rois(rois_all_glm, y_units = "ROI") +
     title = "Boston - GLM Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
     caption = "Source: mpg dataset in ggplot2")
+
+
+# ALL PLOTS ---------------------------------------------------------------
+
+## LM
+contribs_lm <- pdp_contribs(m_lm, Boston, 
+                            Boston %>% select(-medv) %>% names(), 
+                            pdp_pred_lm)
+
+p_lm <- ggplot_contribs(contribs_lm, y_units = "$1000") + 
+  plot_annotation(
+    title = "Boston - Linear Model Contributions",
+    subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2"
+  )
+
+rois_lm <- pdp_rois(contribs_lm, m_lm, Boston, 
+                    Boston %>% select(-medv, -chas) %>% names(), pdp_pred_lm)
+
+p_lm_rois <- ggplot_rois(rois_lm, y_units = "ROI") + 
+  plot_annotation(
+    title = "Boston - LM Model ROIs",
+    # subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2")
+
+## RF
+contribs_rf <- pdp_contribs(m_rf, Boston, 
+                            Boston %>% select(-medv) %>% names(), 
+                            pdp_pred_rf)
+
+p_rf <- ggplot_contribs(contribs_rf, y_units = "$1000") + 
+  plot_annotation(
+    title = "Boston - Random Forest Model Contributions",
+    subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2"
+  )
+
+rois_rf <- pdp_rois(contribs_rf, m_rf, Boston, 
+                    Boston %>% select(-medv, -chas) %>% names(), pdp_pred_rf)
+
+p_rf_rois <- ggplot_rois(rois_rf, y_units = "ROI") + 
+  plot_annotation(
+    title = "Boston - LM Model ROIs",
+    # subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2")
+
+## XgBoost
+contribs_xgboost <- pdp_contribs(m_xgboost, Boston, 
+                                 Boston %>% select(-medv) %>% names(), 
+                                 pdp_pred_xgboost)
+
+p_xgboost <- ggplot_contribs(contribs_xgboost, y_units = "$1000") + 
+  plot_annotation(
+    title = "Boston - XgBoost Model Contributions",
+    subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2"
+  )
+
+rois_xgboost <- pdp_rois(contribs_xgboost, m_glm, Boston, 
+                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_xgboost)
+
+p_xgboost_rois <- ggplot_rois(rois_xgboost, y_units = "ROI") + 
+  plot_annotation(
+    title = "Boston - LM Model ROIs",
+    # subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2")
+
+## GLM
+contribs_glm <- pdp_contribs(m_glm, Boston, 
+                             Boston %>% select(-medv) %>% names(), 
+                             pdp_pred_glm)
+
+p_glm <- ggplot_contribs(contribs_glm, y_units = "$1000") + 
+  plot_annotation(
+    title = "Boston - Generalised Linear Model Contributions",
+    subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2"
+  )
+
+rois_glm <- pdp_rois(contribs_glm, m_glm, Boston, 
+                     Boston %>% select(-medv, -chas) %>% names(), pdp_pred_glm)
+
+p_glm_rois <- ggplot_rois(rois_glm, y_units = "ROI") + 
+  plot_annotation(
+    title = "Boston - LM Model ROIs",
+    # subtitle = "(to the median value of owner-occupied homes in $1000s)",
+    caption = "Source: mpg dataset in ggplot2")
+
+p_lm | p_glm
+
+p_glm | p_rf
+
+p_glm | p_xgboost
+
+p_rf | p_xgboost
