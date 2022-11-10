@@ -100,7 +100,7 @@ pdp_1_contrib_old <- function(in_model, in_data, pred_var, pred_fun, grid_resolu
   return(out)
 }
 
-pdp_1_contrib <- function(in_model, in_data, pred_var, pred_fun, grid_resolution = 1000) {
+pdp_1_contrib <- function(in_model, in_data, pred_var, pred_fun, grid_resolution = 20) {
   
   pd_values <- partial(
     in_model,
@@ -424,3 +424,44 @@ ggplot_rois <- function(rois_all, tgt_vars = NULL, y_units = "", ...) {
   
   return(out)
 }
+
+
+# OPTIM CONTRIB CURVES ----------------------------------------------------
+
+sigmoid_fun <- function(x, A, B, C, D) {
+  D + A / (1 + exp(-B*(x-C)))
+}
+
+loss_fun_sigmoid <- function(A_B_C_D, contribs) {
+  out <- contribs %>% 
+    as_tibble() %>% 
+    mutate(sigmoid = sigmoid_fun(contribs[[1]], A_B_C_D[1], A_B_C_D[2], A_B_C_D[3], A_B_C_D[4])) %>% 
+    mutate(d = .[[2]] - sigmoid) %>% 
+    summarise(sse = sum(d^2)) %>% 
+    as.numeric()
+  
+  return(out)
+}
+
+estimate_0_sigmoid <- function(contribs, tgt_var) {
+  y_inf <- max(contribs$contrib_grid[[tgt_var]]$yhat)
+  y_C <- (max(contribs$contrib_grid[[tgt_var]]$yhat) - 
+            min(contribs$contrib_grid[[tgt_var]]$yhat)) / 2
+  C_0 <- (max(contribs$contrib_grid[[tgt_var]][[1]]) - 
+            min(contribs$contrib_grid[[tgt_var]][[1]])) / 2
+  A_0 <- 2*(y_inf - y_C)
+  D_0 <- 2*y_C - y_inf
+  
+  out <- c(A_0, 0, C_0, D_0)
+  
+  return(out)
+}
+
+# res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost, "zn"), 
+#                    fn = loss_fun_sigmoid, 
+#                    # gr = gr_sigmoid_fn,
+#                    contribs = contribs_xgboost$contrib_grid$zn,
+#                    method = "L-BFGS-B")
+# 
+# contribs_xgboost$contrib_grid$lstat %>% plot(type = "l")
+# curve(sigmoid_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3]), 0, 100, col = "blue", add = TRUE)
