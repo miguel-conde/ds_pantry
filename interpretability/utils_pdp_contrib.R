@@ -4,11 +4,11 @@
 
 # LIBRARIES and SOURCES ---------------------------------------------------
 
-library(pdp)
 library(dplyr)
 library(ranger)
 library(ggplot2)
 library(patchwork)
+library(pdp)
 
 
 # AVERAGE PREDICTIONS FOR PDP ---------------------------------------------
@@ -69,7 +69,7 @@ pdp_pred <- function(object, newdata) {
 
 pdp_1_contrib_old <- function(in_model, in_data, pred_var, pred_fun, grid_resolution = 20) {
   
-  pd_values <- partial(
+  pd_values <- pdp::partial(
     in_model,
     train = in_data, 
     pred.var = pred_var,
@@ -102,7 +102,7 @@ pdp_1_contrib_old <- function(in_model, in_data, pred_var, pred_fun, grid_resolu
 
 pdp_1_contrib <- function(in_model, in_data, pred_var, pred_fun, grid_resolution = 20) {
   
-  pd_values <- partial(
+  pd_values <- pdp::partial(
     in_model,
     train = in_data, 
     pred.var = pred_var,
@@ -428,6 +428,9 @@ ggplot_rois <- function(rois_all, tgt_vars = NULL, y_units = "", ...) {
 
 # OPTIM CONTRIB CURVES ----------------------------------------------------
 
+
+# Sigmoid 1 ---------------------------------------------------------------
+
 sigmoid_fun <- function(x, A, B, C, D) {
   D + A / (1 + exp(-B*(x-C)))
 }
@@ -444,18 +447,24 @@ loss_fun_sigmoid <- function(A_B_C_D, contribs) {
 }
 
 estimate_0_sigmoid <- function(contribs, tgt_var) {
-  y_inf <- max(contribs$contrib_grid[[tgt_var]]$yhat)
-  y_C <- (max(contribs$contrib_grid[[tgt_var]]$yhat) - 
-            min(contribs$contrib_grid[[tgt_var]]$yhat)) / 2
-  C_0 <- (max(contribs$contrib_grid[[tgt_var]][[1]]) - 
-            min(contribs$contrib_grid[[tgt_var]][[1]])) / 2
+  
+  aux <- contribs$contrib_grid[[tgt_var]]
+  
+  y_inf <- aux$yhat[nrow(aux)]
+  y_0 <- aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))]
+  y_C <- (max(aux$yhat) - min(aux$yhat)) / 2
+  C_0 <- (max(aux[[1]]) + min(aux[[1]])) / 2
   A_0 <- 2*(y_inf - y_C)
   D_0 <- 2*y_C - y_inf
-  
-  out <- c(A_0, 0, C_0, D_0)
+  k   <- (y_0 - D_0) / A_0 - 1
+  B_0 <- ifelse(k > 0, log(k) / C_0, 0)
+
+  out <- c(A_0, B_0, C_0, D_0)
   
   return(out)
 }
+
+
 
 # res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost, "zn"), 
 #                    fn = loss_fun_sigmoid, 
@@ -465,3 +474,79 @@ estimate_0_sigmoid <- function(contribs, tgt_var) {
 # 
 # contribs_xgboost$contrib_grid$lstat %>% plot(type = "l")
 # curve(sigmoid_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3]), 0, 100, col = "blue", add = TRUE)
+
+# Curve S ---------------------------------------------------------------
+
+curve_s_fun <- function(x, A, B, C, x_0) {
+  C + exp(A -B/x)
+}
+
+# manipulate(curve(curve_s_fun(x, A=A, B=1/B, C=C), -10, 10, ylim = c(C, C+exp(A))),
+#            A = slider(-10,10, initial = 0), 
+#            B=slider(-10, 10, initial = 0), 
+#            C= slider(-10,10, initial = 0))
+
+loss_fun_curve_s <- function(A_B_C, contribs) {
+  out <- contribs %>% 
+    as_tibble() %>% 
+    mutate(curve_s = curve_s_fun(contribs[[1]], A_B_C[1], A_B_C[2], A_B_C[3], A_B_C[4])) %>% 
+    mutate(d = .[[2]] - curve_s) %>% 
+    summarise(sse = sum(d^2)) %>% 
+    as.numeric()
+  
+  return(out)
+}
+
+estimate_0_curve_s <- function(contribs, tgt_var) {
+  
+  aux <- contribs$contrib_grid[[tgt_var]]
+  
+  y_inf <- aux$yhat[nrow(aux)]
+  y_0 <- aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))]
+  x_0 <- (max(aux[[1]]) + min(aux[[1]])) / 2
+  B_0 <- 1 / x_0
+  C_0 <- y_0
+  k <- y_inf - C_0
+  A_0 <- ifelse( k > 0, log(k), 0)
+  
+  out <- c(A_0, B_0, C_0, x_0)
+  
+  return(out)
+}
+
+# Curve tanh ------------------------------------------------------------
+
+curve_tanh_fun <- function(x, A, B, C, x_0) {
+  C + A*tanh((x - x_0)/B)
+}
+
+# manipulate(curve(curve_tanh_fun(x, A=A, B=B, C=C), -10, 10), 
+#            A = slider(-10,10), B=slider(-10, 10), C= slider(-10,10))
+
+loss_fun_curve_tanh <- function(A_B_C, contribs) {
+  out <- contribs %>% 
+    as_tibble() %>% 
+    mutate(curve_tanh = curve_tanh_fun(contribs[[1]], A_B_C[1], A_B_C[2], A_B_C[3], A_B_C[4])) %>% 
+    mutate(d = .[[2]] - curve_tanh) %>% 
+    summarise(sse = sum(d^2)) %>% 
+    as.numeric()
+  
+  return(out)
+}
+
+estimate_0_curve_tanh <- function(contribs, tgt_var) {
+  
+  aux <- contribs$contrib_grid[[tgt_var]]
+  
+  y_inf <- aux$yhat[nrow(aux)]
+  y_0 <- aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))]
+  x_0 <- (max(aux[[1]]) + min(aux[[1]])) / 2
+  
+  C_0 <- y_0
+  A_0 <- y_inf - C_0
+  B_0 <- rnorm(1, 1e-6)
+  
+  out <- c(A_0, B_0, C_0, x_0)
+  
+  return(out)
+}

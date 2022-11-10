@@ -172,3 +172,61 @@ res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost, "rm"),
 
 contribs_xgboost$contrib_grid$rm %>% plot(type = "l")
 curve(sigmoid_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3], res_optim$par[4]), 0, 100, col = "blue", add = TRUE)
+
+### 
+estimate_0_curve_s(contribs_xgboost, "zn")
+res_optim <- optim(par = estimate_0_curve_s(contribs_xgboost, "zn"), 
+                   fn = loss_fun_curve_s, 
+                   # gr = gr_sigmoid_fn,
+                   contribs = contribs_xgboost$contrib_grid$zn,
+                   method = "L-BFGS-B")
+
+contribs_xgboost$contrib_grid$zn %>% plot(type = "l")
+curve(curve_s_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3], res_optim$par[4]), 0, 100, col = "blue", add = TRUE)
+
+res_optim <- optim(par = estimate_0_curve_s(contribs_xgboost, "lstat"), 
+                   fn = loss_fun_curve_s, 
+                   # gr = gr_sigmoid_fn,
+                   contribs = contribs_xgboost$contrib_grid$lstat,
+                   method = "L-BFGS-B")
+
+contribs_xgboost$contrib_grid$lstat %>% plot(type = "l")
+curve(curve_s_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3]), 0, 100, col = "blue", add = TRUE)
+
+res_optim <- optim(par = estimate_0_curve_s(contribs_xgboost, "rm"), 
+                   fn = loss_fun_curve_s, 
+                   # gr = gr_sigmoid_fn,
+                   contribs = contribs_xgboost$contrib_grid$rm,
+                   method = "L-BFGS-B")
+
+contribs_xgboost$contrib_grid$rm %>% plot(type = "l")
+curve(curve_s_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3]), 0, 100, col = "blue", add = TRUE)
+
+### 
+estimate_0_curve_tanh(contribs_xgboost, "zn")
+res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost, "zn"), 
+                   fn = loss_fun_curve_tanh, 
+                   # gr = gr_sigmoid_fn,
+                   contribs = contribs_xgboost$contrib_grid$zn,
+                   method = "L-BFGS-B")
+
+contribs_xgboost$contrib_grid$zn %>% plot(type = "l")
+curve(curve_tanh_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3], res_optim$par[4]), 0, 100, col = "blue", add = TRUE)
+
+res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost, "lstat"), 
+                   fn = loss_fun_curve_tanh, 
+                   # gr = gr_sigmoid_fn,
+                   contribs = contribs_xgboost$contrib_grid$lstat,
+                   method = "L-BFGS-B")
+
+contribs_xgboost$contrib_grid$lstat %>% plot(type = "l")
+curve(curve_tanh_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3], res_optim$par[4]), 0, 100, col = "blue", add = TRUE)
+
+res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost, "rm"), 
+                   fn = loss_fun_curve_tanh, 
+                   # gr = gr_sigmoid_fn,
+                   contribs = contribs_xgboost$contrib_grid$rm,
+                   method = "L-BFGS-B")
+
+contribs_xgboost$contrib_grid$rm %>% plot(type = "l")
+curve(curve_tanh_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3], res_optim$par[4]), 0, 100, col = "blue", add = TRUE)
