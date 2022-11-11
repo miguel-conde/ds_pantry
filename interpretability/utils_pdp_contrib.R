@@ -429,21 +429,11 @@ ggplot_rois <- function(rois_all, tgt_vars = NULL, y_units = "", ...) {
 # OPTIM CONTRIB CURVES ----------------------------------------------------
 
 
-# Sigmoid 1 ---------------------------------------------------------------
 
-sigmoid_fun <- function(x, A, B, C, D) {
-  D + A / (1 + exp(-B*(x-C)))
-}
+# Sigmoid -----------------------------------------------------------------
 
-loss_fun_sigmoid <- function(A_B_C_D, contribs) {
-  out <- contribs %>% 
-    as_tibble() %>% 
-    mutate(sigmoid = sigmoid_fun(contribs[[1]], A_B_C_D[1], A_B_C_D[2], A_B_C_D[3], A_B_C_D[4])) %>% 
-    mutate(d = .[[2]] - sigmoid) %>% 
-    summarise(sse = sum(d^2)) %>% 
-    as.numeric()
-  
-  return(out)
+sigmoid_fun <- function(x, pars) {
+  pars[[4]] + pars[[1]] / (1 + exp(-pars[[2]]*(x-pars[[3]])))
 }
 
 estimate_0_sigmoid <- function(contribs, tgt_var) {
@@ -458,44 +448,22 @@ estimate_0_sigmoid <- function(contribs, tgt_var) {
   D_0 <- 2*y_C - y_inf
   k   <- (y_0 - D_0) / A_0 - 1
   B_0 <- ifelse(k > 0, log(k) / C_0, 0)
-
-  out <- c(A_0, B_0, C_0, D_0)
+  
+  out <- list(A_0, B_0, C_0, D_0)
   
   return(out)
 }
-
-
-
-# res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost, "zn"), 
-#                    fn = loss_fun_sigmoid, 
-#                    # gr = gr_sigmoid_fn,
-#                    contribs = contribs_xgboost$contrib_grid$zn,
-#                    method = "L-BFGS-B")
-# 
-# contribs_xgboost$contrib_grid$lstat %>% plot(type = "l")
-# curve(sigmoid_fun(x, res_optim$par[1], res_optim$par[2], res_optim$par[3]), 0, 100, col = "blue", add = TRUE)
 
 # Curve S ---------------------------------------------------------------
 
-curve_s_fun <- function(x, A, B, C, x_0) {
-  C + exp(A -B/x)
+curve_s_fun <- function(x, pars) {
+  pars[[3]] + exp(pars[[1]] - pars[[2]]/x)
 }
 
-# manipulate(curve(curve_s_fun(x, A=A, B=1/B, C=C), -10, 10, ylim = c(C, C+exp(A))),
-#            A = slider(-10,10, initial = 0), 
-#            B=slider(-10, 10, initial = 0), 
-#            C= slider(-10,10, initial = 0))
-
-loss_fun_curve_s <- function(A_B_C, contribs) {
-  out <- contribs %>% 
-    as_tibble() %>% 
-    mutate(curve_s = curve_s_fun(contribs[[1]], A_B_C[1], A_B_C[2], A_B_C[3], A_B_C[4])) %>% 
-    mutate(d = .[[2]] - curve_s) %>% 
-    summarise(sse = sum(d^2)) %>% 
-    as.numeric()
-  
-  return(out)
-}
+# manipulate(curve(curve_s_fun(x, A=A, B=B, C=C), -0, 100, ylim = c(C, C+exp(A))),
+#            A = slider(-0, 20, initial = 0),
+#            B = slider(-0, 100, initial = 0),
+#            C = slider(-0, 20, initial = 0))
 
 estimate_0_curve_s <- function(contribs, tgt_var) {
   
@@ -503,36 +471,25 @@ estimate_0_curve_s <- function(contribs, tgt_var) {
   
   y_inf <- aux$yhat[nrow(aux)]
   y_0 <- aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))]
-  x_0 <- (max(aux[[1]]) + min(aux[[1]])) / 2
-  B_0 <- 1 / x_0
+  B_0 <- max(aux[[1]]) + min(aux[[1]])
   C_0 <- y_0
   k <- y_inf - C_0
   A_0 <- ifelse( k > 0, log(k), 0)
   
-  out <- c(A_0, B_0, C_0, x_0)
+  out <- c(A_0, B_0, C_0)
   
   return(out)
 }
 
 # Curve tanh ------------------------------------------------------------
 
-curve_tanh_fun <- function(x, A, B, C, x_0) {
-  C + A*tanh((x - x_0)/B)
+curve_tanh_fun <- function(x, pars) {
+  pars[[3]] + pars[[1]] * tanh((x - pars[[4]]) / pars[[2]])
 }
 
 # manipulate(curve(curve_tanh_fun(x, A=A, B=B, C=C), -10, 10), 
 #            A = slider(-10,10), B=slider(-10, 10), C= slider(-10,10))
 
-loss_fun_curve_tanh <- function(A_B_C, contribs) {
-  out <- contribs %>% 
-    as_tibble() %>% 
-    mutate(curve_tanh = curve_tanh_fun(contribs[[1]], A_B_C[1], A_B_C[2], A_B_C[3], A_B_C[4])) %>% 
-    mutate(d = .[[2]] - curve_tanh) %>% 
-    summarise(sse = sum(d^2)) %>% 
-    as.numeric()
-  
-  return(out)
-}
 
 estimate_0_curve_tanh <- function(contribs, tgt_var) {
   
@@ -549,4 +506,44 @@ estimate_0_curve_tanh <- function(contribs, tgt_var) {
   out <- c(A_0, B_0, C_0, x_0)
   
   return(out)
+}
+
+# Loss Fun ----------------------------------------------------------------
+
+loss_fun <- function(pars, contribs, FUN) {
+  out <- contribs %>% 
+    as_tibble() %>% 
+    mutate(sigmoid = FUN(contribs[[1]], pars)) %>% 
+    mutate(d = .[[2]] - sigmoid) %>% 
+    summarise(sse = sum(d^2)) %>% 
+    as.numeric()
+  
+  return(out)
+}
+
+# Optim Fun ---------------------------------------------------------------
+
+fit_contrib_curve <- function(contribs, tgt_var) {
+  
+  res_optim_sigmoid <- optim(par = estimate_0_sigmoid(contribs, tgt_var), 
+                             fn = loss_fun,
+                             contribs = contribs_xgboost$contrib_grid[[tgt_var]],
+                             FUN = sigmoid_fun,
+                             method = "L-BFGS-B")
+  
+  res_optim_s <- optim(par = estimate_0_curve_s(contribs, tgt_var), 
+                       fn = loss_fun,
+                       contribs = contribs_xgboost$contrib_grid[[tgt_var]],
+                       FUN = curve_s_fun,
+                       method = "L-BFGS-B")
+  
+  res_optim_tanh <- optim(par = estimate_0_curve_tanh(contribs, tgt_var), 
+                          fn = loss_fun,
+                          contribs = contribs_xgboost$contrib_grid[[tgt_var]],
+                          FUN = curve_tanh_fun,
+                          method = "L-BFGS-B")
+  
+  loss_values <- c(res_optim_sigmoid$value, res_optim_s$value, res_optim_tanh$value)
+  
+  which(loss_values == min(loss_values))
 }
