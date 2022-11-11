@@ -523,27 +523,48 @@ loss_fun <- function(pars, contribs, FUN) {
 
 # Optim Fun ---------------------------------------------------------------
 
-fit_contrib_curve <- function(contribs, tgt_var) {
+set_best_curve <- function(type, res_optim, fit_fun) {
+  list(curve_type = type,
+       loss       = res_optim$value,
+       pars       = res_optim$par,
+       fit_fun    = fit_fun,
+       res_optim  = res_optim)
+}
+
+fit_contrib_curve <- function(contribs, tgt_var, seed = NULL) {
+  
+  if (!is.null(seed)) set.seed(seed)
   
   res_optim_sigmoid <- optim(par = estimate_0_sigmoid(contribs, tgt_var), 
                              fn = loss_fun,
                              contribs = contribs$contrib_grid[[tgt_var]],
                              FUN = sigmoid_fun,
                              method = "L-BFGS-B")
+  best <- set_best_curve(type      = "sigmoid",
+                         res_optim = res_optim_sigmoid,
+                         fit_fun   = sigmoid_fun)
   
   res_optim_s <- optim(par = estimate_0_curve_s(contribs, tgt_var), 
                        fn = loss_fun,
                        contribs = contribs$contrib_grid[[tgt_var]],
                        FUN = curve_s_fun,
                        method = "L-BFGS-B")
+  if (res_optim_s$value < best$loss) {
+    best <- set_best_curve(type      = "s",
+                           res_optim = res_optim_s,
+                           fit_fun   = curve_s_fun)
+  }
   
   res_optim_tanh <- optim(par = estimate_0_curve_tanh(contribs, tgt_var), 
                           fn = loss_fun,
                           contribs = contribs$contrib_grid[[tgt_var]],
                           FUN = curve_tanh_fun,
                           method = "L-BFGS-B")
+  if (res_optim_tanh$value < best$loss) {
+    best <- set_best_curve(type      = "tanh",
+                           res_optim = res_optim_tanh,
+                           fit_fun   = curve_tanh_fun)
+  }
   
-  loss_values <- c(res_optim_sigmoid$value, res_optim_s$value, res_optim_tanh$value)
-  
-  which(loss_values == min(loss_values))
+  return(best)
 }

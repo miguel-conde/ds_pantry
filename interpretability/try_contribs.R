@@ -861,3 +861,48 @@ res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost, "rm"),
 
 contribs_xgboost$contrib_grid$rm %>% plot(type = "l")
 curve(curve_tanh_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRUE)
+
+## ALL
+
+res_optim <- fit_contrib_curve(contribs_xgboost, "zn")
+res_optim$curve_type
+
+contribs_xgboost$contrib_grid$zn %>% 
+  plot(type = "l",  main = paste("zn -", res_optim$curve_type))
+curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 100, col = "blue", add = TRUE)
+
+##
+
+res_optim <- fit_contrib_curve(contribs_xgboost, "lstat")
+res_optim$curve_type
+
+contribs_xgboost$contrib_grid$lstat %>% 
+  plot(type = "l",  main = paste("lstat -", res_optim$curve_type))
+curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 100, col = "blue", add = TRUE)
+
+##
+
+res_optim <- fit_contrib_curve(contribs_xgboost, "rm")
+res_optim$curve_type
+
+contribs_xgboost$contrib_grid$rm%>% 
+  plot(type = "l",  main = paste("rm -", res_optim$curve_type))
+curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 100, col = "blue", add = TRUE)
+
+##
+
+res_optim <- fit_contrib_curve(contribs_xgboost, "black")
+res_optim$curve_type
+
+contribs_xgboost$contrib_grid$black %>% 
+  plot(type = "l",  main = paste("black -", res_optim$curve_type))
+curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 400, col = "blue", add = TRUE)
+
+##
+
+res_optim <- fit_contrib_curve(contribs_xgboost, "indus")
+res_optim$curve_type
+
+contribs_xgboost$contrib_grid$indus %>% 
+  plot(type = "l",  main = paste("indus -", res_optim$curve_type))
+curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 400, col = "blue", add = TRUE)
