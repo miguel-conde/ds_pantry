@@ -436,6 +436,13 @@ sigmoid_fun <- function(x, pars) {
   pars[[4]] + pars[[1]] / (1 + exp(-pars[[2]]*(x-pars[[3]])))
 }
 
+d_sigmoid_dx_fun <- function(x, pars) {
+  
+  the_exp <- exp(pars[[2]]*(x+pars[[3]]))
+  
+  pars[[2]] * pars[[1]] * the_exp / (exp(pars[[2]] * pars[[3]]) + exp(pars[[2]]*x))^2
+}
+
 estimate_0_sigmoid <- function(contribs, tgt_var) {
   
   aux <- contribs$contrib_grid[[tgt_var]]
@@ -465,6 +472,15 @@ curve_s_fun <- function(x, pars) {
 #            B = slider(-0, 100, initial = 0),
 #            C = slider(-0, 20, initial = 0))
 
+curve_ds_dx_fun <- function(x, pars) {
+  pars[[2]] / x^2 * exp(pars[[1]] - pars[[2]]/x)
+}
+
+# manipulate(curve(curve_ds_dx_fun(x, A=A, B=B, C=C), -0, 100, ylim = c(C, C+exp(A))),
+#            A = slider(-0, 20, initial = 0),
+#            B = slider(-0, 100, initial = 0),
+#            C = slider(-0, 20, initial = 0))
+
 estimate_0_curve_s <- function(contribs, tgt_var) {
   
   aux <- contribs$contrib_grid[[tgt_var]]
@@ -490,6 +506,11 @@ curve_tanh_fun <- function(x, pars) {
 # manipulate(curve(curve_tanh_fun(x, A=A, B=B, C=C), -10, 10), 
 #            A = slider(-10,10), B=slider(-10, 10), C= slider(-10,10))
 
+curve_dtanh_dx_fun <- function(x, pars) {
+  require(pracma)
+  
+  pars[[1]] / pars[[2]] * sech((x - pars[[4]]) / pars[[2]])^2
+}
 
 estimate_0_curve_tanh <- function(contribs, tgt_var) {
   
