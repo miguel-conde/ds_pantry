@@ -527,19 +527,19 @@ fit_contrib_curve <- function(contribs, tgt_var) {
   
   res_optim_sigmoid <- optim(par = estimate_0_sigmoid(contribs, tgt_var), 
                              fn = loss_fun,
-                             contribs = contribs_xgboost$contrib_grid[[tgt_var]],
+                             contribs = contribs$contrib_grid[[tgt_var]],
                              FUN = sigmoid_fun,
                              method = "L-BFGS-B")
   
   res_optim_s <- optim(par = estimate_0_curve_s(contribs, tgt_var), 
                        fn = loss_fun,
-                       contribs = contribs_xgboost$contrib_grid[[tgt_var]],
+                       contribs = contribs$contrib_grid[[tgt_var]],
                        FUN = curve_s_fun,
                        method = "L-BFGS-B")
   
   res_optim_tanh <- optim(par = estimate_0_curve_tanh(contribs, tgt_var), 
                           fn = loss_fun,
-                          contribs = contribs_xgboost$contrib_grid[[tgt_var]],
+                          contribs = contribs$contrib_grid[[tgt_var]],
                           FUN = curve_tanh_fun,
                           method = "L-BFGS-B")
   
