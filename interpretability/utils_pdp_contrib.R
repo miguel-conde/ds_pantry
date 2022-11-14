@@ -362,7 +362,7 @@ ggplot_contribs <- function(res_all, tgt_vars = NULL, y_units = "", ...) {
 
 # ROIs --------------------------------------------------------------------
 
-pdp_1_roi <- function(in_contribs, in_model, in_data, pred_var, pred_fun, delta = 0.01) {
+pdp_1_roi_old <- function(in_contribs, in_model, in_data, pred_var, pred_fun, delta = 0.01) {
   
   k <- 1 + delta
   
@@ -380,7 +380,16 @@ pdp_1_roi <- function(in_contribs, in_model, in_data, pred_var, pred_fun, delta 
   return(out)
 }
 
-pdp_rois <- function(in_contribs, 
+pdp_1_roi <- function(x, in_contribs, pred_var) {
+  
+  curve_pars <- as.list(in_contribs$smooth_contribs[[pred_var]]$pars)
+  
+  curve_fun <- in_contribs$smooth_contribs[[pred_var]]$roi_fun
+  
+  curve_fun(x, curve_pars)
+}
+
+pdp_rois_old <- function(in_contribs, 
                      in_model, 
                      in_data, 
                      pred_vars, 
@@ -414,9 +423,34 @@ pdp_rois <- function(in_contribs,
   return(out)
 }
 
+pdp_rois <- function(in_contribs, 
+                     in_data, 
+                     pred_vars = NULL) {
+  
+  if (is.null(pred_vars)) {
+    pred_vars <- in_contribs$contribs %>% names() %>% setdiff("baseline")
+  }
+
+  rois_data <- vector(mode = "list", length = length(pred_vars))
+  
+  names(rois_data) <-  pred_vars
+  
+  for (i in seq_along(pred_vars)) {
+    
+    var_i <- pred_vars[i]
+    
+    rois_data[[var_i]] <- pdp_1_roi(in_data[[var_i]], in_contribs, var_i)
+  }
+  
+  out <- bind_rows(rois_data)
+  
+  return(out)
+}
+
+
 # Plots -------------------------------------------------------------------
 
-ggplot_1_roi <- function(rois_all, tgt_var, 
+ggplot_1_roi_old <- function(rois_all, tgt_var, 
                          title = NULL,
                          x_units = "", y_units = "", 
                          n_x = 100,
@@ -449,7 +483,43 @@ ggplot_1_roi <- function(rois_all, tgt_var,
   
 }
 
-ggplot_rois <- function(rois_all, tgt_vars = NULL, y_units = "", ...) {
+ggplot_1_roi <- function(in_contribs, tgt_var, 
+                         in_data = NULL,
+                         x_min = ifelse(!is.null(in_data), min(in_data[[tgt_var]]), x_min),
+                         x_max = ifelse(!is.null(in_data), max(in_data[[tgt_var]]), x_max),
+                         title = NULL,
+                         x_units = "", y_units = "", 
+                         n_x = 100,
+                         the_theme = theme_bw) {
+  
+  enquo_tgt_var <- enquo(tgt_var)
+  name_tgt_var  <- quo_name(enquo_tgt_var)
+  
+  if (!is.null(in_data))  the_x_data <- pull(in_data, !!enquo_tgt_var)
+  else  the_x_data <- seq(x_min, x_max, length.out = n_x)
+  
+  data_tbl <- tibble(x = seq(from       = min(the_x_data), 
+                             to         = max(the_x_data), 
+                             length.out = n_x),
+                     y = pdp_1_roi(x, in_contribs, name_tgt_var))
+  
+  the_title <-  ifelse(is.null(title), 
+                       paste(name_tgt_var, ""), 
+                       title)
+  x_lab <- paste(name_tgt_var,   x_units)
+  y_lab <- paste("", y_units)
+  
+  p <- ggplot(data = data_tbl, mapping = aes(x, y)) +
+    geom_line() +
+    geom_hline(yintercept = 0, linetype = 2) +
+    labs(title = the_title, x = x_lab, y = y_lab) +
+    the_theme()
+  
+  return(p)
+  
+}
+
+ggplot_rois_old <- function(rois_all, tgt_vars = NULL, y_units = "", ...) {
   
   tgt_vars = if(is.null(tgt_vars)) {
     names(rois_all$rois_grid)
@@ -469,6 +539,28 @@ ggplot_rois <- function(rois_all, tgt_vars = NULL, y_units = "", ...) {
   
   return(out)
 }
+
+ggplot_rois <- function(in_contribs, in_data, tgt_vars = NULL, y_units = "", ...) {
+  
+  tgt_vars = if(is.null(tgt_vars)) {
+    names(in_contribs$contribs %>% select(-baseline))
+  } else {
+    tgt_vars
+  }
+  
+  p_list <- vector(mode = "list", length = length(tgt_vars))
+  names(p_list) <- tgt_vars
+  for (i in seq_along(p_list)) {
+    p_list[[i]] <- ggplot_1_roi(in_contribs, !!sym(tgt_vars[[i]]), in_data,
+                                y_units = y_units, ...)
+  }
+  
+  out <- p_list[[1]]
+  for (i in 2:length(p_list)) out <- out + p_list[[i]]
+  
+  return(out)
+}
+
 
 
 # OPTIM CONTRIB CURVES ----------------------------------------------------
@@ -589,12 +681,13 @@ loss_fun <- function(pars, contribs, FUN) {
 
 # Optim Fun ---------------------------------------------------------------
 
-set_best_curve <- function(type, res_optim, fit_fun) {
+set_best_curve <- function(type, res_optim, fit_fun, roi_fun) {
   list(curve_type = type,
        loss       = res_optim$value,
        pars       = res_optim$par,
        fit_fun    = fit_fun,
-       res_optim  = res_optim)
+       res_optim  = res_optim,
+       roi_fun    = roi_fun)
 }
 
 fit_contrib_curve <- function(contribs, tgt_var, seed = NULL) {
@@ -620,7 +713,8 @@ fit_contrib_curve <- function(contribs, tgt_var, seed = NULL) {
   if (!is.null(res_optim_sigmoid)) {
   best <- set_best_curve(type      = "sigmoid",
                          res_optim = res_optim_sigmoid,
-                         fit_fun   = sigmoid_fun)
+                         fit_fun   = sigmoid_fun,
+                         roi_fun   = d_sigmoid_dx_fun)
   }
   
   res_optim_s <- tryCatch(
@@ -641,7 +735,8 @@ fit_contrib_curve <- function(contribs, tgt_var, seed = NULL) {
     if (res_optim_s$value < best$loss) {
       best <- set_best_curve(type      = "s",
                              res_optim = res_optim_s,
-                             fit_fun   = curve_s_fun)
+                             fit_fun   = curve_s_fun,
+                             roi_fun   = curve_ds_dx_fun)
     }
   }
   
@@ -663,7 +758,8 @@ fit_contrib_curve <- function(contribs, tgt_var, seed = NULL) {
     if (res_optim_tanh$value < best$loss) {
       best <- set_best_curve(type      = "tanh",
                              res_optim = res_optim_tanh,
-                             fit_fun   = curve_tanh_fun)
+                             fit_fun   = curve_tanh_fun,
+                             roi_fun   = curve_dtanh_dx_fun)
     }
   }
   
