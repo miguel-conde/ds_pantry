@@ -31,7 +31,9 @@ res_ex <- explanation %>% select(case, feature, feature_weight) %>%
   inner_join(explanation %>% select(case, model_prediction) %>% 
                distinct(), by = "case") %>% 
   inner_join(explanation %>% select(case, prediction) %>% 
-               distinct(), by = "case")
+               distinct(), by = "case") %>% 
+  mutate(case = as.numeric(case)) %>% 
+  arrange(case)
 
 avg_contribs <- res_ex %>% summarise_at(vars(-case), ~mean(., na.rm = TRUE)) %>% 
   rename(`(Intercept)` = model_intercept) %>% 
@@ -43,3 +45,26 @@ avg_contribs <- res_ex %>% summarise_at(vars(-case), ~mean(., na.rm = TRUE)) %>%
   drop_na()
 
 avg_contribs
+
+
+contribs_explanation <- res_ex %>% 
+  mutate(chas = ifelse(is.na(chas), 0, chas)) %>% 
+  select(-case) %>% 
+  mutate_at(vars(-contains("prediction")), ~ . * prediction / model_prediction) %>% 
+  select(-contains("prediction")) %>% 
+  relocate(model_intercept, .before = 1) %>% 
+  mutate(baseline = predict(m_lm, Boston %>% mutate_all(~ 0)),
+         .before = 1) %>% 
+  mutate(a_repartir = model_intercept - baseline, .after = baseline) %>%
+  rowwise() %>%
+  mutate(s = sum(c_across(4:ncol(.)), na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate_at(vars(4:ncol(.)), ~ . + . * a_repartir / s) %>%
+  select(-a_repartir, -model_intercept, -s) %>% 
+  mutate(yhat = rowSums(., na.rm = TRUE))
+
+contribs_explanation
+
+contribs_model <- model.matrix(medv ~ ., Boston) %>% sweep(2, coef(m_lm$finalModel), "*") %>% 
+  as_tibble() %>% mutate(yhat = rowSums(.))
+contribs_model[, c("(Intercept)", setdiff(names(contribs_explanation), "baseline"))]

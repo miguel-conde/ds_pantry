@@ -656,16 +656,16 @@ p_glm
 
 # ROIs --------------------------------------------------------------------
 
-pdp_1_roi(contribs_glm, m_glm, Boston, "lstat", pdp_pred_glm) 
+pdp_1_roi(Boston$lstat, contribs_glm, "lstat") 
 
 
 # Plot ROIs ---------------------------------------------------------------
 
-ggplot_1_roi(rois_all_glm, "lstat", 
+ggplot_1_roi(contribs_glm, "lstat", Boston,
              x_units = "\nlower status of the population (%)",
              y_units = "ROI ($1000 / 1%)")
 
-ggplot_rois(rois_all_glm, y_units = "ROI") + 
+ggplot_rois(contribs_glm, Boston, y_units = "ROI") + 
   plot_annotation(
     title = "Boston - GLM Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
@@ -686,10 +686,9 @@ p_lm <- ggplot_contribs(contribs_lm, y_units = "$1000") +
     caption = "Source: mpg dataset in ggplot2"
   )
 
-rois_lm <- pdp_rois(contribs_lm, m_lm, Boston, 
-                    Boston %>% select(-medv, -chas) %>% names(), pdp_pred_lm)
+rois_lm <- pdp_rois(contribs_lm, Boston)
 
-p_lm_rois <- ggplot_rois(rois_lm, y_units = "ROI") + 
+p_lm_rois <- ggplot_rois(contribs_lm, Boston, y_units = "ROI") + 
   plot_annotation(
     title = "Boston - LM Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
@@ -707,12 +706,11 @@ p_rf <- ggplot_contribs(contribs_rf, y_units = "$1000") +
     caption = "Source: mpg dataset in ggplot2"
   )
 
-rois_rf <- pdp_rois(contribs_rf, m_rf, Boston, 
-                    Boston %>% select(-medv, -chas) %>% names(), pdp_pred_rf)
+rois_rf <- pdp_rois(contribs_rf, Boston) 
 
-p_rf_rois <- ggplot_rois(rois_rf, y_units = "ROI") + 
+p_rf_rois <- ggplot_rois(contribs_rf, Boston, y_units = "ROI") + 
   plot_annotation(
-    title = "Boston - LM Model ROIs",
+    title = "Boston - RF Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
     caption = "Source: mpg dataset in ggplot2")
 
@@ -728,12 +726,11 @@ p_xgboost <- ggplot_contribs(contribs_xgboost, y_units = "$1000") +
     caption = "Source: mpg dataset in ggplot2"
   )
 
-rois_xgboost <- pdp_rois(contribs_xgboost, m_glm, Boston, 
-                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_xgboost)
+rois_xgboost <- pdp_rois(contribs_xgboost, Boston)
 
-p_xgboost_rois <- ggplot_rois(rois_xgboost, y_units = "ROI") + 
+p_xgboost_rois <- ggplot_rois(contribs_xgboost, Boston, y_units = "ROI") + 
   plot_annotation(
-    title = "Boston - LM Model ROIs",
+    title = "Boston - XgBoost Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
     caption = "Source: mpg dataset in ggplot2")
 
@@ -749,12 +746,11 @@ p_glm <- ggplot_contribs(contribs_glm, y_units = "$1000") +
     caption = "Source: mpg dataset in ggplot2"
   )
 
-rois_glm <- pdp_rois(contribs_glm, m_glm, Boston, 
-                     Boston %>% select(-medv, -chas) %>% names(), pdp_pred_glm)
+rois_glm <- pdp_rois(contribs_glm, Boston)
 
-p_glm_rois <- ggplot_rois(rois_glm, y_units = "ROI") + 
+p_glm_rois <- ggplot_rois(contribs_glm, Boston, y_units = "ROI") + 
   plot_annotation(
-    title = "Boston - LM Model ROIs",
+    title = "Boston - GLM Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
     caption = "Source: mpg dataset in ggplot2")
 

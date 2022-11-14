@@ -27,6 +27,7 @@ explainer <- shapr(x_train, model)
 
 # Specifying the phi_0, i.e. the expected prediction without any features
 p <- mean(y_train)
+# p <- coef(model)['(Intercept)']
 
 # Computing the actual Shapley values with kernelSHAP accounting for feature dependence using
 # the empirical (conditional) distribution approach with bandwidth parameter sigma = 0.1 (default)
@@ -37,7 +38,9 @@ explanation <- explain(
   prediction_zero = p
 )
 
-model.matrix(f, Boston[1:6, ]) %>% sweep(2, coef(model), "*")
+contribs_model <- model.matrix(f, Boston[1:6, ]) %>% sweep(2, coef(model), "*") %>% 
+  as_tibble() %>% mutate(y_hat = rowSums(.))
+contribs_model
 
 # Printing the Shapley values for the test data.
 # For more information about the interpretation of the values in the table, see ?shapr::explain.
@@ -52,3 +55,17 @@ print(explanation$dt)
 
 # Plot the resulting explanations for observations 1 and 6
 plot(explanation, plot_phi0 = FALSE, index_x_test = c(1, 6))
+
+
+contribs_expalanation <- explanation$dt %>% 
+  as_tibble() %>% 
+  mutate(baseline = predict(model, x_test %>% as_tibble() %>% mutate_all(~ 0)),
+         .after = 1) %>% 
+  mutate(a_repartir = none - baseline, .after = baseline) %>%
+  rowwise() %>%
+  mutate(s = sum(c_across(4:ncol(.)))) %>%
+  ungroup() %>%
+  mutate_at(vars(4:ncol(.)), ~ . + . * a_repartir / s) %>%
+  select(-a_repartir, -none, -s) %>% 
+  mutate(yhat = rowSums(.))
+contribs_expalanation
