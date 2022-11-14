@@ -14,18 +14,8 @@ library(pdp)
 # AVERAGE PREDICTIONS FOR PDP ---------------------------------------------
 
 
-pdp_pred_lm_old <- function(object, newdata)  {
-  results <- mean(as.vector(predict(object, newdata)))
-  return(results)
-}
-
 pdp_pred_lm <- function(object, newdata)  {
   results <- as.vector(predict(object, newdata))
-  return(results)
-}
-
-pdp_pred_glm_old <- function(object, newdata)  {
-  results <- mean(as.vector(predict(object, newdata, type = "response")))
   return(results)
 }
 
@@ -34,28 +24,13 @@ pdp_pred_glm <- function(object, newdata)  {
   return(results)
 }
 
-pdp_pred_rf_old <- function(object, newdata)  {
-  results <- mean(as.vector(predict(object, newdata)$predictions))
-  return(results)
-}
-
 pdp_pred_rf <- function(object, newdata)  {
   results <- as.vector(predict(object, newdata)$predictions)
   return(results)
 }
 
-pdp_pred_xgboost_old <- function(object, newdata)  {
-  results <- mean(as.vector(predict(object, newdata)))
-  return(results)
-}
-
 pdp_pred_xgboost <- function(object, newdata)  {
   results <- as.vector(predict(object, newdata))
-  return(results)
-}
-
-pdp_pred_old <- function(object, newdata) {
-  results <- mean(as.vector(FUN_PRED(object, newdata)))
   return(results)
 }
 
@@ -65,40 +40,6 @@ pdp_pred <- function(object, newdata) {
 }
 
 # CONTRIBUTIONS -----------------------------------------------------------
-
-
-pdp_1_contrib_old <- function(in_model, in_data, pred_var, pred_fun, grid_resolution = 20) {
-  
-  pd_values <- pdp::partial(
-    in_model,
-    train = in_data, 
-    pred.var = pred_var,
-    pred.fun = pred_fun,
-    grid.resolution =  grid_resolution
-  )
-  
-  avg_y_hat <- pred_fun(in_model, in_data)
-  avg_x <- in_data %>% pull(!!sym(pred_var)) %>% mean()
-  
-  X_aux_0 <- in_data %>% mutate_all(~ 0)
-  X_aux_1 <- X_aux_0  %>% mutate(!!sym(pred_var) := avg_x)
-  
-  # La distancia es la media de:
-  #          fitted - fitted cuando todos valen 0 menos el de interés
-  dist <- avg_y_hat - (pred_fun(in_model, X_aux_1) - pred_fun(in_model, X_aux_0))
-  
-  # aux_class <- class(pd_values)
-  # out <- pd_values %>%
-  #   as_tibble() %>%
-  #   mutate(yhat = yhat - dist) %>% 
-  #   as.data.frame()
-  # class(out) <- aux_class
-  
-  out <- pd_values
-  out$yhat <- out$yhat - dist
-  
-  return(out)
-}
 
 pdp_1_contrib <- function(in_model, in_data, pred_var, pred_fun, grid_resolution = 20) {
   
@@ -183,9 +124,21 @@ pdp_contribs_old <- function(in_model,
   
   # Regularización para que las contribuciones sumen lo mismo que las 
   # predicciones
-  k <- pred_fun(in_model, in_data) * nrow(in_data) / sum(tbl_contribs)
+  # k <- mean(pred_fun(in_model, in_data)) * nrow(in_data) / sum(tbl_contribs)
+  k <- pred_fun(in_model, in_data) / apply(tbl_contribs, 1, sum)
   
   tbl_contribs <- (tbl_contribs * k) %>% as_tibble()
+  
+  X_aux_0 <- in_data %>% mutate_all(~ 0)
+  tbl_contribs <- tbl_contribs %>%
+    rename(y_avg = baseline) %>%
+    mutate(baseline = pred_fun(in_model, X_aux_0), .before = 1) %>%
+    mutate(a_repartir = y_avg - baseline, .after = 1) %>%
+    rowwise() %>%
+    mutate(s = sum(c_across(4:ncol(.)))) %>%
+    ungroup() %>%
+    mutate_at(vars(4:ncol(.)), ~ . + . * a_repartir / s) %>%
+    select(-a_repartir, -y_avg, -s)
   
   out <- list(contribs     = tbl_contribs, 
               contrib_grid = contrib_grid, 
@@ -194,11 +147,30 @@ pdp_contribs_old <- function(in_model,
   return(out)
 }
 
+optim_smooth_contrib <- function(contribs, in_data, seed = NULL) {
+  print("Smoothing contribs...")
+  the_vars <- setdiff(names(contribs$contribs), "baseline")
+  
+  out <- vector(mode = "list", length = length(the_vars))
+  
+  for (i in seq_along(out)) {
+    print(the_vars[[i]])
+    # probe <- in_data %>% select(the_vars[i]) %>% 
+    #   mutate(yhat = contribs$contribs %>% pull(the_vars[i]))
+    probe <- contribs$contrib_grid[[the_vars[[i]]]]
+    out[[i]] <- fit_contrib_curve(probe, the_vars[i], seed)
+  }
+  
+  return(out)
+  
+}
+
 pdp_contribs <- function(in_model, 
                          in_data, 
                          pred_vars, 
                          pred_fun, 
-                         grid_resolution = 20) {
+                         grid_resolution = 20, 
+                         seed = NULL) {
   
   # Lista con las contribuciones de cada variable en su grid
   contrib_grid <- vector(mode = "list", length = length(pred_vars))
@@ -237,7 +209,8 @@ pdp_contribs <- function(in_model,
   # k <- mean(pred_fun(in_model, in_data)) * nrow(in_data) / sum(tbl_contribs)
   k <- pred_fun(in_model, in_data) / apply(tbl_contribs, 1, sum)
   
-  tbl_contribs <- (tbl_contribs * k) %>% as_tibble()
+  # tbl_contribs <- (tbl_contribs * k) %>% as_tibble()
+  tbl_contribs <- mutate_all(as_tibble(tbl_contribs), ~. * k)
   
   X_aux_0 <- in_data %>% mutate_all(~ 0)
   tbl_contribs <- tbl_contribs %>%
@@ -250,17 +223,36 @@ pdp_contribs <- function(in_model,
     mutate_at(vars(4:ncol(.)), ~ . + . * a_repartir / s) %>%
     select(-a_repartir, -y_avg, -s)
   
+  # Regularizamos también las grids de pdps acorde con lo anterior
+  # Y sus funciones de aproximacion
+  for (i in seq_along(pred_vars)) {
+    
+    var_i <- pred_vars[i]
+  
+    delta <- median((tbl_contribs[[var_i]] - contrib_funs[[var_i]](in_data[[var_i]])))
+    
+    contrib_grid[[var_i]]$yhat  <- contrib_grid[[var_i]]$yhat + delta
+    
+    contrib_funs[[var_i]] <- approxfun(contrib_grid[[var_i]])
+  }
+  
+  
   out <- list(contribs     = tbl_contribs, 
+              smooth_contribs = NULL,
               contrib_grid = contrib_grid, 
               contrib_funs = contrib_funs)
+  
+  out$smooth_contribs <- optim_smooth_contrib(out, in_data, seed)
+  names(out$smooth_contribs) <- setdiff(names(out$contribs), "baseline")
   
   return(out)
 }
 
+
 # Plots -------------------------------------------------------------------
 
 
-ggplot_1_contrib <- function(res_all, tgt_var, 
+ggplot_1_contrib_old <- function(res_all, tgt_var, 
                              title = NULL,
                              x_units = "", y_units = "", 
                              n_x = 100,
@@ -293,6 +285,57 @@ ggplot_1_contrib <- function(res_all, tgt_var,
   
 }
 
+ggplot_1_contrib <- function(res_all, tgt_var, in_data,
+                             pps = FALSE, smooth = FALSE,
+                             title = NULL,
+                             x_units = "", y_units = "", 
+                             n_x = 100,
+                             the_theme = theme_bw) {
+  
+  enquo_tgt_var <- enquo(tgt_var)
+  name_tgt_var  <- quo_name(enquo_tgt_var)
+  
+  # the_x_data    <- pull(in_data, !!enquo_tgt_var)
+  the_x_data    <- pull(res_all$contrib_grid[[name_tgt_var]], !!enquo_tgt_var)
+  
+  data_pdp <- tibble(type = "PDP",
+                     x = seq(from       = min(the_x_data), 
+                             to         = max(the_x_data),
+                             length.out = n_x),
+                     y = res_all$contrib_funs[[name_tgt_var]](x))
+  
+  the_title <-  ifelse(is.null(title), 
+                       paste(name_tgt_var, ""), 
+                       title)
+  x_lab <- paste(name_tgt_var,   x_units)
+  y_lab <- paste("", y_units)
+  
+  p <- ggplot(data = data_pdp, mapping = aes(x, y, color = type)) +
+    geom_line(size = 2) +
+    geom_hline(yintercept = 0, linetype = 2) +
+    labs(title = the_title, x = x_lab, y = y_lab,  color = "Contributions") +
+    the_theme()
+  
+  if (pps == TRUE) {
+    data_pps <- tibble(type = "Point Contribs",
+                       x = in_data[[name_tgt_var]],
+                       y = res_all$contribs[[name_tgt_var]])
+                       # y = fix_outliers(res_all$contribs[[name_tgt_var]]))
+
+    p <- p + geom_point(data = data_pps, alpha = .5)
+  }
+  
+  if (smooth == TRUE) {
+    p <- p +
+      geom_function(fun = res_all$smooth_contribs[[name_tgt_var]]$fit_fun, 
+                    args = list(res_all$smooth_contribs[[name_tgt_var]]$pars),
+                    size = 1.25, colour = "blue")
+  }
+  
+  return(p)
+  
+}
+
 ggplot_contribs <- function(res_all, tgt_vars = NULL, y_units = "", ...) {
   
   tgt_vars = if(is.null(tgt_vars)) {
@@ -304,12 +347,14 @@ ggplot_contribs <- function(res_all, tgt_vars = NULL, y_units = "", ...) {
   p_list <- vector(mode = "list", length = length(tgt_vars))
   names(p_list) <- tgt_vars
   for (i in seq_along(p_list)) {
-    p_list[[i]] <- ggplot_1_contrib(res_all, !!sym(tgt_vars[[i]]),
+    p_list[[i]] <- ggplot_1_contrib(res_all, !!sym(tgt_vars[[i]]), 
                                     y_units = y_units, ...)
   }
   
   out <- p_list[[1]]
   for (i in 2:length(p_list)) out <- out + p_list[[i]]
+  
+  out <- out + guide_area() + plot_layout(guides = "collect")
   
   return(out)
 }
@@ -445,16 +490,16 @@ d_sigmoid_dx_fun <- function(x, pars) {
 
 estimate_0_sigmoid <- function(contribs, tgt_var) {
   
-  aux <- contribs$contrib_grid[[tgt_var]]
+  aux <- contribs
   
-  y_inf <- aux$yhat[nrow(aux)]
-  y_0 <- aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))]
-  y_C <- (max(aux$yhat) - min(aux$yhat)) / 2
-  C_0 <- (max(aux[[1]]) + min(aux[[1]])) / 2
-  A_0 <- 2*(y_inf - y_C)
-  D_0 <- 2*y_C - y_inf
-  k   <- (y_0 - D_0) / A_0 - 1
-  B_0 <- ifelse(k > 0, log(k) / C_0, 0)
+  y_inf <- aux[aux[[1]] == max(aux[[1]]), ]$yhat
+  y_0   <- mean(aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))])
+  y_C   <- (max(aux$yhat) - min(aux$yhat)) / 2
+  C_0   <- (max(aux[[1]]) + min(aux[[1]])) / 2
+  A_0   <- 2*(y_inf - y_C)
+  D_0   <- 2*y_C - y_inf
+  k     <- (y_0 - D_0) / A_0 - 1
+  B_0   <- ifelse(k > 0, log(k) / C_0, 0)
   
   out <- list(A_0, B_0, C_0, D_0)
   
@@ -483,14 +528,14 @@ curve_ds_dx_fun <- function(x, pars) {
 
 estimate_0_curve_s <- function(contribs, tgt_var) {
   
-  aux <- contribs$contrib_grid[[tgt_var]]
+  aux <- contribs
   
-  y_inf <- aux$yhat[nrow(aux)]
-  y_0 <- aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))]
-  B_0 <- max(aux[[1]]) + min(aux[[1]])
-  C_0 <- y_0
-  k <- y_inf - C_0
-  A_0 <- ifelse( k > 0, log(k), 0)
+  y_inf <- aux[aux[[1]] == max(aux[[1]]), ]$yhat
+  y_0   <- mean(aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))])
+  B_0   <- max(aux[[1]]) + min(aux[[1]])
+  C_0   <- y_0
+  k     <- y_inf - C_0
+  A_0   <- ifelse( k > 0, log(k), 0)
   
   out <- c(A_0, B_0, C_0)
   
@@ -514,11 +559,11 @@ curve_dtanh_dx_fun <- function(x, pars) {
 
 estimate_0_curve_tanh <- function(contribs, tgt_var) {
   
-  aux <- contribs$contrib_grid[[tgt_var]]
+  aux <- contribs
   
-  y_inf <- aux$yhat[nrow(aux)]
-  y_0 <- aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))]
-  x_0 <- (max(aux[[1]]) + min(aux[[1]])) / 2
+  y_inf <- aux[aux[[1]] == max(aux[[1]]), ]$yhat
+  y_0   <- mean(aux$yhat[which(aux[[1]] == min(abs(aux[[1]])))])
+  x_0   <- (max(aux[[1]]) + min(aux[[1]])) / 2
   
   C_0 <- y_0
   A_0 <- y_inf - C_0
@@ -556,36 +601,82 @@ fit_contrib_curve <- function(contribs, tgt_var, seed = NULL) {
   
   if (!is.null(seed)) set.seed(seed)
   
-  res_optim_sigmoid <- optim(par = estimate_0_sigmoid(contribs, tgt_var), 
-                             fn = loss_fun,
-                             contribs = contribs$contrib_grid[[tgt_var]],
-                             FUN = sigmoid_fun,
-                             method = "L-BFGS-B")
+  best <- NULL
+  
+  res_optim_sigmoid <- tryCatch(
+    {
+      optim(par = estimate_0_sigmoid(contribs, tgt_var), 
+            fn = loss_fun,
+            contribs = contribs,
+            FUN = sigmoid_fun,
+            method = "L-BFGS-B")
+    },
+    error = function(cond) {
+      warning(paste(tgt_var, ": Sigmoid failed..."))
+      return(NULL)
+    }
+    )
+  
+  if (!is.null(res_optim_sigmoid)) {
   best <- set_best_curve(type      = "sigmoid",
                          res_optim = res_optim_sigmoid,
                          fit_fun   = sigmoid_fun)
-  
-  res_optim_s <- optim(par = estimate_0_curve_s(contribs, tgt_var), 
-                       fn = loss_fun,
-                       contribs = contribs$contrib_grid[[tgt_var]],
-                       FUN = curve_s_fun,
-                       method = "L-BFGS-B")
-  if (res_optim_s$value < best$loss) {
-    best <- set_best_curve(type      = "s",
-                           res_optim = res_optim_s,
-                           fit_fun   = curve_s_fun)
   }
   
-  res_optim_tanh <- optim(par = estimate_0_curve_tanh(contribs, tgt_var), 
+  res_optim_s <- tryCatch(
+    {
+      optim(par = estimate_0_curve_s(contribs, tgt_var), 
+                       fn = loss_fun,
+                       contribs = contribs,
+                       FUN = curve_s_fun,
+                       method = "L-BFGS-B")
+    },
+    error = function(cond) {
+      warning(paste(tgt_var, ": S Curve failed..."))
+      return(NULL)
+    }
+  )
+    
+  if (!is.null(res_optim_s)) {
+    if (res_optim_s$value < best$loss) {
+      best <- set_best_curve(type      = "s",
+                             res_optim = res_optim_s,
+                             fit_fun   = curve_s_fun)
+    }
+  }
+  
+  res_optim_tanh <- tryCatch(
+    {
+      optim(par = estimate_0_curve_tanh(contribs, tgt_var), 
                           fn = loss_fun,
-                          contribs = contribs$contrib_grid[[tgt_var]],
+                          contribs = contribs,
                           FUN = curve_tanh_fun,
                           method = "L-BFGS-B")
-  if (res_optim_tanh$value < best$loss) {
-    best <- set_best_curve(type      = "tanh",
-                           res_optim = res_optim_tanh,
-                           fit_fun   = curve_tanh_fun)
+    },
+    error = function(cond) {
+      warning(paste(tgt_var, ": TANH Curve failed..."))
+      return(NULL)
+    }
+  )
+  
+  if (!is.null(res_optim_tanh)) {
+    if (res_optim_tanh$value < best$loss) {
+      best <- set_best_curve(type      = "tanh",
+                             res_optim = res_optim_tanh,
+                             fit_fun   = curve_tanh_fun)
+    }
   }
   
   return(best)
+}
+
+fix_outliers <- function(x) {
+  
+  bpx <- boxplot(x, plot = FALSE)
+  
+  x[x > max(bpx$stats)] <- max(bpx$stats)
+  x[x < min(bpx$stats)] <- min(bpx$stats)
+  
+  x
+  
 }

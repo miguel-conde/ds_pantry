@@ -906,3 +906,39 @@ res_optim$curve_type
 contribs_xgboost$contrib_grid$indus %>% 
   plot(type = "l",  main = paste("indus -", res_optim$curve_type))
 curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 400, col = "blue", add = TRUE)
+
+
+#####
+plot(Boston$zn, contribs_xgboost$contribs$zn)
+curve(res_all_xgboost$smooth_contribs$zn$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$zn$pars)), 
+      0, 400, col = "blue", add = TRUE)
+
+plot(Boston$lstat, contribs_xgboost$contribs$lstat)
+curve(res_all_xgboost$smooth_contribs$lstat$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$lstat$pars)), 
+      0, 400, col = "blue", add = TRUE)
+
+plot(Boston$rm, contribs_xgboost$contribs$rm)
+curve(res_all_xgboost$smooth_contribs$rm$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$rm$pars)), 
+      0, 400, col = "blue", add = TRUE)
+
+plot(Boston$black, contribs_xgboost$contribs$black)
+curve(res_all_xgboost$smooth_contribs$black$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$black$pars)), 
+      0, 400, col = "blue", add = TRUE)
+
+plot(Boston$indus, contribs_xgboost$contribs$indus)
+curve(res_all_xgboost$smooth_contribs$indus$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$indus$pars)), 
+      0, 400, col = "blue", add = TRUE)
+
+
+
+plot(Boston$lstat, contribs_xgboost$contribs$lstat, type = "p")
+lines(contribs_xgboost$contrib_grid$lstat, type = "l", lwd = 2, col = "red")
+curve(res_all_xgboost$smooth_contribs$lstat$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$lstat$pars)), 
+      0, 400, col = "blue", add = TRUE)
+
+incr <- mean((res_all_xgboost$contribs$lstat - res_all_xgboost$contrib_funs$lstat(Boston$lstat)))
+plot(contribs_xgboost$contrib_grid$lstat %>% as_tibble() %>% mutate(yhat = yhat+incr), 
+     type = "l", lwd= 2, cex = 2, col = "red", ylim = c(-30, -5))
+lines(Boston$lstat, contribs_xgboost$contribs$lstat, type = "p")
+curve(res_all_xgboost$smooth_contribs$lstat$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$lstat$pars)), 
+        +       0, 400, col = "blue", add = TRUE)
