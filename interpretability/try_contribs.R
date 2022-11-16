@@ -73,36 +73,6 @@ Metrics::rmse(Boston$medv, predictions_glm)
 plot(Boston$medv, predictions_glm, xlab = "Actual", ylab = "Predicted")
 abline(a = 0, b = 1)
 
-# MY PDP ------------------------------------------------------------------
-
-pdp_var <- function(in_data_features, tgt_var, n_grid = 20) {
-  
-  enquo_tgt_var <- enquo(tgt_var)
-  browser()
-  x <- in_data_features %>% pull(!!enquo_tgt_var)
-  x_min <- min(x)
-  x_max <- max(x)
-  
-  x_grid <- seq(x_min, x_max, length.out = n_grid)
-  
-  out <- rep(NA, n_grid)
-  for (i in seq_along(x_grid)) {
-    
-    X_i <- in_data_features %>% 
-      mutate(!!enquo_tgt_var := x_grid[i])
-    
-    x_m_lm <- lm(medv ~ . - 1, X_i)
-    
-    out[i] <- mean(fitted(x_m_lm))
-  }
-  
-  return(out)
-  
-}
-
-
-pdp_var(Boston, lstat)
-
 # PDP ---------------------------------------------------------------------
 
 # https://bradleyboehmke.github.io/HOML/iml.html
@@ -473,7 +443,7 @@ library(RColorBrewer)
 colourCount = length(names(Boston))
 my_colors = colorRampPalette(brewer.pal(8, "Set2"))(colourCount)
 my_colors = colorRampPalette(brewer.pal(9, "Pastel1"))(colourCount)
-my_colors = colorRampPalette(brewer.pal(8, "pastel2"))(colourCount)
+my_colors = colorRampPalette(brewer.pal(8, "Pastel2"))(colourCount)
 my_colors = colorRampPalette(brewer.pal(8, "Accent"))(colourCount)
 
 res_all_rf$contribs %>% 
@@ -507,73 +477,73 @@ res_all_xgboost$contribs %>%
 
 # ROI ---------------------------------------------------------------------
 
-pdp_1_roi(res_all_lm, m_lm, Boston, "lstat", pdp_pred_lm) %>% 
+tibble(lstat = Boston$lstat, 
+       roi = pdp_1_roi(Boston$lstat, res_all_lm, "lstat")) %>% 
   ggplot(aes(x = lstat, y = roi)) +
   geom_line()
 
-pdp_1_roi(res_all_rf, m_rf, Boston, "lstat", pdp_pred_rf) %>% 
+tibble(lstat = Boston$lstat, 
+       roi = pdp_1_roi(Boston$lstat, res_all_rf, "lstat")) %>% 
   ggplot(aes(x = lstat, y = roi)) +
   geom_line()
 
-pdp_1_roi(res_all_xgboost, m_xgboost, Boston, "lstat", pdp_pred_xgboost) %>% 
+tibble(lstat = Boston$lstat, 
+       roi = pdp_1_roi(Boston$lstat, res_all_xgboost, "lstat")) %>% 
   ggplot(aes(x = lstat, y = roi)) +
   geom_line()
 
-pdp_1_roi(res_all_glm, m_glm, Boston, "lstat", pdp_pred_glm) %>% 
+tibble(lstat = Boston$lstat, 
+       roi = pdp_1_roi(Boston$lstat, res_all_glm, "lstat")) %>% 
   ggplot(aes(x = lstat, y = roi)) +
   geom_line()
 
 ## LM
-rois_all_lm <- pdp_rois(res_all_lm, m_lm, Boston, 
-                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_lm)
+rois_all_lm <- pdp_rois(res_all_lm, Boston)
 
-ggplot_1_roi(rois_all_lm, "lstat", 
+ggplot_1_roi(res_all_lm, lstat, in_data = Boston,
              x_units = "\nlower status of the population (%)",
              y_units = "ROI ($1000 / 1%)")
 
-ggplot_rois(rois_all_lm, y_units = "ROI") + 
+ggplot_rois(res_all_lm, in_data = Boston, y_units = "ROI") + 
   plot_annotation(
     title = "Boston - LM Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
     caption = "Source: mpg dataset in ggplot2")
 
 ## RF
-rois_all_rf <- pdp_rois(res_all_rf, m_rf, Boston, 
-                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_rf)
+rois_all_rf <- pdp_rois(res_all_rf, Boston)
 
-ggplot_1_roi(rois_all_rf, "lstat", 
+ggplot_1_roi(res_all_rf, lstat, in_data = Boston, 
              x_units = "\nlower status of the population (%)",
              y_units = "ROI ($1000 / 1%)")
 
-ggplot_rois(rois_all_rf, y_units = "ROI") + 
+ggplot_rois(res_all_rf, in_data = Boston, y_units = "ROI") + 
   plot_annotation(
     title = "Boston - RF Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
     caption = "Source: mpg dataset in ggplot2")
 
 ## XGBOOST
-rois_all_xgboost <- pdp_rois(res_all_xgboost, m_xgboost, Boston, 
-                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_xgboost)
+rois_all_xgboost <- pdp_rois(res_all_xgboost, Boston)
 
-ggplot_1_roi(rois_all_xgboost, "lstat", 
+ggplot_1_roi(res_all_xgboost, lstat, in_data = Boston, 
              x_units = "\nlower status of the population (%)",
              y_units = "ROI ($1000 / 1%)")
 
-ggplot_rois(rois_all_xgboost, y_units = "ROI") + 
+ggplot_rois(res_all_xgboost, in_data = Boston, y_units = "ROI") + 
   plot_annotation(
     title = "Boston - XgBoost Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
     caption = "Source: mpg dataset in ggplot2")
 
 ## GLM
-rois_all_glm <- pdp_rois(res_all_glm, m_glm, Boston, 
-                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_glm)
+rois_all_glm <- pdp_rois(res_all_glm, Boston)
 
-ggplot_1_roi(rois_all_glm, "lstat", 
+ggplot_1_roi(res_all_glm, lstat, in_data = Boston, 
              x_units = "\nlower status of the population (%)",
              y_units = "ROI ($1000 / 1%)")
 
-ggplot_rois(rois_all_glm, y_units = "ROI") + 
+ggplot_rois(res_all_glm, in_data = Boston, y_units = "ROI") + 
   plot_annotation(
     title = "Boston - GLM Model ROIs",
     # subtitle = "(to the median value of owner-occupied homes in $1000s)",
@@ -586,10 +556,10 @@ library(numDeriv)
 curve(res_all_glm$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
 
 x <- seq(1.73+.1, 37.97-.1, length.out = 100)
-the_grad <- grad(res_all_glm$contrib_funs$lstat, x)
+the_grad <- numDeriv::grad(res_all_glm$contrib_funs$lstat, x)
 
 plot(x, the_grad, type = "l")
-curve(grad(res_all_glm$contrib_funs$lstat, x), 1.73+.1, 37.97-.10)
+curve(numDeriv::grad(res_all_glm$contrib_funs$lstat, x), 1.73+.1, 37.97-.10)
 
 
 # COMPLETE EXAMPLE --------------------------------------------------------
@@ -607,8 +577,7 @@ contribs_glm <- pdp_contribs(m_glm, Boston,
                              pdp_pred_glm)
 
 # ROIs
-rois_all_glm <- pdp_rois(contribs_glm, m_glm, Boston, 
-                         Boston %>% select(-medv, -chas) %>% names(), pdp_pred_glm)
+rois_all_glm <- pdp_rois(contribs_glm, Boston)
 
 
 # Model Analysis ----------------------------------------------------------
@@ -766,8 +735,8 @@ p_rf | p_xgboost
 # CURVE FITTING -----------------------------------------------------------
 
 ## SIGMOID
-estimate_0_sigmoid(contribs_xgboost, "zn")
-res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost, "zn"), 
+estimate_0_sigmoid(contribs_xgboost$contrib_grid$zn, "zn")
+res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost$contrib_grid$zn, "zn"), 
                    fn = loss_fun,
                    contribs = contribs_xgboost$contrib_grid$zn,
                    FUN = sigmoid_fun,
@@ -777,7 +746,7 @@ contribs_xgboost$contrib_grid$zn %>% plot(type = "l")
 curve(sigmoid_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRUE)
 
 # 
-res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost, "lstat"), 
+res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost$contrib_grid$lstat, "lstat"), 
                    fn = loss_fun,
                    contribs = contribs_xgboost$contrib_grid$lstat,
                    FUN = sigmoid_fun,
@@ -787,7 +756,7 @@ contribs_xgboost$contrib_grid$lstat %>% plot(type = "l")
 curve(sigmoid_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRUE)
 
 # 
-res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost, "rm"), 
+res_optim <- optim(par = estimate_0_sigmoid(contribs_xgboost$contrib_grid$rm, "rm"), 
                    fn = loss_fun,
                    contribs = contribs_xgboost$contrib_grid$rm,
                    FUN = sigmoid_fun,
@@ -797,8 +766,8 @@ contribs_xgboost$contrib_grid$rm %>% plot(type = "l")
 curve(sigmoid_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRUE)
 
 ## CURVE S
-estimate_0_curve_s(contribs_xgboost, "zn")
-res_optim <- optim(par = estimate_0_curve_s(contribs_xgboost, "zn"), 
+estimate_0_curve_s(contribs_xgboost$contrib_grid$zn, "zn")
+res_optim <- optim(par = estimate_0_curve_s(contribs_xgboost$contrib_grid$zn, "zn"), 
                    fn = loss_fun,
                    contribs = contribs_xgboost$contrib_grid$zn,
                    FUN = curve_s_fun,
@@ -808,7 +777,7 @@ contribs_xgboost$contrib_grid$zn %>% plot(type = "l")
 curve(curve_s_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRUE)
 
 # 
-res_optim <- optim(par = estimate_0_curve_s(contribs_xgboost, "lstat"), 
+res_optim <- optim(par = estimate_0_curve_s(contribs_xgboost$contrib_grid$lstat, "lstat"), 
                    fn = loss_fun,
                    contribs = contribs_xgboost$contrib_grid$lstat,
                    FUN = curve_s_fun,
@@ -818,7 +787,7 @@ contribs_xgboost$contrib_grid$lstat %>% plot(type = "l")
 curve(curve_s_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRUE)
 
 # 
-res_optim <- optim(par = estimate_0_curve_s(contribs_xgboost, "rm"), 
+res_optim <- optim(par = estimate_0_curve_s(contribs_xgboost$contrib_grid$rm, "rm"), 
                    fn = loss_fun,
                    contribs = contribs_xgboost$contrib_grid$rm,
                    FUN = curve_s_fun,
@@ -828,8 +797,8 @@ contribs_xgboost$contrib_grid$rm %>% plot(type = "l")
 curve(curve_s_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRUE)
 
 ## TANH
-estimate_0_curve_tanh(contribs_xgboost, "zn")
-res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost, "zn"), 
+estimate_0_curve_tanh(contribs_xgboost$contrib_grid$zn, "zn")
+res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost$contrib_grid$zn, "zn"), 
                    fn = loss_fun,
                    contribs = contribs_xgboost$contrib_grid$zn,
                    FUN = curve_tanh_fun,
@@ -839,7 +808,7 @@ contribs_xgboost$contrib_grid$zn %>% plot(type = "l")
 curve(curve_tanh_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRUE)
 
 # 
-res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost, "lstat"), 
+res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost$contrib_grid$lstat, "lstat"), 
                    fn = loss_fun,
                    contribs = contribs_xgboost$contrib_grid$lstat,
                    FUN = curve_tanh_fun,
@@ -849,7 +818,7 @@ contribs_xgboost$contrib_grid$lstat %>% plot(type = "l")
 curve(curve_tanh_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRUE)
 
 # 
-res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost, "rm"), 
+res_optim <- optim(par = estimate_0_curve_tanh(contribs_xgboost$contrib_grid$rm, "rm"), 
                    fn = loss_fun,
                    contribs = contribs_xgboost$contrib_grid$rm,
                    FUN = curve_tanh_fun,
@@ -860,7 +829,7 @@ curve(curve_tanh_fun(x, as.list(res_optim$par)), 0, 100, col = "blue", add = TRU
 
 ## ALL
 
-res_optim <- fit_contrib_curve(contribs_xgboost, "zn")
+res_optim <- fit_contrib_curve(contribs_xgboost$contrib_grid$zn, "zn")
 res_optim$curve_type
 
 contribs_xgboost$contrib_grid$zn %>% 
@@ -869,7 +838,7 @@ curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 100, col = "blue", add =
 
 ##
 
-res_optim <- fit_contrib_curve(contribs_xgboost, "lstat")
+res_optim <- fit_contrib_curve(contribs_xgboost$contrib_grid$lstat, "lstat")
 res_optim$curve_type
 
 contribs_xgboost$contrib_grid$lstat %>% 
@@ -878,7 +847,7 @@ curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 100, col = "blue", add =
 
 ##
 
-res_optim <- fit_contrib_curve(contribs_xgboost, "rm")
+res_optim <- fit_contrib_curve(contribs_xgboost$contrib_grid$rm, "rm")
 res_optim$curve_type
 
 contribs_xgboost$contrib_grid$rm%>% 
@@ -887,7 +856,7 @@ curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 100, col = "blue", add =
 
 ##
 
-res_optim <- fit_contrib_curve(contribs_xgboost, "black")
+res_optim <- fit_contrib_curve(contribs_xgboost$contrib_grid$black, "black")
 res_optim$curve_type
 
 contribs_xgboost$contrib_grid$black %>% 
@@ -896,7 +865,7 @@ curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 400, col = "blue", add =
 
 ##
 
-res_optim <- fit_contrib_curve(contribs_xgboost, "indus")
+res_optim <- fit_contrib_curve(contribs_xgboost$contrib_grid$indus, "indus")
 res_optim$curve_type
 
 contribs_xgboost$contrib_grid$indus %>% 
@@ -906,35 +875,36 @@ curve(res_optim$fit_fun(x, as.list(res_optim$pars)), 0, 400, col = "blue", add =
 
 #####
 plot(Boston$zn, contribs_xgboost$contribs$zn)
-curve(res_all_xgboost$smooth_contribs$zn$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$zn$pars)), 
+curve(contribs_xgboost$smooth_contribs$zn$fit_fun(x, as.list(contribs_xgboost$smooth_contribs$zn$pars)), 
       0, 400, col = "blue", add = TRUE)
 
 plot(Boston$lstat, contribs_xgboost$contribs$lstat)
-curve(res_all_xgboost$smooth_contribs$lstat$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$lstat$pars)), 
+curve(contribs_xgboost$smooth_contribs$lstat$fit_fun(x, as.list(contribs_xgboost$smooth_contribs$lstat$pars)), 
       0, 400, col = "blue", add = TRUE)
 
 plot(Boston$rm, contribs_xgboost$contribs$rm)
-curve(res_all_xgboost$smooth_contribs$rm$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$rm$pars)), 
+curve(contribs_xgboost$smooth_contribs$rm$fit_fun(x, as.list(contribs_xgboost$smooth_contribs$rm$pars)), 
       0, 400, col = "blue", add = TRUE)
 
 plot(Boston$black, contribs_xgboost$contribs$black)
-curve(res_all_xgboost$smooth_contribs$black$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$black$pars)), 
+curve(contribs_xgboost$smooth_contribs$black$fit_fun(x, as.list(contribs_xgboost$smooth_contribs$black$pars)), 
       0, 400, col = "blue", add = TRUE)
 
 plot(Boston$indus, contribs_xgboost$contribs$indus)
-curve(res_all_xgboost$smooth_contribs$indus$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$indus$pars)), 
+curve(contribs_xgboost$smooth_contribs$indus$fit_fun(x, as.list(contribs_xgboost$smooth_contribs$indus$pars)), 
       0, 400, col = "blue", add = TRUE)
 
 
 
 plot(Boston$lstat, contribs_xgboost$contribs$lstat, type = "p")
 lines(contribs_xgboost$contrib_grid$lstat, type = "l", lwd = 2, col = "red")
-curve(res_all_xgboost$smooth_contribs$lstat$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$lstat$pars)), 
+curve(contribs_xgboost$smooth_contribs$lstat$fit_fun(x, as.list(contribs_xgboost$smooth_contribs$lstat$pars)), 
       0, 400, col = "blue", add = TRUE)
 
-incr <- mean((res_all_xgboost$contribs$lstat - res_all_xgboost$contrib_funs$lstat(Boston$lstat)))
+incr <- mean((contribs_xgboost$contribs$lstat - contribs_xgboost$contrib_funs$lstat(Boston$lstat)))
 plot(contribs_xgboost$contrib_grid$lstat %>% as_tibble() %>% mutate(yhat = yhat+incr), 
      type = "l", lwd= 2, cex = 2, col = "red", ylim = c(-30, -5))
 lines(Boston$lstat, contribs_xgboost$contribs$lstat, type = "p")
-curve(res_all_xgboost$smooth_contribs$lstat$fit_fun(x, as.list(res_all_xgboost$smooth_contribs$lstat$pars)), 
+curve(contribs_xgboost$smooth_contribs$lstat$fit_fun(x, as.list(contribs_xgboost$smooth_contribs$lstat$pars)), 
         +       0, 400, col = "blue", add = TRUE)
+
