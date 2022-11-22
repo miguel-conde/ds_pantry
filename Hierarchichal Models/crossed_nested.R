@@ -107,11 +107,130 @@ summary(m3)
 
 ########
 fe_model_matrix <- getME(m2, "X")
+re2_model_matrix <- getME(m2, "Z")
 re_model_matrix <- getME(m2, "mmList")
 
-preds <- fe_model_matrix  %*% as.matrix(fixef(m2)) +
-  rowSums(re_model_matrix$`1 | classID:school` %*% t(ranef(m2)$`classID:school`)) +
-  rowSums(re_model_matrix$`1 | school` %*% t(as.matrix(ranef(m2)$school)))
+preds <- 
+  # Fixed effects
+  fe_model_matrix  %*% as.matrix(fixef(m2)) +
+  # Random effects, nivel superior (school)
+  rowSums(re_model_matrix$`1 | school` %*% t(as.matrix(ranef(m2)$school))) +
+  # Random effects, nivel inferior anidado, classID dentro de school
+  rowSums(re_model_matrix$`1 | classID:school` %*% t(ranef(m2)$`classID:school`))
 
 head(preds)
 fitted(m2) %>% head()
+
+### ESTA ES LA BUENA
+the_re_model_matrix <- as.matrix(getME(m2, "Z"))
+dim(the_re_model_matrix)
+colnames(the_re_model_matrix)
+
+the_fe_coef_vector <- as.matrix(fixef(m2)) 
+dim(the_fe_coef_vector)
+
+# Con esto puedo coger random effects nivel por nivel
+# the_re_coef_vector <- rbind(as.matrix(ranef(m2)$school), 
+#                          as.matrix(ranef(m2)$`classID:school`))
+the_re_coef_vector <- as.matrix(bind_rows(lapply(ranef(m2), as.data.frame)))
+the_re_coef_vector <- the_re_coef_vector[colnames(the_model_matrix),,drop = FALSE]
+dim(the_re_coef_vector)
+colnames(the_re_coef_vector)
+
+preds2 <- 
+  # Fixed effects
+  # [1200 x 4] * [4 x 1] = [1200 x 1]
+  fe_model_matrix %*% the_fe_coef_vector +
+  # Random effects, nivel inferior anidado, classID dentro de school
+  # [1200 x 30] * [30 x 1] = [1200 x 1]
+  the_re_model_matrix %*% the_re_coef_vector
+
+head(preds2)
+fitted(m2) %>% head()
+
+
+# INTERCEPT + SLOPE -------------------------------------------------------
+
+m_i_s <- lmer(extro ~ open + agree + social + (open + 1 | school/classID), data = dt)
+summary(m_i_s)
+confint(m_i_s)
+
+
+# Intento 1 ---------------------------------------------------------------
+
+## FIXED
+
+# FE COEF VECTOR
+the_fe_coef_vector <- as.matrix(fixef(m_i_s))
+dim(the_fe_coef_vector)
+
+# FE MODEL MATRIX
+fe_model_matrix <- getME(m_i_s, "X")
+dim(fe_model_matrix) # [1200 obs x 4 variables]
+colnames(fe_model_matrix)
+head(fe_model_matrix)
+
+## RANDOM
+
+# RE COEF VECTOR
+the_re_coef_vector <- as.matrix(bind_rows(lapply(ranef(m_i_s), as.data.frame)))
+dim(the_re_coef_vector) # [30 grupos x 2 variables]
+colnames(the_re_coef_vector)
+rownames(the_re_coef_vector)
+head(the_re_coef_vector)
+
+# RE MODEL MATRIX
+the_re_model_matrix <- as.matrix(getME(m_i_s, "Z"))
+dim(the_re_model_matrix) # [1200 obs x 60]
+colnames(the_re_model_matrix)
+head(the_re_model_matrix)
+
+
+# Intento 2 ---------------------------------------------------------------
+
+## Nivel superior school
+the_re_coef_vector_school <- as.matrix(ranef(m_i_s)[["school"]])
+dim(the_re_coef_vector_school) # [6 grupos x 2 variables]
+colnames(the_re_coef_vector_school)
+rownames(the_re_coef_vector_school)
+head(the_re_coef_vector_school)
+
+the_re_model_matrix_school <- as.matrix(getME(m_i_s, "mmList")[["open + 1 | school"]])
+dim(the_re_model_matrix_school) # [1200 obs x 2 variables]
+colnames(the_re_model_matrix_school)
+head(the_re_model_matrix_school)
+
+# 1200 predicciones x 6 grupos
+the_re_model_matrix_school %*% t(the_re_coef_vector_school)
+
+dt %>% 
+  select(open, school) %>% 
+  mutate(beta_intcpt = the_re_coef_vector_school[school, "(Intercept)"]) %>% 
+  mutate(beta_open = the_re_coef_vector_school[school, "open"]) %>% 
+  mutate(contrib_intcpt = beta_intcpt, contrib_open = beta_open * open) %>% 
+  mutate(pred = contrib_intcpt + contrib_open) %>% 
+  head()
+
+
+## Nivel inferior ClassID anidado en school
+the_re_coef_vector_classID <- as.matrix(ranef(m_i_s)[["classID:school"]])
+dim(the_re_coef_vector_classID) # [24 grupos x 2 variables]
+colnames(the_re_coef_vector_classID)
+rownames(the_re_coef_vector_classID)
+head(the_re_coef_vector_classID)
+
+the_re_model_matrix_classID <- as.matrix(getME(m_i_s, "mmList")[["open + 1 | classID:school"]])
+dim(the_re_model_matrix_classID) # [1200 obs x 2 variables]
+colnames(the_re_model_matrix_classID)
+head(the_re_model_matrix_classID)
+
+# 1200 predicciones x 24 grupos
+the_re_model_matrix_classID %*% t(the_re_coef_vector_classID)
+
+dt %>% 
+  select(open, school, classID) %>% 
+  mutate(beta_intcpt = the_re_coef_vector_classID[paste0(classID, ":", school), "(Intercept)"]) %>% 
+  mutate(beta_open = the_re_coef_vector_classID[paste0(classID, ":", school), "open"]) %>% 
+  mutate(contrib_intcpt = beta_intcpt, contrib_open = beta_open * open) %>% 
+  mutate(pred = contrib_intcpt + contrib_open) %>% 
+  head()
