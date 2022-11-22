@@ -1,0 +1,147 @@
+---
+title: "Sintaxis formulas modelos multinivel"
+toc: true
+number-sections: true
+format: html
+editor: visual
+---
+
+En este documento nos referimos a las sórmulas tal como se usan en el [paquete `lme4`](https://cran.r-project.org/web/packages/lme4/index.html), ver [Fitting Linear Mixed-Effects Models Using lme4](https://cran.r-project.org/web/packages/lme4/vignettes/lmer.pdf).
+
+# Intercept
+
+El modelo en el nivel más bajo es:
+
+$$
+y_{ge} = \beta_{0g} + \epsilon_{gu} \\
+\epsilon_{gu} \sim N(0, \sigma)
+$$
+
+O:
+
+$$
+y \sim N(\mu_g, \sigma) \\
+\mu_g = \beta_{0g}
+$$
+
+Donde $g$ indica el grupo al que pertenece la observación y $u$ identifica a la observación dentro de su grupo.
+
+En el nivel superior hay que modelar $\beta_{0g}$.
+
+Llamaremos $\eta_g \sim N(0, \sigma_g)$:
+
+## Caso 1
+
+$$
+\beta_{og} = \eta_{g}
+$$
+
+La fórmula resultante es:
+
+$$
+y \sim (1|G)
+$$
+
+## Caso 2
+
+$$
+\beta_{0g} = a_0 + \eta_g  
+$$
+
+Ahora:
+
+$$
+y \sim 1 + (1|G)
+$$
+
+## Caso 3
+
+$$
+\beta_{og} = a_0 + a_1 Z_g + \eta_{g}
+$$
+
+Donde $Z_g$ es una variable de nivel grupo.
+
+Resulta:
+
+$$
+y \sim 1+Z + (1|G) 
+$$
+
+## Caso 4
+
+$$
+\beta_{0g} = a_1 Z_g + \eta_g
+$$
+
+Coduce a:
+
+$$
+y \sim -1 + Z_g + (1 | G)
+$$
+
+# Variable
+
+El modelo en el nivel más bajo es:
+
+$$
+y_{ge} = \beta_{1g} X_{ge} + \epsilon_{gu} \\
+\epsilon_{gu} \sim N(0, \sigma)
+$$
+
+O:
+
+$$
+y \sim N(\mu_g, \sigma) \\
+\mu_g = \beta_{1g} X_{ge}
+$$
+
+donde $X_{ge}$ es una variable del nivel inferior.
+
+## Caso 1
+
+$$
+\beta_{1g} = \nu_{g}
+$$
+
+La fórmula resultante es:
+
+$$
+y \sim -1 + (-1 + X_{ge}|G)
+$$
+
+## Caso 2
+
+$$
+\beta_{1g} = b_0 + \nu_g
+$$
+
+Ahora:
+
+$$
+y \sim -1 + X_{ge} + (-1 + X_{ge}|G)
+$$
+
+## Caso 3
+
+$$
+\beta_{1g} = b_0 + b_1 Z_g + \nu_g
+$$
+
+Quedará:
+
+$$
+y \sim -1 + X_{ge} + X_{ge}:Z{g} + (-1 + X_{ge} | G)
+$$
+
+## Caso 4
+
+$$
+\beta_{1g} = b_1 Z_{g} + \nu_g
+$$
+
+Con lo que:
+
+$$
+y \sim -1 + X_{ge}:Z_g + (-1 + X_g | G)
+$$
