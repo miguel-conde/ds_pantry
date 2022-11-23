@@ -234,3 +234,90 @@ dt %>%
   mutate(contrib_intcpt = beta_intcpt, contrib_open = beta_open * open) %>% 
   mutate(pred = contrib_intcpt + contrib_open) %>% 
   head()
+
+
+# Intento 3 ---------------------------------------------------------------
+
+fe_coefs <- as.matrix(fixef(m_i_s))
+re_coefs <- lapply(ranef(m_i_s), as.data.frame) %>% bind_rows() %>% t()
+ 
+f <- extro ~ open + agree + social + (open + 1 | school/classID)
+extro ~ open + agree + social + (open + 1 | school/classID)
+mm <- model.matrix(extro ~ open + agree + social + school + classID:school, dt)
+
+idx_no <- which(apply(mm, 2, sum) == 0)
+mm <- mm[, -idx_no]
+colnames(mm) %>% str_remove("school") %>% str_remove("classID")
+
+
+terms(f)
+attributes(terms(f))$term.labels
+
+all.vars(terms(f))
+all.vars(delete.response(terms(f)))
+lme4:::findbars(f)
+
+
+
+# Xb 
+fix <- getME(m_i_s,'X') %*% fixef(m_i_s)
+# Zu
+ran <- t(as.matrix(getME(m_i_s,'Zt'))) %*% unlist(ranef(m_i_s))
+# Xb + Zu
+fixran <- fix + ran
+
+head(cbind(fix, ran, fixran, fitted(fm1)))
+
+
+# Intento 4 ---------------------------------------------------------------
+
+re_mm <- lme4:::model.matrix.merMod(m_i_s, "randomListRaw") 
+re <- ranef(m_i_s)
+
+re$`classID:school` %>% dim()
+re$school %>% dim()
+
+re_mm$`open + 1 | classID:school` %>% dim()
+re_mm$`open + 1 | school` %>% dim()
+
+
+# Intento 5 ---------------------------------------------------------------
+
+X <- getME(m_i_s,'X')
+beta <- fixef(m_i_s)
+
+contribs_fe <- X %>% sweep(2, beta, "*")
+dim(contribs_fe)
+head(contribs_fe)
+colnames(contribs_fe)
+
+Z <- as.matrix(getME(m_i_s, "Z"))
+colnames(Z)
+b <- ranef(m_i_s) %>% lapply(function(x) apply(x, 1, function(y) y)) %>% unlist()
+names(b)
+
+contribs_re <- Z %>% sweep(2, b, "*")
+dim(contribs_re)
+head(contribs_re)
+colnames(contribs_re)
+
+preds <- rowSums(contribs_fe) + rowSums(contribs_re)
+head(preds)
+
+head(fitted(m_i_s))
+
+# ???? NO
+contribs <- cbind(contribs_fe, contribs_re)
+dim(contribs)
+head(contribs)
+colnames(contribs)
+
+# merTools ----------------------------------------------------------------
+
+library(merTools)
+
+predictInterval(m_i_s)   # for various model predictions, possibly with new data
+
+REsim(m_i_s)             # mean, median and sd of the random effect estimates
+
+plotREsim(REsim(m_i_s))  # plot the interval estimates
