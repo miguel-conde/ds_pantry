@@ -306,6 +306,23 @@ head(preds)
 
 head(fitted(m_i_s))
 
+###
+contribs_re <- contribs_re %>% apply(1, function(x) x[x!=0]) %>% t()
+colnames(contribs_re) <- ranef(m_i_s) %>% 
+  lapply(names) %>% 
+  unlist %>% 
+  as.data.frame() %>% 
+  rename(estimate = 1) %>% 
+  rownames_to_column("var") %>% 
+  unite(name_var, 1,2) %>% 
+  unlist() %>%
+  as.vector()
+
+(rowSums(contribs_fe) + rowSums(contribs_re)) %>% head()
+
+###
+
+
 # ???? NO
 contribs <- cbind(contribs_fe, contribs_re)
 dim(contribs)
