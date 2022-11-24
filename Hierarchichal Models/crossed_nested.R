@@ -321,13 +321,42 @@ colnames(contribs_re) <- ranef(m_i_s) %>%
 (rowSums(contribs_fe) + rowSums(contribs_re)) %>% head()
 
 ###
+colnames(contribs_fe)
+colnames(contribs_re)
 
+cbind(contribs_fe, contribs_re) %>% 
+  as_tibble() %>% 
+  rowwise() %>% 
+  mutate(pred = sum(c_across(1:8))) %>% 
+  ungroup()
 
-# ???? NO
-contribs <- cbind(contribs_fe, contribs_re)
-dim(contribs)
-head(contribs)
-colnames(contribs)
+# Function ----------------------------------------------------------------
+
+xxx <- function(lmer_mod) {
+  
+  X <- getME(lmer_mod,'X')
+  beta <- fixef(lmer_mod)
+  
+  contribs_fe <- X %>% sweep(2, beta, "*")
+  
+  Z <- as.matrix(getME(lmer_mod, "Z"))
+  b <- ranef(lmer_mod) %>% lapply(function(x) apply(x, 1, function(y) y)) %>% unlist()
+  
+  ### 
+  contribs_re_raw <- Z %>% sweep(2, b, "*")
+
+  contribs_re <- contribs_re_raw %>% apply(1, function(x) x[x!=0]) %>% t()
+  colnames(contribs_re) <- ranef(lmer_mod) %>% 
+    lapply(names) %>% 
+    unlist %>% 
+    as.data.frame() %>% 
+    rename(estimate = 1) %>% 
+    rownames_to_column("var") %>% 
+    unite(name_var, var, estimate) %>% 
+    unlist() %>%
+    as.vector()
+  
+}
 
 # merTools ----------------------------------------------------------------
 
