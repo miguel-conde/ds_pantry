@@ -367,3 +367,65 @@ predictInterval(m_i_s)   # for various model predictions, possibly with new data
 REsim(m_i_s)             # mean, median and sd of the random effect estimates
 
 plotREsim(REsim(m_i_s))  # plot the interval estimates
+
+
+# Predict RE --------------------------------------------------------------
+
+# Predicción del modelo completo, classID anidado en school
+predict(m_i_s) %>% head()
+predict(m_i_s, re.form = ~ (open + 1 | school/classID)) %>% head()
+
+# Predicción del modelo de nivel más alto, school
+predict(m_i_s, re.form = ~ (open + 1 | school)) %>% head()
+
+# Predicción del modelo de nivel más bajo, classID anidado en school
+predict(m_i_s, re.form = ~ (open + 1 |classID:school)) %>% head()
+
+# También podemos quitar los fixed effects
+predict(m_i_s, random.only = TRUE) %>% head()
+predict(m_i_s, random.only = TRUE, re.form = ~ (open + 1 | school/classID)) %>% head()
+predict(m_i_s, random.only = TRUE, re.form = ~ (open + 1 | school)) %>% head()
+predict(m_i_s, random.only = TRUE, re.form = ~ (open + 1 |classID:school)) %>% head()
+
+
+get_mlmer_contribs <- function(in_model, new_data = NULL, ...) {
+  
+  if (is.null(new_data)) new_data <- in_model@frame
+  
+  model_vars <- coef(in_model) %>% 
+    lapply(names) %>% 
+    unlist() %>% 
+    str_split(":") %>% 
+    unlist() %>% 
+    unique()
+  
+  out <- vector(mode = "list", length = length(model_vars) - 1)
+  names(out) <- setdiff(model_vars, "(Intercept)")
+  orig_pred <- predict(in_model, newdata = new_data, ...)
+  for ( v in names(out)) {
+    
+    aux <- new_data %>% mutate(!!sym(v) := 0)
+    out[[v]] = orig_pred - predict(in_model, newdata = aux, ...)
+    
+  }
+  
+  out <- bind_cols(out)
+  
+  if ("(Intercept)" %in% model_vars) {
+    aux <- new_data %>% 
+      mutate_if(is.numeric, ~ 0) # %>% 
+      # mutate_if(is.factor, ~ levels(.)[1])
+    out <- out %>% mutate(`(Intercept)` = predict(in_model, newdata = aux, ...),
+                          .before = 1)
+  }
+  
+  return(out)
+}
+
+get_mlmer_contribs(m_i_s) %>% 
+  rowwise() %>% 
+  mutate(pred = sum(c_across(1:4))) %>% 
+  ungroup() %>% 
+  head()
+
+predict(m_i_s) %>% head
