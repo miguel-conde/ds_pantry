@@ -45,9 +45,10 @@ get_mlmer_contribs <- function(in_model, new_data = NULL, pred = FALSE, ...) {
   out <- bind_cols(out)
   
   if ("(Intercept)" %in% model_vars) {
+    
     aux <- new_data %>% 
-      mutate_if(is.numeric, ~ 0) # %>% 
-    # mutate_if(is.factor, ~ levels(.)[1])
+      mutate_if(is.numeric, ~ 0) 
+    
     out <- out %>% mutate(`(Intercept)` = predict(in_model, newdata = aux, ...),
                           .before = 1)
   }
@@ -60,6 +61,8 @@ get_mlmer_contribs <- function(in_model, new_data = NULL, pred = FALSE, ...) {
   }
   
   if (pred == TRUE) {
+    
+    
     out <- out %>% 
       rowwise() %>% 
       mutate(pred = sum(c_across())) %>% 
