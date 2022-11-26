@@ -62,7 +62,6 @@ get_mlmer_contribs <- function(in_model, new_data = NULL, pred = FALSE, ...) {
   
   if (pred == TRUE) {
     
-    
     out <- out %>% 
       rowwise() %>% 
       mutate(pred = sum(c_across())) %>% 
