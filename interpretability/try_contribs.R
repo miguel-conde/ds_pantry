@@ -648,6 +648,7 @@ contribs_lm <- pdp_contribs(m_lm, Boston,
                             Boston %>% select(-medv) %>% names(), 
                             pdp_pred_lm)
 
+
 p_lm <- ggplot_contribs(contribs_lm, y_units = "$1000") + 
   plot_annotation(
     title = "Boston - Linear Model Contributions",

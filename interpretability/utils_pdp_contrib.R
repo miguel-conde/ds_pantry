@@ -10,6 +10,57 @@ library(ggplot2)
 library(patchwork)
 library(pdp)
 
+get_mode <- function(v, method = c("first", "all")) {
+  
+  method <- match.arg(method)
+  
+  uniqv <- unique(v)
+  tab <- tabulate(match(v, uniqv))
+  
+  if (method == "first") out <- uniqv[which.max(tab)]
+  else out <- uniqv[tab == max(tab)]
+  
+  return(out)
+}
+
+ref_var <- function(in_data, pred_vars) {
+  
+  # Pone a 0 las pred_vars numéricas y al nivel de referencia las pred_vars
+  # factor o character
+  
+  out <- in_data %>% 
+    mutate_at(vars(pred_vars), 
+              ~ ifelse(is.numeric(.),
+                       0,
+                       ifelse(is.factor(.),
+                              levels(.)[1],
+                              ifelse(is.character(.),
+                                     levels(factor(.))[1],
+                                     .))))
+  
+  return(out)
+}
+
+avg_mode_var <- function(in_data, pred_var) {
+  
+  # Si la columna pred_var es numeric, la cambia por su media
+  # Si la columna pred_var es factor o character, la cambia por su moda
+  
+  if (is.numeric(in_data[[pred_var]])) {
+    avg_x <- in_data %>% pull(!!sym(pred_var)) %>% mean()
+    out   <- in_data %>% mutate(!!sym(pred_var) := avg_x)
+  } else {
+    if (is.factor(in_data[[pred_var]]) | is.character(in_data[[pred_var]])) {
+      mode_x <- in_data %>% pull(!!sym(pred_var)) %>% get_mode()
+      out    <- in_data %>% mutate(!!sym(pred_var) := mode_x)
+    } else
+    {
+      out <- in_data
+    }
+  }
+  return(out)
+}
+
 
 # AVERAGE PREDICTIONS FOR PDP ---------------------------------------------
 
@@ -65,6 +116,7 @@ pdp_1_contrib <- function(in_model, in_data, pred_var, pred_fun, grid_resolution
   avg_x <- in_data %>% pull(!!sym(pred_var)) %>% mean()
   
   X_aux_0 <- in_data %>% mutate_all(~ 0)
+  # X_aux_0 <- in_data %>% mutate_if(is.numeric, ~ 0) %>% mutate_if(is.factor, ~ levels(.)[1])
   X_aux_1 <- X_aux_0  %>% mutate(!!sym(pred_var) := avg_x)
   
   # La distancia es la media de:
@@ -200,9 +252,14 @@ pdp_contribs <- function(in_model,
     tbl_contribs[[var_i]] <- tibble(!!sym(var_i) := contribs_i)
   }
   
-  tbl_contribs <- bind_cols(tbl_contribs) %>% 
-    mutate(baseline = pred_fun(in_model, 
+  tbl_contribs <- bind_cols(tbl_contribs) %>%
+    mutate(baseline = pred_fun(in_model,
                                in_data %>% mutate_all(~ 0)), .before = 1)
+  # tbl_contribs <- bind_cols(tbl_contribs) %>% 
+  #   mutate(baseline = pred_fun(in_model, 
+  #                              in_data %>% mutate_if(is.numeric, ~ 0) %>% 
+  #                                mutate_if(is.factor, ~ levels(.)[1])), 
+  #          .before = 1)
   
   # Regularización para que las contribuciones sumen lo mismo que las 
   # predicciones
@@ -213,6 +270,8 @@ pdp_contribs <- function(in_model,
   tbl_contribs <- mutate_all(as_tibble(tbl_contribs), ~. * k)
   
   X_aux_0 <- in_data %>% mutate_all(~ 0)
+  # X_aux_0 <- in_data %>% mutate_if(is.numeric, ~ 0) %>% 
+  #   mutate_if(is.factor, ~ levels(.)[1])
   tbl_contribs <- tbl_contribs %>%
     rename(y_avg = baseline) %>%
     mutate(baseline = pred_fun(in_model, X_aux_0), .before = 1) %>%
