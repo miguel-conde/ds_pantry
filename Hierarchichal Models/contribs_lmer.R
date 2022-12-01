@@ -148,3 +148,60 @@ get_mlmer_contribs <- function(in_model, new_data = NULL, pred = FALSE, ...) {
   
   return(out)
 }
+
+calc_contribs <- function(m_h_lm, base_emisiones) {
+  
+  str_f <- paste0(format(summary(m_h_lm)$call$formula), collapse = "")
+  
+  str_response <- str_f %>% str_remove("~.*$") %>% str_trim()
+  
+  fe_str_f <- str_f %>% 
+    str_remove("^.*~") %>% 
+    str_remove("\\(.*$") %>% 
+    str_remove("[:space:]*\\+[:space:]*$") %>% 
+    str_squish()
+  
+  
+  re_str_f <- str_f %>% 
+    str_extract("\\(.*\\)") %>% 
+    str_split("\\+[:digit:]*\\(") %>% 
+    map(~ .x %>% str_remove("\\|.*\\)") %>% 
+          str_remove("\\(|\\)") %>% 
+          str_squish)
+  
+  contrib_f <- 
+    as.formula(paste(str_response, "~ ", 
+                     paste(unique(c(unlist(str_split(fe_str_f, "\\+")),
+                                    unlist(str_split(re_str_f, "\\+")))),
+                           collapse = "+")))
+  
+  mm <- model.matrix(contrib_f, base_emisiones)
+  mm <- mm[, order(colnames(mm))]
+  
+  progs <- unique(base_emisiones$name_edit)
+  progs <- progs[order(progs)]
+  contribs_lst <- vector(mode = "list", length = length(progs))
+  names(contribs_lst) <- progs
+  
+  for (prog in progs) {
+    
+    idx_prog <- which(base_emisiones$name_edit == prog)
+    
+    m_matrix_prog <- mm[idx_prog, , drop = FALSE]
+    coefs_prog <- coef(m_h_lm)$name_edit[prog, colnames(m_matrix_prog)]
+    coefs_prog <- coefs_prog[, order(names(coefs_prog))] %>% 
+      unlist()
+    
+    contribs_lst[[prog]] <- base_emisiones %>% 
+      filter(name_edit == prog) %>% 
+      select(date, name_edit, class_ytb) %>% 
+      bind_cols(m_matrix_prog %>% sweep(2, coefs_prog, "*")) %>% 
+      as_tibble()
+    
+  }
+  
+  contribs <- bind_rows(contribs_lst)
+  
+  return(contribs)
+  
+}
