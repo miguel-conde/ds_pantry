@@ -486,3 +486,44 @@ m_int <- lmer(extro ~ open + open:school + agree + social + (open + 1 | school/c
 get_mlmer_contribs(m_int, pred = TRUE)
 
 predict(m_int) %>% head
+
+
+# heights -----------------------------------------------------------------
+
+data("heights", package = "modelr")
+heights
+summary(heights)
+
+xtabs(~ sex + marital, heights)
+
+the_data <- drop_na(heights) %>% 
+  mutate_at(vars(height, weight, age, education, afqt), 
+            ~ (. -mean(.)) / sd(.))
+summary(the_data)
+
+m_h_ms <- lmer(income ~ 1 + height + weight + age + education + afqt +
+                 (1 + height + weight + age + education + afqt | marital) +
+                 (1 + height + weight + age + education + afqt | sex),
+               the_data)
+summary(m_h_ms)
+
+coef(m_h_ms)
+
+predict(m_h_ms) %>% head()
+
+# FE
+fe <- predict(m_h_ms, new_data = the_data, re.form = NA) 
+# RE marital
+re_marital <- predict(m_h_ms, new_data = the_data, 
+                      random.only = TRUE, 
+                      re.form = ~ (1 + height + weight + age + education + afqt | marital),
+                      na.action = na.omit) 
+# RE sex
+re_sex <- predict(m_h_ms, new_data = the_data, 
+                  random.only = TRUE, 
+                  re.form = ~ (1 + height + weight + age + education + afqt | sex),
+                  na.action = na.omit) 
+
+pred <- fe + re_marital + re_sex
+
+the_data %>% mutate(fe = fe, re_marital = re_marital, re_sex = re_sex, pred = pred)
