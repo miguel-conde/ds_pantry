@@ -44,7 +44,7 @@ make_psi <- function(J) {
 est_causal <- function(in_data, causa, efecto, J = 20, lambda = 10) {
   
   L <- nrow(in_data)
-  probe <- make_probe_x_y(in_data %>% select(-date), causa, efecto, J = J)
+  probe <- make_probe_x_y(in_data %>% select(all_of(c(causa, efecto))), causa, efecto, J = J)
   X <- probe %>% select(-all_of(c(causa, efecto))) %>% as.matrix()
   Y <- probe %>% select(all_of(efecto)) %>% as.matrix()
   psi <- make_psi(J)
