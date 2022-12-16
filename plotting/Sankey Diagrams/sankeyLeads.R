@@ -1,13 +1,15 @@
 # rm(list=ls());gc()
 
-library(XLConnect)
+# library(XLConnect)
+library(openxlsx)
 library(googleVis)
 
 
 nombre <- "Sankey_Leads"
 
-wb <- loadWorkbook("plotting/SankeyLeads2.xlsx")
-data <- readWorksheet(wb,sheet=1)
+# wb <- loadWorkbook("plotting/SankeyLeads2.xlsx")
+# data <- readWorksheet(wb,sheet=1)
+data <- read.xlsx("./plotting/Sankey Diagrams/SankeyLeads2.xlsx", sheet = 1)
 summary(data)
 # % absoluto
 data$Leads <- abs(data$Leads)/
