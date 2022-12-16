@@ -1,5 +1,4 @@
 # rm(list=ls());gc()
-Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jdk1.7.0_51\\jre')
 
 library(XLConnect)
 library(googleVis)
