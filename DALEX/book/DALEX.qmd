@@ -1,0 +1,363 @@
+---
+title: "DALEX - Explanatory Model Analysis"
+toc: true
+number-sections: true
+execute:
+  echo: true
+  warning: false
+  error: false
+  fig.width: 6
+  fig.asp: 0.618
+  out.width: "80%"
+  fig.align: true
+format: html
+editor: visual
+---
+
+```{r}
+#| include: false
+library(tidyverse)
+library(DALEX)
+library(archivist)
+```
+
+# Instance Level
+
+Instance-level exploration methods help us understand how a model yields a prediction for a particular single observation. We may consider the following situations as examples:
+
+-   We may want to evaluate effects of explanatory variables on the model\'s predictions. For instance, we may be interested in predicting the risk of heart attack based on a person\'s age, sex, and smoking habits. A model may be used to construct a score (for instance, a linear combination of the explanatory variables representing age, sex, and smoking habits) that could be used for the purposes of prediction. For a particular patient, we may want to learn how much do the different variables contribute to the score?
+
+-   We may want to understand how would the model\'s predictions change if values of some of the explanatory variables changed? For instance, what would be the predicted risk of heart attack if the patient cut the number of cigarettes smoked per day by half?
+
+-   We may discover that the model is providing incorrect predictions, and we may want to find the reason. For instance, a patient with a very low risk-score experienced a heart attack. What has driven the wrong prediction?
+
+![](https://ema.drwhy.ai/figure/cuts_techniki_ready.png)
+
+
+-   One approach is to analyze how does the model\'s prediction for a particular instance differ from the average prediction and how can the difference be distributed among explanatory variables? This method is often called the \"variable attributions\" approach. An example is provided in panel A of Figure [5.1](https://ema.drwhy.ai/InstanceLevelExploration.html#fig:cutsTechnikiReady). Chapters [6](https://ema.drwhy.ai/breakDown.html#breakDown)-[8](https://ema.drwhy.ai/shapley.html#shapley) present various methods for implementing this approach.
+
+-   Another approach uses the interpretation of the model as a function and investigates the local behaviour of this function around the point (observation) of interest x––∗x_∗. In particular, we analyze the curvature of the model response (prediction) surface around x––∗x_∗. In case of a black-box model, we may approximate it with a simpler glass-box model around x––∗x_∗. An example is provided in panel B of Figure [5.1](https://ema.drwhy.ai/InstanceLevelExploration.html#fig:cutsTechnikiReady). Chapter [9](https://ema.drwhy.ai/LIME.html#LIME) presents the Local Interpretable Model-agnostic Explanations (LIME) method that exploits the concept of a \"local model\".
+
+-   Yet another approach is to investigate how does the model\'s prediction change if the value of a single explanatory variable changes? The approach is useful in the so-called \"What-if\" analyses. In particular, we can construct plots presenting the change in model-based predictions induced by a change of a single explanatory variable. Such plots are usually called ceteris-paribus (CP) profiles. An example is provided in panel C in Figure [5.1](https://ema.drwhy.ai/InstanceLevelExploration.html#fig:cutsTechnikiReady). Chapters [10](https://ema.drwhy.ai/ceterisParibus.html#ceterisParibus)-[12](https://ema.drwhy.ai/localDiagnostics.html#localDiagnostics) introduce the CP profiles and methods based on them.
+
+Each method has its own merits and limitations. They are briefly discussed in the corresponding chapters. Chapter [13](https://ema.drwhy.ai/summaryInstanceLevel.html#summaryInstanceLevel) offers a comparison of the methods.
+
+## Break-down Plots for Additive Attributions
+
+Probably the most commonly asked question when trying to understand a model\'s prediction for a single observation is: *which variables contribute to this result the most?* There is no single best approach that can be used to answer this question. In this chapter, we introduce break-down (BD) plots, which offer a possible solution. The plots can be used to present \"variable attributions\", i.e., the decomposition of the model\'s prediction into contributions that can be attributed to different explanatory variables.
+
+We assume that prediction $f(\underline{x})$ is an approximation of the expected value of the dependent variable $Y$ given values of explanatory variables \$\\underline{x}\$. The underlying idea of BD plots is to capture the contribution of an explanatory variable to the model\'s prediction by computing the shift in the expected value of $Y$, while fixing the values of other variables.
+
+This idea is illustrated in Figure [6.1](https://ema.drwhy.ai/breakDown.html#fig:BDPrice4). Consider an example related to the prediction obtained for the random forest model `model_rf` for the Titanic data (see Section [4.2.2](https://ema.drwhy.ai/dataSetsIntro.html#model-titanic-rf)). We are interested in the probability of survival for Johnny D, an 8-year-old passenger travelling in the first class (see Section [4.2.5](https://ema.drwhy.ai/dataSetsIntro.html#predictions-titanic)). Panel A of Figure [6.1](https://ema.drwhy.ai/breakDown.html#fig:BDPrice4) shows the distribution of the model\'s predictions for observations from the Titanic dataset. In particular, the violin plot in the row marked \"all data\" summarizes the distribution of predictions for all 2207 observations from the dataset. The red dot indicates the mean value that can be interpreted as an estimate of the expected value of the model\'s predictions over the distribution of all explanatory variables. In this example, the mean value is equal to 23.5%.
+
+![](https://ema.drwhy.ai/figure/break_down_distr.png)
+
+
+
+Break-down plots show how the contributions attributed to individual explanatory variables change the mean model\'s prediction to yield the actual prediction for a particular single instance (observation). Panel A) The first row shows the distribution and the mean value (red dot) of the model\'s predictions for all data. The next rows show the distribution and the mean value of the predictions when fixing values of subsequent explanatory variables. The last row shows the prediction for the particular instance of interest. B) Red dots indicate the mean predictions from panel A. C) The green and red bars indicate, respectively, positive and negative changes in the mean predictions (contributions attributed to explanatory variables).
+
+To evaluate the contribution of individual explanatory variables to this particular single-instance prediction, we investigate the changes in the model\'s predictions when fixing the values of consecutive variables.
+
+It is also worth mentioning that, for models that include **interactions**, the part of the prediction attributed to a variable **depends on the order** in which one sets the values of the explanatory variables. Note that the interactions do not have to be explicitly specified in the model structure as it is the case of, for instance, linear-regression models. They may also emerge as a result of fitting to the data a flexible model like, for instance, a regression tree.
+
+As it was mentioned in Section [6.2](https://ema.drwhy.ai/breakDown.html#BDIntuition), for models that include interactions, the value of the variable-importance measure v(j,x----∗)v(j,x\_∗) depends on the order of conditioning on explanatory variables. A heuristic approach to address this issue consists of choosing an order in which the variables with the largest contributions are selected first. In particular, the following two-step procedure can be considered. In the first step, the ordering is chosen based on the decreasing values of |Δk|∅(x––∗)|\|Δk\|∅(x\_∗)\|. Note that the use of absolute values is needed because the variable contributions can be positive or negative. In the second step, the variable-importance measure for the jj-th variable is calculated as
+
+Note, that there are also other possible approaches to the problem of calculation of variable attributions.:
+
+-   One consists of identifying the interactions that cause a difference in variable-importance measures for different orderings and focusing on those interactions. This approach is discussed in Chapter [7](https://ema.drwhy.ai/iBreakDown.html#iBreakDown) (Break-down plots for interactions).
+
+-   The other one consists of calculating an average value of the variance-importance measure across all possible orderings. This approach is presented in Chapter [8](https://ema.drwhy.ai/shapley.html#shapley) (Shapley Additive Explanations).
+
+### Método
+
+1.  Ordenamos las variables (por el problema de que el resultado puede ser distinto según el orden de las variables, si hay interacciones)
+
+    1.  Cambiamos en todo el dataset original el valor de la primera variable por el que tiene en la observación que queremos explicar.
+
+    2.  Obtenemos como *score* de la contribución de la variable el valor absoluto de la diferencia entre la predicción media con este nuevo dataset y la prediccón media con el dataset original
+
+    3.  Repetimos 1 y 2 hasta obtener el *score* de todas las variables.
+
+    4.  El orden buscado lo determinan los *scores* obtenidos.
+
+2.  En el orden anterior, calculamos la contribución de cada variable.
+
+    1.  Tomamos el dataset original como primer dataset y creamos un segundo dataset cambiando el valor de la variable en todo el primer dataset por el que tiene en la observación que queremos explicar
+
+    2.  Calculamos la predicción media de ambos datasets y restamos del segundo la del primero: esa es la contribución de la variable.
+
+    3.  Tomamos ahora el segundo dataset anterior y lo usamos como primero; para obtener el segundo dataset cambiaremos también en el primero la siguiente variable por el valor que tiene en la observación que queremos explicar.
+
+    4.  Repetimos 2 y 3 hasta obtener la contribución de todas las variables.
+
+### Example: Titanic data
+
+```{r}
+titanic_imputed <- archivist::aread("pbiecek/models/27e5c")
+titanic_rf      <- archivist::aread("pbiecek/models/4e0fc")
+(henry          <- archivist::aread("pbiecek/models/a6538"))
+(johnny_d       <- archivist:: aread("pbiecek/models/e3596"))
+```
+
+```{r}
+library("randomForest", quiet = TRUE)
+library("DALEX")
+explain_rf <- DALEX::explain(model = titanic_rf,  
+                        data = titanic_imputed[, -9],
+                           y = titanic_imputed$survived == "yes", 
+                       label = "Random Forest")
+```
+
+#### Basic use of the `predict_parts()` function
+
+The `DALEX::predict_parts()` function decomposes model predictions into parts that can be attributed to individual variables. It calculates the variable-attribution measures for a selected model and an instance of interest. The object obtained as a result of applying the function is a data frame containing the calculated measures.
+
+In the simplest call, the function requires three arguments:
+
+-   `explainer` - an explainer-object, created with function `DALEX::explain()`;
+
+-   `new_observation` - an observation to be explained; it should be a data frame with a structure that matches the structure of the dataset used for fitting of the model;
+
+-   `type` - the method for calculation of variable attribution; the possible methods are `"break_down"` (the default), `"shap"`, `"oscillations"`, and `"break_down_interactions"`.
+
+```{r}
+bd_rf <- predict_parts(explainer = explain_rf,
+                 new_observation = henry,
+                            type = "break_down")
+plot(bd_rf) + labs(title = "Henry")
+```
+
+```{r}
+plot(bd_rf)
+```
+
+```{r}
+bd_rf <- predict_parts(explainer = explain_rf,
+                 new_observation = johnny_d,
+                            type = "break_down")
+plot(bd_rf) + labs(title = "Johnny")
+```
+
+#### Advanced use of the `predict_parts()` function
+
+Apart from the `explainer`, `new_observation`, and `type` arguments, function `predict_parts()` allows additional ones. The most commonly used are:
+
+-   `order` - a vector of characters (column names) or integers (column indexes) that specify the order of explanatory variables to be used for computing the variable-importance measures; if not specified (default), then a one-step heuristic is used to determine the order;
+
+-   `keep_distributions` - a logical value (`FALSE` by default); if `TRUE`, then additional diagnostic information about conditional distributions of predictions is stored in the resulting object and can be plotted with the generic `plot()` function.
+
+```{r}
+bd_rf_order <- predict_parts(explainer = explain_rf,
+                       new_observation = henry, 
+                                  type = "break_down",
+                   order = c("class", "age", "gender", "fare", 
+                             "parch", "sibsp", "embarked"))
+plot(bd_rf_order, max_features = 3) 
+```
+
+```{r}
+#| warning: false
+bd_rf_distr <- predict_parts(explainer = explain_rf,
+                       new_observation = henry, 
+                                  type = "break_down",
+              order = c("age", "class", "fare", "gender", 
+                        "embarked", "sibsp", "parch"),
+                    keep_distributions = TRUE)
+plot(bd_rf_distr, plot_distributions = TRUE) 
+```
+
+### Pros and cons
+
+BD plots offer a model-agnostic approach that can be applied to any predictive model that returns a single number for a single observation (instance). The approach offers several advantages. The plots are, in general, **easy to understand**. They are **compact**; results for many explanatory variables can be presented in a l**imited space**. The approach reduces to an intuitive interpretation for linear models. Numerical **complexity** of the BD algorithm is **linear** in the number of explanatory variables.
+
+An important issue is that BD plots may be **misleading** for models including **interactions**. This is because **the plots show only the additive attributions**. Thus, the choice of the **ordering** of the explanatory variables that is used in the calculation of the variable-importance measures is important. Also, for models with a large number of variables, BD plots may be complex and include many explanatory variables with small contributions to the instance prediction.
+
+To **address the issue** of the dependence of the variable-importance measure on the **ordering** of the explanatory variables, the heuristic approach described in Section [6.3.2](https://ema.drwhy.ai/breakDown.html#BDMethodGen) can be applied. Alternative approaches are described in Chapters [7](https://ema.drwhy.ai/iBreakDown.html#iBreakDown) (Break-down plots for interactions) and [8](https://ema.drwhy.ai/shapley.html#shapley){style="font-size: 11pt;"} (Shapley Additive Explanations).
+
+## Break-down Plots for Interactions
+
+In Chapter [6](https://ema.drwhy.ai/breakDown.html#breakDown), we presented a model-agnostic approach to the calculation of the attribution of an explanatory variable to a model\'s predictions. However, for some models, like models with interactions, the results of the method introduced in Chapter [6](https://ema.drwhy.ai/breakDown.html#breakDown) depend on the ordering of the explanatory variables that are used in computations.
+
+In this chapter, we present an algorithm that addresses the issue. In particular, the algorithm identifies interactions between pairs of variables and takes them into account when constructing break-down (BD) plots. In our presentation, we focus on pairwise interactions that involve pairs of explanatory variables, but the algorithm can be easily extended to interactions involving a larger number of variables.
+
+Interaction (deviation from additivity) means that the effect of an explanatory variable depends on the value(s) of other variable(s).
+
+Thus, by considering the effects of *class* and *age* in a different order, we get very different attributions (contributions attributed to the variables). This is because there is an interaction: the effect of *class* depends on *age* and *vice versa*.
+
+### Example: Titanic data
+
+```{r}
+bd_rf <- predict_parts(explainer = explain_rf,
+                 new_observation = henry,
+                            type = "break_down_interactions")
+bd_rf
+```
+
+```{r}
+plot(bd_rf)
+```
+
+### Pros and cons
+
+iBD plots share many advantages and disadvantages of BD plots for models without interactions (see Section [6.5](https://ema.drwhy.ai/breakDown.html#BDProsCons)). However, in the case of models with interactions, iBD plots provide more correct explanations.
+
+Though the numerical complexity of the iBD procedure is quadratic, it may be time-consuming in case of models with a large number of explanatory variables. For a model with pp explanatory variables, we have got to calculate p∗(p+1)/2p∗(p+1)/2 net contributions for single variables and pairs of variables. For datasets with a small number of observations, the calculations of the net contributions will be subject to a larger variability and, therefore, larger randomness in the ranking of the contributions.
+
+It is also worth noting that the presented procedure of identification of interactions is not based on any formal statistical-significance test. Thus, the procedure may lead to false-positive findings and, especially for small sample sizes, false-negative errors.
+
+## Shapley Additive Explanations (SHAP) for Average Attributions
+
+In Chapter [6](https://ema.drwhy.ai/breakDown.html#breakDown), we introduced break-down (BD) plots, a procedure for calculation of attribution of an explanatory variable for a model\'s prediction.
+
+We also indicated that, in the presence of interactions, the computed value of the attribution depends on the order of explanatory covariates that are used in calculations.
+
+-   One solution to the problem (**heuristic**), presented in Chapter [6](https://ema.drwhy.ai/breakDown.html#breakDown), is to find an **ordering** in which the most important variables are placed at the beginning.
+
+-   Another solution (**BD Plots for interactions**), described in Chapter [7](https://ema.drwhy.ai/iBreakDown.html#iBreakDown), is to i**dentify interactions** and explicitly present their contributions to the predictions.
+
+-   In this chapter, we introduce yet another approach (**SHAP**) to address the ordering issue. It is based on the idea of a**veraging the value of a variable\'s attribution over all** (or a large number of) **possible orderings**.
+
+### 
+Example: Titanic data
+
+```{r}
+# The B=25 argument indicates that we want to select 25 random orderings of explanatory variables for which the Shapley values are to be computed. Note that B=25 is also the default value of the argument.
+shap_henry <- predict_parts(explainer = explain_rf, 
+                      new_observation = henry, 
+                                 type = "shap",
+                                    B = 25)
+```
+
+```{r}
+shap_henry
+```
+
+```{r}
+plot(shap_henry)
+```
+
+```{r}
+plot(shap_henry, show_boxplots = FALSE) 
+```
+
+## 
+
+## Pros and cons
+
+Shapley values provide a uniform approach to decompose a model\'s predictions into contributions that can be attributed additively to different explanatory variables. The method has got a strong formal foundation derived from the cooperative games theory. It also enjoys an efficient implementation in Python, with ports or re-implementations in R.
+
+An important drawback of Shapley values is that they provide additive contributions (attributions) of explanatory variables. **If the model is [not additive]{.underline}, then the Shapley values may be misleading**. This issue can be seen as arising from the fact that, in cooperative games, the goal is to distribute the payoff among payers. However, in the predictive modelling context, we want to understand how do the players affect the payoff? Thus, we are not limited to independent payoff-splits for players.
+
+It is worth noting that, **for an additive model, the approaches presented in Chapters [6](https://ema.drwhy.ai/breakDown.html#breakDown)--[7](https://ema.drwhy.ai/iBreakDown.html#iBreakDown) and in the current one lead to the same attributions**. The reason is that, **for additive models, different orderings lead to the same contributions**. Since **Shapley values** can be seen as the mean across all orderings, it is essentially an average of identical values, i.e., **it also assumes the same value**.
+
+An important practical limitation of the general model-agnostic method is that, for large models, the calculation of Shapley values is **time-consuming**. However, sub-**sampling** can be used to address the issue. For **tree-based models**, **effective implementations are available**.
+
+## Local Interpretable Model-agnostic Explanations (LIME)
+
+## Ceteris-paribus Profiles
+
+In this chapter, we focus on a method that evaluates the effect of a selected explanatory variable in terms of changes of a model\'s prediction induced by changes in the variable\'s values. The method is based on the *ceteris paribus* principle. *\"Ceteris paribus\"* is a Latin phrase meaning \"other things held constant\" or \"all else unchanged\". The method examines the influence of an explanatory variable by assuming that the values of all other variables do not change. The main goal is to understand how changes in the values of the variable affect the model\'s predictions.
+
+Ceteris-paribus (CP) profiles show how a model\'s prediction would change if the value of a single exploratory variable changed. In essence, a CP profile shows the dependence of the conditional expectation of the dependent variable (response) on the values of the particular explanatory variable.
+
+![Panel A) shows the model response (prediction) surface for variables age and class. Ceteris-paribus (CP) profiles are conditional, one-dimensional plots that are marked with black curves. They help to understand the changes of the curvature of the surface induced by changes in only a single explanatory variable. Panel B) CP profiles for individual variables, age (continuous) and class (categorical).](https://ema.drwhy.ai/figure/profile_age_class.png)
+
+### Example: Titanic data
+
+```{r}
+titanic_lmr <- archivist::aread("pbiecek/models/58b24")
+
+library("rms")
+explain_lmr <- explain(model = titanic_lmr, 
+                       data  = titanic_imputed[, -9],
+                       y     = titanic_imputed$survived == "yes",
+                       type = "classification",
+                       label = "Logistic Regression")
+```
+
+#### Basic use of the `predict_profile()` function
+
+```{r}
+cp_titanic_rf <- predict_profile(explainer = explain_rf, 
+                           new_observation = henry)
+cp_titanic_rf
+```
+
+```{r}
+library("ggplot2")
+plot(cp_titanic_rf, variables = c("age", "fare")) +
+  ggtitle("Ceteris-paribus profile", "") + ylim(0, 0.8)
+```
+
+```{r}
+# To plot CP profiles for categorical variables, we have got to add the variable_type = "categorical" argument to the plot() function. In that case, we can use the categorical_type argument to specify whether we want to obtain a plot with "lines" (default) or "bars". In the code below, we also use argument variables to indicate that we want to create plots only for variables class and embarked. 
+plot(cp_titanic_rf, variables = c("class", "embarked"), 
+     variable_type = "categorical", categorical_type = "bars") +
+  ggtitle("Ceteris-paribus profile", "") 
+```
+
+#### Advanced use of the `predict_profile()` function
+
+-   `explainer`, `data`, `predict_function`, `label` - they provide information about the model. If the object provided in the `explainer` argument has been created with the `DALEX::explain()` function, then values of the other arguments are extracted from the object; this is how we use the function in this chapter. Otherwise, we have got to specify directly the model-object, the data frame used for fitting the model, the function that should be used to compute predictions, and the model label.
+
+-   `new_observation` - a data frame with data for instance(s), for which we want to calculate CP profiles, with the same variables as in the data used to fit the model. Note, however, that it is best not to include the dependent variable in the data frame, as they should not appear in plots.
+
+-   `y` - the observed values of the dependent variable corresponding to `new_observation`. The use of this argument is illustrated in Section [12.1](https://ema.drwhy.ai/localDiagnostics.html#cPLocDiagIntro).
+
+-   `variables` - names of explanatory variables, for which CP profiles are to be calculated. By default, `variables = NULL` and the profiles are constructed for all variables, which may be time consuming.
+
+-   `variable_splits` - a list of values for which CP profiles are to be calculated. By default, `variable_splits = NULL` and the list includes all values for categorical variables and uniformly-placed values for continuous variables; for the latter, one can specify the number of the values with the `grid_points` argument (by default, `grid_points = 101`).
+
+```{r}
+variable_splits = list(age = seq(0, 70, 0.1), 
+                      fare = seq(0, 100, 0.1))
+cp_titanic_rf <- predict_profile(explainer = explain_rf, 
+                              new_observation = henry,
+                              variable_splits = variable_splits)
+```
+
+```{r}
+plot(cp_titanic_rf, variables = c("age", "fare")) + 
+  ggtitle("Ceteris-paribus profile", "") 
+```
+
+```{r}
+cp_titanic_rf2 <- predict_profile(explainer = explain_rf, 
+                               new_observation = rbind(henry, johnny_d),
+                               variable_splits = variable_splits)
+```
+
+```{r}
+library(ingredients)
+plot(cp_titanic_rf2, color = "_ids_", variables = c("age", "fare")) + 
+  scale_color_manual(name = "Passenger:", breaks = 1:2, 
+            values = c("#4378bf", "#8bdcbe"), 
+            labels = c("henry" , "johny_d")) 
+```
+
+#### Comparison of models (champion-challenger)
+
+```{r}
+cp_titanic_rf <- predict_profile(explain_rf, henry)
+cp_titanic_lmr <- predict_profile(explain_lmr, henry)
+```
+
+```{r}
+plot(cp_titanic_rf, cp_titanic_lmr, color = "_label_",  
+     variables = c("age", "fare")) +
+     ggtitle("Ceteris-paribus profiles for Henry", "") 
+```
+
+### Pros and cons
+
+One-dimensional CP profiles, as presented in this chapter, offer a uniform, easy to communicate, and extendable approach to model exploration. Their graphical representation is easy to understand and explain. It is possible to show profiles for many variables or models in a single plot. CP profiles are easy to compare, as we can overlay profiles for two or more models to better understand differences between the models. We can also compare two or more instances to better understand model-prediction\'s stability. CP profiles are also a useful tool for sensitivity analysis.
+
+However, there are several issues related to the use of the CP profiles.
+
+-   One of the most important ones is related to the presence of **correlated explanatory variables**. For such variables, the application of the *ceteris-paribus* principle may lead to unrealistic settings and misleading results, as it is not possible to keep one variable fixed while varying the other one. For example, variables like surface and number of rooms, which can be used in prediction of an apartment\'s price, are usually correlated. Thus, it is unrealistic to consider very small apartments with a large number of rooms. In fact, in a training dataset, there may be no such combinations. Yet, as implied by [(10.1)](https://ema.drwhy.ai/ceterisParibus.html#eq:CPPdef), to compute a CP profile for the number-of-rooms variable for a particular instance of a small-surface apartment, we should consider the model\'s predictions f(x––j|=z∗)f(x_∗j|=z) for all values of zz (i.e., numbers of rooms) observed in the training dataset, including large ones. This means that, especially for flexible models like, for example, regression trees, predictions for a large number of rooms zz may have to be obtained by extrapolating the results obtained for large-surface apartments. Needless to say, such extrapolation may be problematic. We will come back to this issue in Chapters [17](https://ema.drwhy.ai/partialDependenceProfiles.html#partialDependenceProfiles) and [18](https://ema.drwhy.ai/accumulatedLocalProfiles.html#accumulatedLocalProfiles).
+
+-   A somewhat similar issue is related to the presence of **interactions** in a model, as they imply the dependence of the effect of one variable on other one(s). Pairwise interactions require the use of **two-dimensional CP profiles** that are more complex than one-dimensional ones. Needless to say, interactions of higher orders pose even a greater challenge.
+
+-   A practical issue is that, in case of a model with hundreds or thousands of variables, the number of plots to inspect may be daunting.
+
+-   Finally, while bar plots allow visualization of CP profiles for factors (categorical explanatory variables), their use becomes less trivial in case of factors with many nominal (unordered) categories (like, for example, a ZIP-code).
