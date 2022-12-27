@@ -1,5 +1,5 @@
 # rm(list=ls());gc()
-
+library(openxlsx)
 # library(XLConnect)
 library(openxlsx)
 library(googleVis)
@@ -7,7 +7,7 @@ library(googleVis)
 
 nombre <- "Sankey_Leads"
 
-# wb <- loadWorkbook("plotting/SankeyLeads2.xlsx")
+# wb <- loadWorkbook("./plotting/Sankey Diagrams/SankeyLeads2.xlsx")
 # data <- readWorksheet(wb,sheet=1)
 data <- read.xlsx("./plotting/Sankey Diagrams/SankeyLeads2.xlsx", sheet = 1)
 summary(data)
