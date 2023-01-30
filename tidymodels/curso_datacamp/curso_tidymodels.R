@@ -528,4 +528,54 @@ rs_metrics %>%
 
 # F. HYPERPARAMETERS TUNING -----------------------------------------------
 
+# Decision tree model
+dt_tune_model <- decision_tree(cost_complexity = tune(), 
+                               tree_depth      = tune(), 
+                               min_n           = tune()) %>% 
+  set_engine("rpart") %>% 
+  set_mode("classification")
 
+dt_tune_model
+
+# Update workflow with the decision tree model
+leads_tune_wkfl <- leads_wkfl %>% 
+  update_model(dt_tune_model)
+
+leads_tune_wkfl
+
+# Grid search
+parameters(dt_tune_model)
+extract_parameter_set_dials(dt_tune_model)
+
+set.seed(124)
+dt_grid <- grid_random(extract_parameter_set_dials(dt_tune_model),
+                       size = 5)
+dt_grid
+
+# Hyperparameter tuning with cross validation
+dt_tuning <- leads_tune_wkfl %>% 
+  tune_grid(resamples = lead_folds, 
+            grid = dt_grid, 
+            metrics = leads_metrics)
+
+dt_tuning
+
+dt_tuning %>% 
+  collect_metrics()
+
+dt_tuning %>% 
+  collect_metrics(summarize = FALSE)
+
+dt_tuning %>% 
+  collect_metrics(summarize = FALSE) %>% 
+  filter(.metric == "roc_auc") %>% 
+  group_by(id) %>% 
+  summarise(min = min(.estimate),
+            ci_low = mean(.estimate) - 1.96 * sd(.estimate),
+            median = median(.estimate),
+            mean = mean(.estimate),
+            ci_high = mean(.estimate) + 1.96 * sd(.estimate),
+            max = max(.estimate))
+
+dt_tuning %>% 
+  show_best(metric = "roc_auc", n = 5)
