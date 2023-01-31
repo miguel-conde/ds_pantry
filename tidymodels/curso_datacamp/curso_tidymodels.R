@@ -556,7 +556,8 @@ dt_grid
 dt_tuning <- leads_tune_wkfl %>% 
   tune_grid(resamples = lead_folds, 
             grid = dt_grid, 
-            metrics = leads_metrics)
+            metrics = leads_metrics, 
+            control = control_grid(save_pred = TRUE))
 
 dt_tuning
 
@@ -577,5 +578,32 @@ dt_tuning %>%
             ci_high = mean(.estimate) + 1.96 * sd(.estimate),
             max = max(.estimate))
 
+# Select best model
 dt_tuning %>% 
   show_best(metric = "roc_auc", n = 5)
+
+best_dt_model <- dt_tuning %>% 
+  select_best(metric = "roc_auc", n = 5)
+
+# Finalize workflow
+final_leads_wkflw <- leads_tune_wkfl %>% 
+  finalize_workflow(best_dt_model)
+
+final_leads_wkflw
+
+leads_final_fit <- final_leads_wkflw %>% 
+  last_fit(split = leads_split, control = )
+
+leads_final_fit %>% 
+  collect_metrics()
+
+leads_final_fit %>% 
+  collect_predictions()
+
+# To use workflow with new data:
+
+leads_final_fit$.workflow[[1]] %>% predict(leads_training)
+leads_final_fit$.workflow[[1]] %>% predict(leads_training, type = "prob")
+
+leads_final_fit$.workflow[[1]] %>% predict(leads_test)
+leads_final_fit$.workflow[[1]] %>% predict(leads_test, type = "prob")
