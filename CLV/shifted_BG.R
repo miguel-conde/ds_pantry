@@ -114,9 +114,7 @@ sbg_model <-
                        G = 2,
                        g = model_data$cohorte,
                        n = model_data$n_end,
-                       n_0 = c(1000, 1000),
-                       mean_alpha = 1,
-                       mean_beta = 1),
+                       n_0 = c(1000, 1000)),
            verbose = TRUE)
 
 sbg_model

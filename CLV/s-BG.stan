@@ -36,21 +36,19 @@ functions {
 }
 
 data {
-  int<lower=0> N;    // Nº de muestras
-  int<lower=0> G; // Nº de grupos (cohortes)
+  int<lower=0> N;      // Nº de muestras
+  int<lower=0> G;      // Nº de grupos (cohortes)
   int<lower=0> N_g[G]; // Nº muestras por grupo
-  int<lower=0> g[N]; // grupo
-  int<lower=0> n[N]; // "Muertes" en el periodo
-  int<lower=0> n_0[G];  // poblaciones iniciales
-  
-  real<lower=0> mean_alpha;
-  real<lower=0> mean_beta;
+  int<lower=0> g[N];   // grupo
+  int<lower=0> n[N];   // "Muertes" en el periodo
+  int<lower=0> n_0[G]; // poblaciones iniciales
 }
 
 transformed data {
   int init_idx[G];
   int end_idx[G];
   
+  // Índices de inicio y fin de cada grupo
   init_idx[1] = 1;
   end_idx[1]  = N_g[1];
   
@@ -60,10 +58,14 @@ transformed data {
       end_idx[group]  = init_idx[group] + N_g[group] - 1;
     }
   }
-  
 }
 
 parameters {
+  // Hyper-parameters
+  real<lower=0> avg_beta;
+  real<lower=0> avg_alpha;
+  
+  // Parameters
   real<lower=0> beta[G];
   real<lower=0> alpha[G];
 }
@@ -73,17 +75,23 @@ transformed parameters {
 
 model {
   
+  // Hyper-priors
+  avg_alpha ~ exponential(1);
+  avg_beta  ~  exponential(1);
+  
   for (group in 1:G) {
-    alpha[group] ~ exponential(mean_alpha);
-    beta[group]  ~ exponential(mean_beta);
+    // Priors
+    alpha[group] ~ exponential(avg_alpha);
+    beta[group]  ~ exponential(avg_beta);
     
+    // Likelihood
     target += ll(n[init_idx[group]:end_idx[group]], alpha[group], beta[group], n_0[group]);
   }
 }
 
 generated quantities {
-  real sim_r[N];
-  real sim_S[N];
+  real sim_r[N]; // Retention rates
+  real sim_S[N]; // Survival function
   
   for (i in 1:N) {
     sim_r[i] = rr(i - init_idx[g[i]] + 1, alpha[g[i]], beta[g[i]]);
