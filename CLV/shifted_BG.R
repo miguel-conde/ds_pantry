@@ -52,13 +52,51 @@ model_data_all <- df %>%
   group_by(cohorte) %>% 
   group_map(~ .x %>% arrange(t) %>% 
               mutate(lag_n = lag(n)) %>% 
+              mutate(n_end = lag_n - n) %>% 
               mutate(r = n / lag_n ) %>% 
               drop_na() %>% 
-              mutate(S = cumprod(r)), 
+              mutate(S = cumprod(r)) %>% 
+              mutate(theta_emp = 1 - S^(1/t)) %>% 
+              mutate(p_t_emp = (lag_n - n)/.$lag_n[1]), 
             .keep = TRUE) %>% 
   bind_rows()
 
-model_data <- model_data %>% filter(cohorte < 8)
+# s-BG_0 ------------------------------------------------------------------
+
+model_data_0 <- model_data_all %>% filter(cohorte == 1, t < 8)
+
+STAN_FILE_0 <- here::here("clv", "s-BG_0.stan")
+# STAN_FILE <- here::here("clv", "tst_stan.stan")
+
+options(mc.cores = parallel:: detectCores())
+rstan_options(auto_write = TRUE)
+
+model_sbg_0 <- stan_model(file = STAN_FILE_0)
+
+sbg_model_0 <- 
+  sampling(model_sbg_0, 
+           iter = 10000, chains = 1, 
+           data = list(N = nrow(model_data_0),
+                       n = model_data_0$n_end,
+                       n_0 = model_data_0$lag_n[1],
+                       mean_alpha = 1,
+                       mean_beta = 1),
+           verbose = TRUE)
+
+sbg_model_0
+
+model_data_0$r
+extract(sbg_model_0)$sim_r %>% apply(2, median)
+
+extract(sbg_model_0)$alpha %>% median()
+extract(sbg_model_0)$beta %>% median()
+
+extract(sbg_model_0)$alpha %>% hist()
+extract(sbg_model_0)$beta %>% hist()
+
+# s-BG --------------------------------------------------------------------
+
+model_data <- model_data_all %>% filter(t < 8)
 
 STAN_FILE <- here::here("clv", "s-BG.stan")
 # STAN_FILE <- here::here("clv", "tst_stan.stan")
@@ -72,40 +110,25 @@ sbg_model <-
   sampling(model_sbg, 
            iter = 10000, chains = 1, 
            data = list(N = nrow(model_data),
-                       r = model_data$r,
-                       G = length(model_data$cohorte %>% unique()),
+                       N_g = model_data %>% count(cohorte) %>% pull(n),
+                       G = 2,
                        g = model_data$cohorte,
-                       t = model_data$t),
+                       n = model_data$n_end,
+                       n_0 = c(1000, 1000),
+                       mean_alpha = 1,
+                       mean_beta = 1),
            verbose = TRUE)
 
 sbg_model
 
 
-print(sbg_model, c("betas"))
-sbg_model %>% rstan::extract(c("betas"))
-sbg_model %>% rstan::extract(c("alphas"))
-sbg_model %>% rstan::extract(c("mu_r")) %>% .[[1]] %>% colMeans()
 model_data$r
+extract(sbg_model)$sim_r %>% apply(2, median)
 
-plot(model_data$r,
-     sbg_model %>% rstan::extract(c("mu_r")) %>% .[[1]] %>% colMeans())
-abline(a=0, b=1)
+extract(sbg_model_0)$alpha %>% median()
+extract(sbg_model_0)$beta %>% median()
 
-plot(cumprod(model_data$r),
-     sbg_model %>% rstan::extract(c("mu_r")) %>% .[[1]] %>% colMeans() %>% cumprod())
-abline(a=0, b=1)
+extract(sbg_model_0)$alpha %>% hist()
+extract(sbg_model_0)$beta %>% hist()
 
-curve(dbeta(x, 0.0001156209, 7.364960), 0, 1)
-curve(dbeta(x, 0.0001018031, 2.905218), 0, 1, add = TRUE, color = "blue")
 
-curve(dbeta(x, 0.688, 3.806), 0, 1)
-curve(dbeta(x, 0.704, 1.182), 0, 1, add = TRUE, color = "blue")
-
-res <- (sapply(1:12, function(x) x + as.matrix(colMeans(rstan::extract(sbg_model, c("betas"))[[1]]))) - 2) /
-  ((sapply(1:12, function(x) x + as.matrix(colMeans(rstan::extract(sbg_model, c("betas"))[[1]]) + 
-                                             colMeans(rstan::extract(sbg_model, c("alphas"))[[1]]))) - 1))
-  
-res
-
-res %>% t() %>% as.data.frame() %>% 
-  mutate(V1 = cumprod(V1), V2 = cumprod(V2))

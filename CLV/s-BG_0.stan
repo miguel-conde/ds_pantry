@@ -37,35 +37,16 @@ functions {
 
 data {
   int<lower=0> N;    // Nº de muestras
-  int<lower=0> G; // Nº de grupos (cohortes)
-  int<lower=0> N_g[G]; // Nº muestras por grupo
-  int<lower=0> g[N]; // grupo
   int<lower=0> n[N]; // "Muertes" en el periodo
-  int<lower=0> n_0[G];  // poblaciones iniciales
+  int<lower=0> n_0;  // población inicial
   
   real<lower=0> mean_alpha;
   real<lower=0> mean_beta;
 }
 
-transformed data {
-  int init_idx[G];
-  int end_idx[G];
-  
-  init_idx[1] = 1;
-  end_idx[1]  = N_g[1];
-  
-  if (G > 1) {
-    for (group in 2:G) {
-      init_idx[group] = end_idx[group-1] + 1;
-      end_idx[group]  = init_idx[group] + N_g[group] - 1;
-    }
-  }
-  
-}
-
 parameters {
-  real<lower=0> beta[G];
-  real<lower=0> alpha[G];
+  real<lower=0> beta;
+  real<lower=0> alpha;
 }
 
 transformed parameters {
@@ -73,21 +54,18 @@ transformed parameters {
 
 model {
   
-  for (group in 1:G) {
-    alpha[group] ~ exponential(mean_alpha);
-    beta[group]  ~ exponential(mean_beta);
-    
-    target += ll(n[init_idx[group]:end_idx[group]], alpha[group], beta[group], n_0[group]);
-  }
+  alpha ~ exponential(mean_alpha);
+  beta  ~ exponential(mean_beta);
+  
+  target += ll(n, alpha, beta, n_0);
 }
 
 generated quantities {
   real sim_r[N];
   real sim_S[N];
   
-  for (i in 1:N) {
-    sim_r[i] = rr(i - init_idx[g[i]] + 1, alpha[g[i]], beta[g[i]]);
-    sim_S[i] = survivor_fun(i - init_idx[g[i]] + 1, alpha[g[i]], beta[g[i]]);
+  for (t in 1:num_elements(n)) {
+    sim_r[t] = rr(t, alpha, beta);
+    sim_S[t] = survivor_fun(t, alpha, beta);
   }
 }
-
