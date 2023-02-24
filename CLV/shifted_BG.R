@@ -119,6 +119,20 @@ sbg_model <-
 
 sbg_model
 
+check_hmc_diagnostics(sbg_model)
+traceplot(sbg_model, c("alpha", "beta"))
+stan_plot(sbg_model, c("alpha", "beta", "avg_alpha", "avg_beta"))
+stan_hist(sbg_model, c("alpha", "beta", "avg_alpha", "avg_beta"))
+stan_dens(sbg_model, c("alpha", "beta", "avg_alpha", "avg_beta"))
+
+stan_diag(sbg_model, "sample")
+stan_diag(sbg_model, "stepsize")
+stan_diag(sbg_model, "treedepth")
+stan_diag(sbg_model, "divergence")
+stan_par(sbg_model, "alpha[1]")
+stan_rhat(sbg_model, c("alpha", "beta", "avg_alpha", "avg_beta"))
+stan_ess(sbg_model,  c("alpha", "beta", "avg_alpha", "avg_beta"))
+stan_mcse(sbg_model, c("alpha", "beta", "avg_alpha", "avg_beta"))
 
 model_data$r
 extract(sbg_model)$sim_r %>% apply(2, median)
