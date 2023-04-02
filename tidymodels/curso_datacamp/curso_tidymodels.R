@@ -592,7 +592,7 @@ final_leads_wkflw <- leads_tune_wkfl %>%
 final_leads_wkflw
 
 leads_final_fit <- final_leads_wkflw %>% 
-  last_fit(split = leads_split, control = )
+  last_fit(split = leads_split)
 
 leads_final_fit %>% 
   collect_metrics()
@@ -607,3 +607,5 @@ leads_final_fit$.workflow[[1]] %>% predict(leads_training, type = "prob")
 
 leads_final_fit$.workflow[[1]] %>% predict(leads_test)
 leads_final_fit$.workflow[[1]] %>% predict(leads_test, type = "prob")
+
+
