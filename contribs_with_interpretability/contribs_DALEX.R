@@ -1,7 +1,18 @@
+
+# LIBRERÍAS y SOURCES -----------------------------------------------------
+
+
 library(tidymodels)
+
+
+# DATOS -------------------------------------------------------------------
+
 
 # Cargar el conjunto de datos de iris
 data(iris)
+
+
+# MODELOS -----------------------------------------------------------------
 
 # Creamos recipe
 the_recipe <- 
@@ -12,14 +23,17 @@ the_recipe <-
 
 # Creamos el modelo lineal
 the_model_lm <- linear_reg()
+
+# Creamos el modelo random forest
 the_model_rf <- rand_forest(engine = "ranger")
 
-# Crear un pipeline para preprocesar los datos y ajustar un modelo
+# Crear un pipeline para preprocesar los datos y ajustar el modelo lineal
 modelo_pipeline_lm <- workflow() %>%
   add_recipe(the_recipe) %>% 
   add_model(the_model_lm) %>% 
   fit(data = iris)
 
+# Crear un pipeline para preprocesar los datos y ajustar el modelo random forest
 modelo_pipeline_rf <- workflow() %>%
   add_recipe(the_recipe) %>% 
   add_model(the_model_rf) %>% 
@@ -50,6 +64,8 @@ mae(results_rf, truth = Sepal.Length, estimate = .pred)
 mape(results_rf, truth = Sepal.Length, estimate = .pred)
 rsq(results_rf, truth = Sepal.Length, estimate = .pred)
 
+
+# EXPLICABILIDAD ----------------------------------------------------------
 
 library(DALEX)
 
