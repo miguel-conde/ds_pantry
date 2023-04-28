@@ -116,12 +116,23 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   <li><a href="#método" id="toc-método" class="nav-link" data-scroll-target="#método"><span class="toc-section-number">1.1.1</span>  Método</a></li>
   <li><a href="#example-titanic-data" id="toc-example-titanic-data" class="nav-link" data-scroll-target="#example-titanic-data"><span class="toc-section-number">1.1.2</span>  Example: Titanic data</a></li>
   <li><a href="#pros-and-cons" id="toc-pros-and-cons" class="nav-link" data-scroll-target="#pros-and-cons"><span class="toc-section-number">1.1.3</span>  Pros and cons</a></li>
-  <li><a href="#advanced-use-of-the-predict_parts-function" id="toc-advanced-use-of-the-predict_parts-function" class="nav-link" data-scroll-target="#advanced-use-of-the-predict_parts-function"><span class="toc-section-number">1.1.4</span>  Advanced use of the <code>predict_parts()</code> function</a></li>
   </ul></li>
   <li><a href="#break-down-plots-for-interactions" id="toc-break-down-plots-for-interactions" class="nav-link" data-scroll-target="#break-down-plots-for-interactions"><span class="toc-section-number">1.2</span>  Break-down Plots for Interactions</a>
   <ul class="collapse">
   <li><a href="#example-titanic-data-1" id="toc-example-titanic-data-1" class="nav-link" data-scroll-target="#example-titanic-data-1"><span class="toc-section-number">1.2.1</span>  Example: Titanic data</a></li>
   <li><a href="#pros-and-cons-1" id="toc-pros-and-cons-1" class="nav-link" data-scroll-target="#pros-and-cons-1"><span class="toc-section-number">1.2.2</span>  Pros and cons</a></li>
+  </ul></li>
+  <li><a href="#shapley-additive-explanations-shap-for-average-attributions" id="toc-shapley-additive-explanations-shap-for-average-attributions" class="nav-link" data-scroll-target="#shapley-additive-explanations-shap-for-average-attributions"><span class="toc-section-number">1.3</span>  Shapley Additive Explanations (SHAP) for Average Attributions</a>
+  <ul class="collapse">
+  <li><a href="#section" id="toc-section" class="nav-link" data-scroll-target="#section"><span class="toc-section-number">1.3.1</span>  </a></li>
+  </ul></li>
+  <li><a href="#section-1" id="toc-section-1" class="nav-link" data-scroll-target="#section-1"><span class="toc-section-number">1.4</span>  </a></li>
+  <li><a href="#pros-and-cons-2" id="toc-pros-and-cons-2" class="nav-link" data-scroll-target="#pros-and-cons-2"><span class="toc-section-number">1.5</span>  Pros and cons</a></li>
+  <li><a href="#local-interpretable-model-agnostic-explanations-lime" id="toc-local-interpretable-model-agnostic-explanations-lime" class="nav-link" data-scroll-target="#local-interpretable-model-agnostic-explanations-lime"><span class="toc-section-number">1.6</span>  Local Interpretable Model-agnostic Explanations (LIME)</a></li>
+  <li><a href="#ceteris-paribus-profiles" id="toc-ceteris-paribus-profiles" class="nav-link" data-scroll-target="#ceteris-paribus-profiles"><span class="toc-section-number">1.7</span>  Ceteris-paribus Profiles</a>
+  <ul class="collapse">
+  <li><a href="#example-titanic-data-2" id="toc-example-titanic-data-2" class="nav-link" data-scroll-target="#example-titanic-data-2"><span class="toc-section-number">1.7.1</span>  Example: Titanic data</a></li>
+  <li><a href="#pros-and-cons-3" id="toc-pros-and-cons-3" class="nav-link" data-scroll-target="#pros-and-cons-3"><span class="toc-section-number">1.7.2</span>  Pros and cons</a></li>
   </ul></li>
   </ul></li>
   </ul>
@@ -150,27 +161,27 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <h1 data-number="1"><span class="header-section-number">1</span> Instance Level</h1>
 <p>Instance-level exploration methods help us understand how a model yields a prediction for a particular single observation. We may consider the following situations as examples:</p>
 <ul>
-<li><p>We may want to evaluate effects of explanatory variables on the model's predictions. For instance, we may be interested in predicting the risk of heart attack based on a person's age, sex, and smoking habits. A model may be used to construct a score (for instance, a linear combination of the explanatory variables representing age, sex, and smoking habits) that could be used for the purposes of prediction. For a particular patient, we may want to learn how much do the different variables contribute to the score?</p></li>
-<li><p>We may want to understand how would the model's predictions change if values of some of the explanatory variables changed? For instance, what would be the predicted risk of heart attack if the patient cut the number of cigarettes smoked per day by half?</p></li>
+<li><p>We may want to evaluate effects of explanatory variables on the model’s predictions. For instance, we may be interested in predicting the risk of heart attack based on a person’s age, sex, and smoking habits. A model may be used to construct a score (for instance, a linear combination of the explanatory variables representing age, sex, and smoking habits) that could be used for the purposes of prediction. For a particular patient, we may want to learn how much do the different variables contribute to the score?</p></li>
+<li><p>We may want to understand how would the model’s predictions change if values of some of the explanatory variables changed? For instance, what would be the predicted risk of heart attack if the patient cut the number of cigarettes smoked per day by half?</p></li>
 <li><p>We may discover that the model is providing incorrect predictions, and we may want to find the reason. For instance, a patient with a very low risk-score experienced a heart attack. What has driven the wrong prediction?</p></li>
 </ul>
 <p><img src="https://ema.drwhy.ai/figure/cuts_techniki_ready.png" class="img-fluid"></p>
 <ul>
-<li><p>One approach is to analyze how does the model's prediction for a particular instance differ from the average prediction and how can the difference be distributed among explanatory variables? This method is often called the "variable attributions" approach. An example is provided in panel A of Figure <a href="https://ema.drwhy.ai/InstanceLevelExploration.html#fig:cutsTechnikiReady">5.1</a>. Chapters <a href="https://ema.drwhy.ai/breakDown.html#breakDown">6</a>-<a href="https://ema.drwhy.ai/shapley.html#shapley">8</a> present various methods for implementing this approach.</p></li>
-<li><p>Another approach uses the interpretation of the model as a function and investigates the local behaviour of this function around the point (observation) of interest x––∗x_∗. In particular, we analyze the curvature of the model response (prediction) surface around x––∗x_∗. In case of a black-box model, we may approximate it with a simpler glass-box model around x––∗x_∗. An example is provided in panel B of Figure <a href="https://ema.drwhy.ai/InstanceLevelExploration.html#fig:cutsTechnikiReady">5.1</a>. Chapter <a href="https://ema.drwhy.ai/LIME.html#LIME">9</a> presents the Local Interpretable Model-agnostic Explanations (LIME) method that exploits the concept of a "local model".</p></li>
-<li><p>Yet another approach is to investigate how does the model's prediction change if the value of a single explanatory variable changes? The approach is useful in the so-called "What-if" analyses. In particular, we can construct plots presenting the change in model-based predictions induced by a change of a single explanatory variable. Such plots are usually called ceteris-paribus (CP) profiles. An example is provided in panel C in Figure <a href="https://ema.drwhy.ai/InstanceLevelExploration.html#fig:cutsTechnikiReady">5.1</a>. Chapters <a href="https://ema.drwhy.ai/ceterisParibus.html#ceterisParibus">10</a>-<a href="https://ema.drwhy.ai/localDiagnostics.html#localDiagnostics">12</a> introduce the CP profiles and methods based on them.</p></li>
+<li><p>One approach is to analyze how does the model’s prediction for a particular instance differ from the average prediction and how can the difference be distributed among explanatory variables? This method is often called the “variable attributions” approach. An example is provided in panel A of Figure <a href="https://ema.drwhy.ai/InstanceLevelExploration.html#fig:cutsTechnikiReady">5.1</a>. Chapters <a href="https://ema.drwhy.ai/breakDown.html#breakDown">6</a>-<a href="https://ema.drwhy.ai/shapley.html#shapley">8</a> present various methods for implementing this approach.</p></li>
+<li><p>Another approach uses the interpretation of the model as a function and investigates the local behaviour of this function around the point (observation) of interest x—-∗x_∗. In particular, we analyze the curvature of the model response (prediction) surface around x—-∗x_∗. In case of a black-box model, we may approximate it with a simpler glass-box model around x—-∗x_∗. An example is provided in panel B of Figure <a href="https://ema.drwhy.ai/InstanceLevelExploration.html#fig:cutsTechnikiReady">5.1</a>. Chapter <a href="https://ema.drwhy.ai/LIME.html#LIME">9</a> presents the Local Interpretable Model-agnostic Explanations (LIME) method that exploits the concept of a “local model”.</p></li>
+<li><p>Yet another approach is to investigate how does the model’s prediction change if the value of a single explanatory variable changes? The approach is useful in the so-called “What-if” analyses. In particular, we can construct plots presenting the change in model-based predictions induced by a change of a single explanatory variable. Such plots are usually called ceteris-paribus (CP) profiles. An example is provided in panel C in Figure <a href="https://ema.drwhy.ai/InstanceLevelExploration.html#fig:cutsTechnikiReady">5.1</a>. Chapters <a href="https://ema.drwhy.ai/ceterisParibus.html#ceterisParibus">10</a>-<a href="https://ema.drwhy.ai/localDiagnostics.html#localDiagnostics">12</a> introduce the CP profiles and methods based on them.</p></li>
 </ul>
 <p>Each method has its own merits and limitations. They are briefly discussed in the corresponding chapters. Chapter <a href="https://ema.drwhy.ai/summaryInstanceLevel.html#summaryInstanceLevel">13</a> offers a comparison of the methods.</p>
 <section id="break-down-plots-for-additive-attributions" class="level2" data-number="1.1">
 <h2 data-number="1.1" class="anchored" data-anchor-id="break-down-plots-for-additive-attributions"><span class="header-section-number">1.1</span> Break-down Plots for Additive Attributions</h2>
-<p>Probably the most commonly asked question when trying to understand a model's prediction for a single observation is: <em>which variables contribute to this result the most?</em> There is no single best approach that can be used to answer this question. In this chapter, we introduce break-down (BD) plots, which offer a possible solution. The plots can be used to present "variable attributions", i.e., the decomposition of the model's prediction into contributions that can be attributed to different explanatory variables.</p>
-<p>We assume that prediction <span class="math inline">\(f(\underline{x})\)</span> is an approximation of the expected value of the dependent variable <span class="math inline">\(Y\)</span> given values of explanatory variables $\underline{x}$. The underlying idea of BD plots is to capture the contribution of an explanatory variable to the model's prediction by computing the shift in the expected value of <span class="math inline">\(Y\)</span>, while fixing the values of other variables.</p>
-<p>This idea is illustrated in Figure <a href="https://ema.drwhy.ai/breakDown.html#fig:BDPrice4">6.1</a>. Consider an example related to the prediction obtained for the random forest model <code>model_rf</code> for the Titanic data (see Section <a href="https://ema.drwhy.ai/dataSetsIntro.html#model-titanic-rf">4.2.2</a>). We are interested in the probability of survival for Johnny D, an 8-year-old passenger travelling in the first class (see Section <a href="https://ema.drwhy.ai/dataSetsIntro.html#predictions-titanic">4.2.5</a>). Panel A of Figure <a href="https://ema.drwhy.ai/breakDown.html#fig:BDPrice4">6.1</a> shows the distribution of the model's predictions for observations from the Titanic dataset. In particular, the violin plot in the row marked "all data" summarizes the distribution of predictions for all 2207 observations from the dataset. The red dot indicates the mean value that can be interpreted as an estimate of the expected value of the model's predictions over the distribution of all explanatory variables. In this example, the mean value is equal to 23.5%.</p>
+<p>Probably the most commonly asked question when trying to understand a model’s prediction for a single observation is: <em>which variables contribute to this result the most?</em> There is no single best approach that can be used to answer this question. In this chapter, we introduce break-down (BD) plots, which offer a possible solution. The plots can be used to present “variable attributions”, i.e., the decomposition of the model’s prediction into contributions that can be attributed to different explanatory variables.</p>
+<p>We assume that prediction <span class="math inline">\(f(\underline{x})\)</span> is an approximation of the expected value of the dependent variable <span class="math inline">\(Y\)</span> given values of explanatory variables $\underline{x}$. The underlying idea of BD plots is to capture the contribution of an explanatory variable to the model’s prediction by computing the shift in the expected value of <span class="math inline">\(Y\)</span>, while fixing the values of other variables.</p>
+<p>This idea is illustrated in Figure <a href="https://ema.drwhy.ai/breakDown.html#fig:BDPrice4">6.1</a>. Consider an example related to the prediction obtained for the random forest model <code>model_rf</code> for the Titanic data (see Section <a href="https://ema.drwhy.ai/dataSetsIntro.html#model-titanic-rf">4.2.2</a>). We are interested in the probability of survival for Johnny D, an 8-year-old passenger travelling in the first class (see Section <a href="https://ema.drwhy.ai/dataSetsIntro.html#predictions-titanic">4.2.5</a>). Panel A of Figure <a href="https://ema.drwhy.ai/breakDown.html#fig:BDPrice4">6.1</a> shows the distribution of the model’s predictions for observations from the Titanic dataset. In particular, the violin plot in the row marked “all data” summarizes the distribution of predictions for all 2207 observations from the dataset. The red dot indicates the mean value that can be interpreted as an estimate of the expected value of the model’s predictions over the distribution of all explanatory variables. In this example, the mean value is equal to 23.5%.</p>
 <p><img src="https://ema.drwhy.ai/figure/break_down_distr.png" class="img-fluid"></p>
-<p>Break-down plots show how the contributions attributed to individual explanatory variables change the mean model's prediction to yield the actual prediction for a particular single instance (observation). Panel A) The first row shows the distribution and the mean value (red dot) of the model's predictions for all data. The next rows show the distribution and the mean value of the predictions when fixing values of subsequent explanatory variables. The last row shows the prediction for the particular instance of interest. B) Red dots indicate the mean predictions from panel A. C) The green and red bars indicate, respectively, positive and negative changes in the mean predictions (contributions attributed to explanatory variables).</p>
-<p>To evaluate the contribution of individual explanatory variables to this particular single-instance prediction, we investigate the changes in the model's predictions when fixing the values of consecutive variables.</p>
+<p>Break-down plots show how the contributions attributed to individual explanatory variables change the mean model’s prediction to yield the actual prediction for a particular single instance (observation). Panel A) The first row shows the distribution and the mean value (red dot) of the model’s predictions for all data. The next rows show the distribution and the mean value of the predictions when fixing values of subsequent explanatory variables. The last row shows the prediction for the particular instance of interest. B) Red dots indicate the mean predictions from panel A. C) The green and red bars indicate, respectively, positive and negative changes in the mean predictions (contributions attributed to explanatory variables).</p>
+<p>To evaluate the contribution of individual explanatory variables to this particular single-instance prediction, we investigate the changes in the model’s predictions when fixing the values of consecutive variables.</p>
 <p>It is also worth mentioning that, for models that include <strong>interactions</strong>, the part of the prediction attributed to a variable <strong>depends on the order</strong> in which one sets the values of the explanatory variables. Note that the interactions do not have to be explicitly specified in the model structure as it is the case of, for instance, linear-regression models. They may also emerge as a result of fitting to the data a flexible model like, for instance, a regression tree.</p>
-<p>As it was mentioned in Section <a href="https://ema.drwhy.ai/breakDown.html#BDIntuition">6.2</a>, for models that include interactions, the value of the variable-importance measure v(j,x—-∗)v(j,x_∗) depends on the order of conditioning on explanatory variables. A heuristic approach to address this issue consists of choosing an order in which the variables with the largest contributions are selected first. In particular, the following two-step procedure can be considered. In the first step, the ordering is chosen based on the decreasing values of |Δk|∅(x––∗)||Δk|∅(x_∗)|. Note that the use of absolute values is needed because the variable contributions can be positive or negative. In the second step, the variable-importance measure for the jj-th variable is calculated as</p>
+<p>As it was mentioned in Section <a href="https://ema.drwhy.ai/breakDown.html#BDIntuition">6.2</a>, for models that include interactions, the value of the variable-importance measure v(j,x—-∗)v(j,x_∗) depends on the order of conditioning on explanatory variables. A heuristic approach to address this issue consists of choosing an order in which the variables with the largest contributions are selected first. In particular, the following two-step procedure can be considered. In the first step, the ordering is chosen based on the decreasing values of |Δk|∅(x—-∗)||Δk|∅(x_∗)|. Note that the use of absolute values is needed because the variable contributions can be positive or negative. In the second step, the variable-importance measure for the jj-th variable is calculated as</p>
 <p>Note, that there are also other possible approaches to the problem of calculation of variable attributions.:</p>
 <ul>
 <li><p>One consists of identifying the interactions that cause a difference in variable-importance measures for different orderings and focusing on those interactions. This approach is discussed in Chapter <a href="https://ema.drwhy.ai/iBreakDown.html#iBreakDown">7</a> (Break-down plots for interactions).</p></li>
@@ -225,7 +236,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   -&gt; target variable   :  2207  values 
   -&gt; predict function  :  yhat.randomForest  will be used (  default  )
   -&gt; predicted values  :  No value for predict function target column. (  default  )
-  -&gt; model_info        :  package randomForest , ver. 4.6.14 , task classification (  default  ) 
+  -&gt; model_info        :  package randomForest , ver. 4.7.1.1 , task classification (  default  ) 
   -&gt; model_info        :  Model info detected classification task but 'y' is a logical . Converted to numeric.  (  NOTE  )
   -&gt; predicted values  :  numerical, min =  0 , mean =  0.2353095 , max =  1  
   -&gt; residual function :  difference between y and yhat (  default  )
@@ -248,13 +259,13 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>                            <span class="at">type =</span> <span class="st">"break_down"</span>)</span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bd_rf) <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Henry"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="DALEX_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
+<p><img src="DALEX_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bd_rf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="DALEX_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="672"></p>
+<p><img src="DALEX_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <div class="cell">
@@ -263,19 +274,12 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>                            <span class="at">type =</span> <span class="st">"break_down"</span>)</span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bd_rf) <span class="sc">+</span> <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Johnny"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="DALEX_files/figure-html/unnamed-chunk-12-1.png" class="img-fluid" width="672"></p>
+<p><img src="DALEX_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
-</section>
-<section id="pros-and-cons" class="level3" data-number="1.1.3">
-<h3 data-number="1.1.3" class="anchored" data-anchor-id="pros-and-cons"><span class="header-section-number">1.1.3</span> Pros and cons</h3>
-<p>BD plots offer a model-agnostic approach that can be applied to any predictive model that returns a single number for a single observation (instance). The approach offers several advantages. The plots are, in general, easy to understand. They are compact; results for many explanatory variables can be presented in a limited space. The approach reduces to an intuitive interpretation for linear models. Numerical complexity of the BD algorithm is linear in the number of explanatory variables.</p>
-<p>An important issue is that BD plots may be misleading for models including interactions. This is because the plots show only the additive attributions. Thus, the choice of the ordering of the explanatory variables that is used in the calculation of the variable-importance measures is important. Also, for models with a large number of variables, BD plots may be complex and include many explanatory variables with small contributions to the instance prediction.</p>
-<p>To address the issue of the dependence of the variable-importance measure on the ordering of the explanatory variables, the heuristic approach described in Section <a href="https://ema.drwhy.ai/breakDown.html#BDMethodGen">6.3.2</a> can be applied. Alternative approaches are described in Chapters <a href="https://ema.drwhy.ai/iBreakDown.html#iBreakDown">7</a> and <a href="https://ema.drwhy.ai/shapley.html#shapley">8</a>.</p>
-</section>
-<section id="advanced-use-of-the-predict_parts-function" class="level3" data-number="1.1.4">
-<h3 data-number="1.1.4" class="anchored" data-anchor-id="advanced-use-of-the-predict_parts-function"><span class="header-section-number">1.1.4</span> Advanced use of the <code>predict_parts()</code> function</h3>
+<section id="advanced-use-of-the-predict_parts-function" class="level4" data-number="1.1.2.2">
+<h4 data-number="1.1.2.2" class="anchored" data-anchor-id="advanced-use-of-the-predict_parts-function"><span class="header-section-number">1.1.2.2</span> Advanced use of the <code>predict_parts()</code> function</h4>
 <p>Apart from the <code>explainer</code>, <code>new_observation</code>, and <code>type</code> arguments, function <code>predict_parts()</code> allows additional ones. The most commonly used are:</p>
 <ul>
 <li><p><code>order</code> - a vector of characters (column names) or integers (column indexes) that specify the order of explanatory variables to be used for computing the variable-importance measures; if not specified (default), then a one-step heuristic is used to determine the order;</p></li>
@@ -289,7 +293,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>                             <span class="st">"parch"</span>, <span class="st">"sibsp"</span>, <span class="st">"embarked"</span>))</span>
 <span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bd_rf_order, <span class="at">max_features =</span> <span class="dv">3</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="DALEX_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid" width="672"></p>
+<p><img src="DALEX_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <div class="cell">
@@ -301,14 +305,21 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>                    <span class="at">keep_distributions =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bd_rf_distr, <span class="at">plot_distributions =</span> <span class="cn">TRUE</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="DALEX_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
+<p><img src="DALEX_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
+</section>
+</section>
+<section id="pros-and-cons" class="level3" data-number="1.1.3">
+<h3 data-number="1.1.3" class="anchored" data-anchor-id="pros-and-cons"><span class="header-section-number">1.1.3</span> Pros and cons</h3>
+<p>BD plots offer a model-agnostic approach that can be applied to any predictive model that returns a single number for a single observation (instance). The approach offers several advantages. The plots are, in general, <strong>easy to understand</strong>. They are <strong>compact</strong>; results for many explanatory variables can be presented in a l<strong>imited space</strong>. The approach reduces to an intuitive interpretation for linear models. Numerical <strong>complexity</strong> of the BD algorithm is <strong>linear</strong> in the number of explanatory variables.</p>
+<p>An important issue is that BD plots may be <strong>misleading</strong> for models including <strong>interactions</strong>. This is because <strong>the plots show only the additive attributions</strong>. Thus, the choice of the <strong>ordering</strong> of the explanatory variables that is used in the calculation of the variable-importance measures is important. Also, for models with a large number of variables, BD plots may be complex and include many explanatory variables with small contributions to the instance prediction.</p>
+<p>To <strong>address the issue</strong> of the dependence of the variable-importance measure on the <strong>ordering</strong> of the explanatory variables, the heuristic approach described in Section <a href="https://ema.drwhy.ai/breakDown.html#BDMethodGen">6.3.2</a> can be applied. Alternative approaches are described in Chapters <a href="https://ema.drwhy.ai/iBreakDown.html#iBreakDown">7</a> (Break-down plots for interactions) and <a href="https://ema.drwhy.ai/shapley.html#shapley" style="font-size: 11pt;">8</a> (Shapley Additive Explanations).</p>
 </section>
 </section>
 <section id="break-down-plots-for-interactions" class="level2" data-number="1.2">
 <h2 data-number="1.2" class="anchored" data-anchor-id="break-down-plots-for-interactions"><span class="header-section-number">1.2</span> Break-down Plots for Interactions</h2>
-<p>In Chapter <a href="https://ema.drwhy.ai/breakDown.html#breakDown">6</a>, we presented a model-agnostic approach to the calculation of the attribution of an explanatory variable to a model's predictions. However, for some models, like models with interactions, the results of the method introduced in Chapter <a href="https://ema.drwhy.ai/breakDown.html#breakDown">6</a> depend on the ordering of the explanatory variables that are used in computations.</p>
+<p>In Chapter <a href="https://ema.drwhy.ai/breakDown.html#breakDown">6</a>, we presented a model-agnostic approach to the calculation of the attribution of an explanatory variable to a model’s predictions. However, for some models, like models with interactions, the results of the method introduced in Chapter <a href="https://ema.drwhy.ai/breakDown.html#breakDown">6</a> depend on the ordering of the explanatory variables that are used in computations.</p>
 <p>In this chapter, we present an algorithm that addresses the issue. In particular, the algorithm identifies interactions between pairs of variables and takes them into account when constructing break-down (BD) plots. In our presentation, we focus on pairwise interactions that involve pairs of explanatory variables, but the algorithm can be easily extended to interactions involving a larger number of variables.</p>
 <p>Interaction (deviation from additivity) means that the effect of an explanatory variable depends on the value(s) of other variable(s).</p>
 <p>Thus, by considering the effects of <em>class</em> and <em>age</em> in a different order, we get very different attributions (contributions attributed to the variables). This is because there is an interaction: the effect of <em>class</em> depends on <em>age</em> and <em>vice versa</em>.</p>
@@ -334,7 +345,7 @@ Random Forest: prediction                          0.246</code></pre>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(bd_rf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
-<p><img src="DALEX_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid" width="672"></p>
+<p><img src="DALEX_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 </section>
@@ -343,6 +354,224 @@ Random Forest: prediction                          0.246</code></pre>
 <p>iBD plots share many advantages and disadvantages of BD plots for models without interactions (see Section <a href="https://ema.drwhy.ai/breakDown.html#BDProsCons">6.5</a>). However, in the case of models with interactions, iBD plots provide more correct explanations.</p>
 <p>Though the numerical complexity of the iBD procedure is quadratic, it may be time-consuming in case of models with a large number of explanatory variables. For a model with pp explanatory variables, we have got to calculate p∗(p+1)/2p∗(p+1)/2 net contributions for single variables and pairs of variables. For datasets with a small number of observations, the calculations of the net contributions will be subject to a larger variability and, therefore, larger randomness in the ranking of the contributions.</p>
 <p>It is also worth noting that the presented procedure of identification of interactions is not based on any formal statistical-significance test. Thus, the procedure may lead to false-positive findings and, especially for small sample sizes, false-negative errors.</p>
+</section>
+</section>
+<section id="shapley-additive-explanations-shap-for-average-attributions" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="shapley-additive-explanations-shap-for-average-attributions"><span class="header-section-number">1.3</span> Shapley Additive Explanations (SHAP) for Average Attributions</h2>
+<p>In Chapter <a href="https://ema.drwhy.ai/breakDown.html#breakDown">6</a>, we introduced break-down (BD) plots, a procedure for calculation of attribution of an explanatory variable for a model’s prediction.</p>
+<p>We also indicated that, in the presence of interactions, the computed value of the attribution depends on the order of explanatory covariates that are used in calculations.</p>
+<ul>
+<li><p>One solution to the problem (<strong>heuristic</strong>), presented in Chapter <a href="https://ema.drwhy.ai/breakDown.html#breakDown">6</a>, is to find an <strong>ordering</strong> in which the most important variables are placed at the beginning.</p></li>
+<li><p>Another solution (<strong>BD Plots for interactions</strong>), described in Chapter <a href="https://ema.drwhy.ai/iBreakDown.html#iBreakDown">7</a>, is to i<strong>dentify interactions</strong> and explicitly present their contributions to the predictions.</p></li>
+<li><p>In this chapter, we introduce yet another approach (<strong>SHAP</strong>) to address the ordering issue. It is based on the idea of a<strong>veraging the value of a variable’s attribution over all</strong> (or a large number of) <strong>possible orderings</strong>.</p></li>
+</ul>
+<section id="section" class="level3" data-number="1.3.1">
+<h3 data-number="1.3.1" class="anchored" data-anchor-id="section"><span class="header-section-number">1.3.1</span> </h3>
+<p>Example: Titanic data</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># The B=25 argument indicates that we want to select 25 random orderings of explanatory variables for which the Shapley values are to be computed. Note that B=25 is also the default value of the argument.</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>shap_henry <span class="ot">&lt;-</span> <span class="fu">predict_parts</span>(<span class="at">explainer =</span> explain_rf, </span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>                      <span class="at">new_observation =</span> henry, </span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">type =</span> <span class="st">"shap"</span>,</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">B =</span> <span class="dv">25</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>shap_henry</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                            min          q1       median
+Random Forest: age = 47             -0.13987947 -0.13987947 -0.069283262
+Random Forest: class = 1st           0.12112732  0.16559855  0.182270956
+Random Forest: embarked = Cherbourg  0.01245129  0.02924604  0.049669234
+Random Forest: fare = 25            -0.03370186 -0.02597870 -0.008236067
+Random Forest: gender = male        -0.14933666 -0.12974241 -0.125022202
+Random Forest: parch = 0            -0.01608881 -0.01176846 -0.008061767
+Random Forest: sibsp = 0            -0.03593203 -0.02363117 -0.003972814
+                                            mean           q3          max
+Random Forest: age = 47             -0.075275179 -0.024354554 -0.016705029
+Random Forest: class = 1st           0.177045582  0.186756457  0.254270956
+Random Forest: embarked = Cherbourg  0.055959692  0.086606253  0.117270503
+Random Forest: fare = 25            -0.005610947 -0.001075215  0.070487540
+Random Forest: gender = male        -0.123951971 -0.118690983 -0.103386498
+Random Forest: parch = 0            -0.006447050 -0.001386271  0.004081559
+Random Forest: sibsp = 0            -0.011029597  0.002202537  0.007650204</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(shap_henry)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="DALEX_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(shap_henry, <span class="at">show_boxplots =</span> <span class="cn">FALSE</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="DALEX_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="section-1" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="section-1"><span class="header-section-number">1.4</span> </h2>
+</section>
+<section id="pros-and-cons-2" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="pros-and-cons-2"><span class="header-section-number">1.5</span> Pros and cons</h2>
+<p>Shapley values provide a uniform approach to decompose a model’s predictions into contributions that can be attributed additively to different explanatory variables. The method has got a strong formal foundation derived from the cooperative games theory. It also enjoys an efficient implementation in Python, with ports or re-implementations in R.</p>
+<p>An important drawback of Shapley values is that they provide additive contributions (attributions) of explanatory variables. <strong>If the model is <u>not additive</u>, then the Shapley values may be misleading</strong>. This issue can be seen as arising from the fact that, in cooperative games, the goal is to distribute the payoff among payers. However, in the predictive modelling context, we want to understand how do the players affect the payoff? Thus, we are not limited to independent payoff-splits for players.</p>
+<p>It is worth noting that, <strong>for an additive model, the approaches presented in Chapters <a href="https://ema.drwhy.ai/breakDown.html#breakDown">6</a>–<a href="https://ema.drwhy.ai/iBreakDown.html#iBreakDown">7</a> and in the current one lead to the same attributions</strong>. The reason is that, <strong>for additive models, different orderings lead to the same contributions</strong>. Since <strong>Shapley values</strong> can be seen as the mean across all orderings, it is essentially an average of identical values, i.e., <strong>it also assumes the same value</strong>.</p>
+<p>An important practical limitation of the general model-agnostic method is that, for large models, the calculation of Shapley values is <strong>time-consuming</strong>. However, sub-<strong>sampling</strong> can be used to address the issue. For <strong>tree-based models</strong>, <strong>effective implementations are available</strong>.</p>
+</section>
+<section id="local-interpretable-model-agnostic-explanations-lime" class="level2" data-number="1.6">
+<h2 data-number="1.6" class="anchored" data-anchor-id="local-interpretable-model-agnostic-explanations-lime"><span class="header-section-number">1.6</span> Local Interpretable Model-agnostic Explanations (LIME)</h2>
+</section>
+<section id="ceteris-paribus-profiles" class="level2" data-number="1.7">
+<h2 data-number="1.7" class="anchored" data-anchor-id="ceteris-paribus-profiles"><span class="header-section-number">1.7</span> Ceteris-paribus Profiles</h2>
+<p>In this chapter, we focus on a method that evaluates the effect of a selected explanatory variable in terms of changes of a model’s prediction induced by changes in the variable’s values. The method is based on the <em>ceteris paribus</em> principle. <em>“Ceteris paribus”</em> is a Latin phrase meaning “other things held constant” or “all else unchanged”. The method examines the influence of an explanatory variable by assuming that the values of all other variables do not change. The main goal is to understand how changes in the values of the variable affect the model’s predictions.</p>
+<p>Ceteris-paribus (CP) profiles show how a model’s prediction would change if the value of a single exploratory variable changed. In essence, a CP profile shows the dependence of the conditional expectation of the dependent variable (response) on the values of the particular explanatory variable.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://ema.drwhy.ai/figure/profile_age_class.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Panel A) shows the model response (prediction) surface for variables age and class. Ceteris-paribus (CP) profiles are conditional, one-dimensional plots that are marked with black curves. They help to understand the changes of the curvature of the surface induced by changes in only a single explanatory variable. Panel B) CP profiles for individual variables, age (continuous) and class (categorical).</figcaption><p></p>
+</figure>
+</div>
+<section id="example-titanic-data-2" class="level3" data-number="1.7.1">
+<h3 data-number="1.7.1" class="anchored" data-anchor-id="example-titanic-data-2"><span class="header-section-number">1.7.1</span> Example: Titanic data</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>titanic_lmr <span class="ot">&lt;-</span> archivist<span class="sc">::</span><span class="fu">aread</span>(<span class="st">"pbiecek/models/58b24"</span>)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"rms"</span>)</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>explain_lmr <span class="ot">&lt;-</span> <span class="fu">explain</span>(<span class="at">model =</span> titanic_lmr, </span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>                       <span class="at">data  =</span> titanic_imputed[, <span class="sc">-</span><span class="dv">9</span>],</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>                       <span class="at">y     =</span> titanic_imputed<span class="sc">$</span>survived <span class="sc">==</span> <span class="st">"yes"</span>,</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>                       <span class="at">type =</span> <span class="st">"classification"</span>,</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>                       <span class="at">label =</span> <span class="st">"Logistic Regression"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Preparation of a new explainer is initiated
+  -&gt; model label       :  Logistic Regression 
+  -&gt; data              :  2207  rows  8  cols 
+  -&gt; target variable   :  2207  values 
+  -&gt; predict function  :  yhat.lrm  will be used (  default  )
+  -&gt; predicted values  :  No value for predict function target column. (  default  )
+  -&gt; model_info        :  package rms , ver. 6.3.0 , task classification (  default  ) 
+  -&gt; model_info        :  type set to  classification 
+  -&gt; model_info        :  Model info detected classification task but 'y' is a logical . Converted to numeric.  (  NOTE  )
+  -&gt; predicted values  :  numerical, min =  0.002671631 , mean =  0.3221568 , max =  0.9845724  
+  -&gt; residual function :  difference between y and yhat (  default  )
+  -&gt; residuals         :  numerical, min =  -0.9845724 , mean =  -2.491758e-09 , max =  0.9715125  
+  A new explainer has been created!  </code></pre>
+</div>
+</div>
+<section id="basic-use-of-the-predict_profile-function" class="level4" data-number="1.7.1.1">
+<h4 data-number="1.7.1.1" class="anchored" data-anchor-id="basic-use-of-the-predict_profile-function"><span class="header-section-number">1.7.1.1</span> Basic use of the <code>predict_profile()</code> function</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>cp_titanic_rf <span class="ot">&lt;-</span> <span class="fu">predict_profile</span>(<span class="at">explainer =</span> explain_rf, </span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>                           <span class="at">new_observation =</span> henry)</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>cp_titanic_rf</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Top profiles    : 
+               class gender age sibsp parch fare  embarked _yhat_ _vname_ _ids_
+1                1st   male  47     0     0   25 Cherbourg  0.246   class     1
+1.1              2nd   male  47     0     0   25 Cherbourg  0.054   class     1
+1.2              3rd   male  47     0     0   25 Cherbourg  0.100   class     1
+1.3        deck crew   male  47     0     0   25 Cherbourg  0.454   class     1
+1.4 engineering crew   male  47     0     0   25 Cherbourg  0.096   class     1
+1.5 restaurant staff   male  47     0     0   25 Cherbourg  0.092   class     1
+          _label_
+1   Random Forest
+1.1 Random Forest
+1.2 Random Forest
+1.3 Random Forest
+1.4 Random Forest
+1.5 Random Forest
+
+
+Top observations:
+  class gender age sibsp parch fare  embarked _yhat_       _label_ _ids_
+1   1st   male  47     0     0   25 Cherbourg  0.246 Random Forest     1</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(<span class="st">"ggplot2"</span>)</span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(cp_titanic_rf, <span class="at">variables =</span> <span class="fu">c</span>(<span class="st">"age"</span>, <span class="st">"fare"</span>)) <span class="sc">+</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Ceteris-paribus profile"</span>, <span class="st">""</span>) <span class="sc">+</span> <span class="fu">ylim</span>(<span class="dv">0</span>, <span class="fl">0.8</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="DALEX_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># To plot CP profiles for categorical variables, we have got to add the variable_type = "categorical" argument to the plot() function. In that case, we can use the categorical_type argument to specify whether we want to obtain a plot with "lines" (default) or "bars". In the code below, we also use argument variables to indicate that we want to create plots only for variables class and embarked. </span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(cp_titanic_rf, <span class="at">variables =</span> <span class="fu">c</span>(<span class="st">"class"</span>, <span class="st">"embarked"</span>), </span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">variable_type =</span> <span class="st">"categorical"</span>, <span class="at">categorical_type =</span> <span class="st">"bars"</span>) <span class="sc">+</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Ceteris-paribus profile"</span>, <span class="st">""</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="DALEX_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="advanced-use-of-the-predict_profile-function" class="level4" data-number="1.7.1.2">
+<h4 data-number="1.7.1.2" class="anchored" data-anchor-id="advanced-use-of-the-predict_profile-function"><span class="header-section-number">1.7.1.2</span> Advanced use of the <code>predict_profile()</code> function</h4>
+<ul>
+<li><p><code>explainer</code>, <code>data</code>, <code>predict_function</code>, <code>label</code> - they provide information about the model. If the object provided in the <code>explainer</code> argument has been created with the <code>DALEX::explain()</code> function, then values of the other arguments are extracted from the object; this is how we use the function in this chapter. Otherwise, we have got to specify directly the model-object, the data frame used for fitting the model, the function that should be used to compute predictions, and the model label.</p></li>
+<li><p><code>new_observation</code> - a data frame with data for instance(s), for which we want to calculate CP profiles, with the same variables as in the data used to fit the model. Note, however, that it is best not to include the dependent variable in the data frame, as they should not appear in plots.</p></li>
+<li><p><code>y</code> - the observed values of the dependent variable corresponding to <code>new_observation</code>. The use of this argument is illustrated in Section <a href="https://ema.drwhy.ai/localDiagnostics.html#cPLocDiagIntro">12.1</a>.</p></li>
+<li><p><code>variables</code> - names of explanatory variables, for which CP profiles are to be calculated. By default, <code>variables = NULL</code> and the profiles are constructed for all variables, which may be time consuming.</p></li>
+<li><p><code>variable_splits</code> - a list of values for which CP profiles are to be calculated. By default, <code>variable_splits = NULL</code> and the list includes all values for categorical variables and uniformly-placed values for continuous variables; for the latter, one can specify the number of the values with the <code>grid_points</code> argument (by default, <code>grid_points = 101</code>).</p></li>
+</ul>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>variable_splits <span class="ot">=</span> <span class="fu">list</span>(<span class="at">age =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">70</span>, <span class="fl">0.1</span>), </span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>                      <span class="at">fare =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">100</span>, <span class="fl">0.1</span>))</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>cp_titanic_rf <span class="ot">&lt;-</span> <span class="fu">predict_profile</span>(<span class="at">explainer =</span> explain_rf, </span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>                              <span class="at">new_observation =</span> henry,</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>                              <span class="at">variable_splits =</span> variable_splits)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(cp_titanic_rf, <span class="at">variables =</span> <span class="fu">c</span>(<span class="st">"age"</span>, <span class="st">"fare"</span>)) <span class="sc">+</span> </span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Ceteris-paribus profile"</span>, <span class="st">""</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="DALEX_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>cp_titanic_rf2 <span class="ot">&lt;-</span> <span class="fu">predict_profile</span>(<span class="at">explainer =</span> explain_rf, </span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>                               <span class="at">new_observation =</span> <span class="fu">rbind</span>(henry, johnny_d),</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>                               <span class="at">variable_splits =</span> variable_splits)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ingredients)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(cp_titanic_rf2, <span class="at">color =</span> <span class="st">"_ids_"</span>, <span class="at">variables =</span> <span class="fu">c</span>(<span class="st">"age"</span>, <span class="st">"fare"</span>)) <span class="sc">+</span> </span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_color_manual</span>(<span class="at">name =</span> <span class="st">"Passenger:"</span>, <span class="at">breaks =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>, </span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">values =</span> <span class="fu">c</span>(<span class="st">"#4378bf"</span>, <span class="st">"#8bdcbe"</span>), </span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>            <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"henry"</span> , <span class="st">"johny_d"</span>)) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="DALEX_files/figure-html/unnamed-chunk-22-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="comparison-of-models-champion-challenger" class="level4" data-number="1.7.1.3">
+<h4 data-number="1.7.1.3" class="anchored" data-anchor-id="comparison-of-models-champion-challenger"><span class="header-section-number">1.7.1.3</span> Comparison of models (champion-challenger)</h4>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>cp_titanic_rf <span class="ot">&lt;-</span> <span class="fu">predict_profile</span>(explain_rf, henry)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>cp_titanic_lmr <span class="ot">&lt;-</span> <span class="fu">predict_profile</span>(explain_lmr, henry)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(cp_titanic_rf, cp_titanic_lmr, <span class="at">color =</span> <span class="st">"_label_"</span>,  </span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">variables =</span> <span class="fu">c</span>(<span class="st">"age"</span>, <span class="st">"fare"</span>)) <span class="sc">+</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>     <span class="fu">ggtitle</span>(<span class="st">"Ceteris-paribus profiles for Henry"</span>, <span class="st">""</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="DALEX_files/figure-html/unnamed-chunk-24-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+</section>
+<section id="pros-and-cons-3" class="level3" data-number="1.7.2">
+<h3 data-number="1.7.2" class="anchored" data-anchor-id="pros-and-cons-3"><span class="header-section-number">1.7.2</span> Pros and cons</h3>
+<p>One-dimensional CP profiles, as presented in this chapter, offer a uniform, easy to communicate, and extendable approach to model exploration. Their graphical representation is easy to understand and explain. It is possible to show profiles for many variables or models in a single plot. CP profiles are easy to compare, as we can overlay profiles for two or more models to better understand differences between the models. We can also compare two or more instances to better understand model-prediction’s stability. CP profiles are also a useful tool for sensitivity analysis.</p>
+<p>However, there are several issues related to the use of the CP profiles.</p>
+<ul>
+<li><p>One of the most important ones is related to the presence of <strong>correlated explanatory variables</strong>. For such variables, the application of the <em>ceteris-paribus</em> principle may lead to unrealistic settings and misleading results, as it is not possible to keep one variable fixed while varying the other one. For example, variables like surface and number of rooms, which can be used in prediction of an apartment’s price, are usually correlated. Thus, it is unrealistic to consider very small apartments with a large number of rooms. In fact, in a training dataset, there may be no such combinations. Yet, as implied by <a href="https://ema.drwhy.ai/ceterisParibus.html#eq:CPPdef">(10.1)</a>, to compute a CP profile for the number-of-rooms variable for a particular instance of a small-surface apartment, we should consider the model’s predictions f(x—-j|=z∗)f(x_∗j|=z) for all values of zz (i.e., numbers of rooms) observed in the training dataset, including large ones. This means that, especially for flexible models like, for example, regression trees, predictions for a large number of rooms zz may have to be obtained by extrapolating the results obtained for large-surface apartments. Needless to say, such extrapolation may be problematic. We will come back to this issue in Chapters <a href="https://ema.drwhy.ai/partialDependenceProfiles.html#partialDependenceProfiles">17</a> and <a href="https://ema.drwhy.ai/accumulatedLocalProfiles.html#accumulatedLocalProfiles">18</a>.</p></li>
+<li><p>A somewhat similar issue is related to the presence of <strong>interactions</strong> in a model, as they imply the dependence of the effect of one variable on other one(s). Pairwise interactions require the use of <strong>two-dimensional CP profiles</strong> that are more complex than one-dimensional ones. Needless to say, interactions of higher orders pose even a greater challenge.</p></li>
+<li><p>A practical issue is that, in case of a model with hundreds or thousands of variables, the number of plots to inspect may be daunting.</p></li>
+<li><p>Finally, while bar plots allow visualization of CP profiles for factors (categorical explanatory variables), their use becomes less trivial in case of factors with many nominal (unordered) categories (like, for example, a ZIP-code).</p></li>
+</ul>
 </section>
 </section>
 </section>
