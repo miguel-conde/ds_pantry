@@ -154,9 +154,17 @@ the_dist <- mean(the_pred_function(modelo_pipeline_lm, iris)) -
   mean(the_pred_function(modelo_pipeline_lm, kk_iris_1)) + 
   mean(the_pred_function(modelo_pipeline_lm, kk_iris_0))
 
-h <- model_profile(explainer = the_explainer_lm, variables = "Sepal.Width", 
-                   N = nrow(iris), type = "conditional")
-alpha <- h$agr_profiles %>% mutate(`_yhat_` = `_yhat_` - the_dist)
+h_lm <- model_profile(explainer = the_explainer_lm, variables = "Sepal.Width", 
+                   N = nrow(iris), type = "partial") # Parece que tiene que ser PARTIAL
+alpha_lm <- h_lm$agr_profiles %>% mutate(`_yhat_` = `_yhat_` - the_dist)
+
+the_dist_rf <- mean(the_pred_function(modelo_pipeline_rf, iris)) - 
+  mean(the_pred_function(modelo_pipeline_rf, kk_iris_1)) + 
+  mean(the_pred_function(modelo_pipeline_rf, kk_iris_0))
+
+h_rf <- model_profile(explainer = the_explainer_rf, variables = "Sepal.Width", 
+                      N = nrow(iris), type = "partial")
+alpha_rf <- h_rf$agr_profiles %>% mutate(`_yhat_` = `_yhat_` - the_dist_rf)
 
 # 2 - Qué hacer con la intercept
 # 3 - Cómo interpolar
@@ -224,5 +232,7 @@ pdp_1_contrib <- function(in_model, in_data, pred_var, pred_fun, grid_resolution
   return(out)
 }
 
-pdp_1_contrib(in_model = modelo_pipeline_lm, in_data = iris, pred_var = "Sepal.Width", 
+pdp_1_contrib(in_model = modelo_pipeline_lm, 
+              in_data = iris, 
+              pred_var = "Sepal.Width", 
               pred_fun = the_pred_function2, grid_resolution = 20)
