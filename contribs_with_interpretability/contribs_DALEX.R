@@ -166,8 +166,43 @@ h_rf <- model_profile(explainer = the_explainer_rf, variables = "Sepal.Width",
                       N = nrow(iris), type = "partial")
 alpha_rf <- h_rf$agr_profiles %>% mutate(`_yhat_` = `_yhat_` - the_dist_rf)
 
+
+pdp_2_contrib <- function(model, data, tgt_var, model_explainer, pred_function) {
+  
+  data_0 <- data %>% 
+    as_tibble() %>% 
+    mutate_if(is.numeric, ~ 0) %>% 
+    mutate_if(is.character, ~ factor(.)) %>% 
+    mutate_if(is.factor, ~ levels(.)[1])
+  
+  data_1 <- data_0 %>% mutate(!!sym(tgt_var) := pull(data, !!sym(tgt_var)))
+  
+  the_dist <- mean(pred_function(model, data)) - 
+    mean(pred_function(model, data_1)) + 
+    mean(pred_function(model, data_0))
+  
+  h <- model_profile(explainer = model_explainer, 
+                     variables = tgt_var, 
+                     N = nrow(data), 
+                     type = "partial") # Parece que tiene que ser PARTIAL
+  
+  alpha <- h$agr_profiles %>% mutate(`_yhat_` = `_yhat_` - the_dist)
+  
+  return(alpha)
+  
+}
+
+pdp_2_contrib(modelo_pipeline_lm, iris, "Sepal.Width", the_explainer_lm, the_pred_function)
+pdp_2_contrib(modelo_pipeline_rf, iris, "Sepal.Width", the_explainer_rf, the_pred_function)
+
+pdp_2_contrib(modelo_pipeline_lm, iris, "Species", the_explainer_lm, the_pred_function)
+pdp_2_contrib(modelo_pipeline_rf, iris, "Species", the_explainer_lm, the_pred_function)
+
 # 2 - Qué hacer con la intercept
 # 3 - Cómo interpolar
+
+
+# Código antiguo  ---------------------------------------------------------
 
 
 the_pred_function2 <- function(object, newdata) {
