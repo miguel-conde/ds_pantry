@@ -1,9 +1,11 @@
-library(fpp3)
-library(fpp2)
+
 library(tidyverse)
+library(fpp2)
+library(fpp3)
 library(conflicted)
 
 conflicts_prefer(dplyr::filter)
+conflicts_prefer(fabletools::accuracy)
 
 ## fpp3
 # aus_accommodation Australian accommodation data
@@ -494,5 +496,610 @@ outliers |>
   labs(title = "Outlying time series in PC space")
 
 # THE FORECASTER TOOLBOX --------------------------------------------------
+
+# A tidy forecasting workflow ---------------------------------------------
+
+# Data preparation (tidy)
+gdppc <- global_economy |>
+  mutate(GDP_per_capita = GDP / Population)
+
+# Plot the data (visualise)
+gdppc |>
+  filter(Country == "Sweden") |>
+  autoplot(GDP_per_capita) +
+  labs(y = "$US", title = "GDP per capita for Sweden")
+
+# Define a model (specify)
+TSLM(GDP_per_capita ~ trend())
+
+# Train the model (estimate)
+fit <- gdppc |>
+  model(trend_model = TSLM(GDP_per_capita ~ trend()))
+
+fit
+
+# Check model performance (evaluate)
+
+# Produce forecasts (forecast)
+fit |> forecast(h = "3 years")
+
+fit |>
+  forecast(h = "3 years") |>
+  filter(Country == "Sweden") |>
+  autoplot(gdppc) +
+  labs(y = "$US", title = "GDP per capita for Sweden")
+
+
+# Some simple forecasting methods -----------------------------------------
+
+bricks <- aus_production |>
+  filter_index("1970 Q1" ~ "2004 Q4") |>
+  select(Bricks)
+
+# Mean method
+fit <- bricks |> model(MEAN(Bricks))
+
+fit |>
+  forecast(h = "3 years") |>
+  autoplot(bricks) +
+  labs(y = "Bricks", title = "Clay bricks production in Australia")
+
+# Naïve method
+fit <- bricks |> model(NAIVE(Bricks))
+
+fit |>
+  forecast(h = "3 years") |>
+  autoplot(bricks) +
+  labs(y = "Bricks", title = "Clay bricks production in Australia")
+
+# Seasonal naïve method
+fit <- bricks |> model(SNAIVE(Bricks ~ lag("year")))
+
+fit |>
+  forecast(h = "3 years") |>
+  autoplot(bricks) +
+  labs(y = "Bricks", title = "Clay bricks production in Australia")
+
+# Drift method
+fit <- bricks |> model(RW(Bricks ~ drift()))
+
+fit |>
+  forecast(h = "3 years") |>
+  autoplot(bricks) +
+  labs(y = "Bricks", title = "Clay bricks production in Australia")
+
+# Example: Australian quarterly beer production
+
+# Set training data from 1992 to 2006
+train <- aus_production |>
+  filter_index("1992 Q1" ~ "2006 Q4")
+# Fit the models
+beer_fit <- train |>
+  model(
+    Mean = MEAN(Beer),
+    `Naïve` = NAIVE(Beer),
+    `Seasonal naïve` = SNAIVE(Beer)
+  )
+# Generate forecasts for 14 quarters
+beer_fc <- beer_fit |> forecast(h = 14)
+# Plot forecasts against actual values
+beer_fc |>
+  autoplot(train, level = NULL) +
+  autolayer(
+    filter_index(aus_production, "2007 Q1" ~ .),
+    colour = "black"
+  ) +
+  labs(
+    y = "Megalitres",
+    title = "Forecasts for quarterly beer production"
+  ) +
+  guides(colour = guide_legend(title = "Forecast"))
+
+# Example: Google’s daily closing stock price
+
+# Re-index based on trading days
+google_stock <- gafa_stock |>
+  filter(Symbol == "GOOG", year(Date) >= 2015) |>
+  mutate(day = row_number()) |>
+  update_tsibble(index = day, regular = TRUE)
+# Filter the year of interest
+google_2015 <- google_stock |> filter(year(Date) == 2015)
+# Fit the models
+google_fit <- google_2015 |>
+  model(
+    Mean = MEAN(Close),
+    `Naïve` = NAIVE(Close),
+    Drift = NAIVE(Close ~ drift())
+  )
+# Produce forecasts for the trading days in January 2016
+google_jan_2016 <- google_stock |>
+  filter(yearmonth(Date) == yearmonth("2016 Jan"))
+google_fc <- google_fit |>
+  forecast(new_data = google_jan_2016)
+# Plot the forecasts
+google_fc |>
+  autoplot(google_2015, level = NULL) +
+  autolayer(google_jan_2016, Close, colour = "black") +
+  labs(y = "$US",
+       title = "Google daily closing stock prices",
+       subtitle = "(Jan 2015 - Jan 2016)") +
+  guides(colour = guide_legend(title = "Forecast"))
+
+# Fitted values and residuals ---------------------------------------------
+
+augment(beer_fit)
+
+# Residual diagnostics ----------------------------------------------------
+
+# A good forecasting method will yield innovation residuals with the following 
+# properties:
+# 
+# The innovation residuals are uncorrelated. If there are correlations between 
+# innovation residuals, then there is information left in the residuals which 
+# should be used in computing forecasts.
+# The innovation residuals have zero mean. If they have a mean other than zero, 
+# then the forecasts are biased.
+#
+# In addition to these essential properties, it is useful (but not necessary) 
+# for the residuals to also have the following two properties.
+# 
+# The innovation residuals have constant variance. This is known as 
+# “homoscedasticity”.
+# The innovation residuals are normally distributed.
+
+# Example: Forecasting Google daily closing stock prices
+autoplot(google_2015, Close) +
+  labs(y = "$US",
+       title = "Google daily closing stock prices in 2015")
+
+aug <- google_2015 |>
+  model(NAIVE(Close)) |>
+  augment()
+autoplot(aug, .innov) +
+  labs(y = "$US",
+       title = "Residuals from the naïve method")
+
+aug |>
+  ggplot(aes(x = .innov)) +
+  geom_histogram() +
+  labs(title = "Histogram of residuals")
+
+aug |>
+  ACF(.innov) |>
+  autoplot() +
+  labs(title = "Residuals from the naïve method")
+
+google_2015 |>
+  model(NAIVE(Close)) |>
+  gg_tsresiduals()
+
+# Portmanteau tests for autocorrelation
+
+# lag is the maximum lag being considered.
+# We suggest using lag = 10 for non-seasonal data and lag = 2m for seasonal data, 
+# where m is the period of seasonality. However, the test is not good when  lag
+# is large, so if these values are larger than T/5, then use lag = T/5
+#
+# H0: las autocorrelaciones vienen de ruido  blanco (residuos no correlados)
+
+aug |> features(.innov, box_pierce, lag = 10)
+
+aug |> features(.innov, ljung_box, lag = 10)
+
+# the results are not significant (i.e., the  p-values are relatively large)
+
+# An alternative simple approach that may be appropriate for forecasting the 
+# Google daily closing stock price is the drift method.
+fit <- google_2015 |> model(RW(Close ~ drift()))
+tidy(fit)
+
+augment(fit) |> features(.innov, ljung_box, lag=10)
+
+
+# Distributional forecasts and prediction intervals -----------------------
+
+google_2015 |>
+  model(NAIVE(Close)) |>
+  forecast(h = 10) |>
+  hilo()
+
+google_2015 |>
+  model(NAIVE(Close)) |>
+  forecast(h = 10) |>
+  autoplot(google_2015) +
+  labs(title="Google daily closing stock price", y="$US" )
+
+# Prediction intervals from bootstrapped residuals
+fit <- google_2015 |>
+  model(NAIVE(Close))
+sim <- fit |> generate(h = 30, times = 5, bootstrap = TRUE)
+sim
+
+google_2015 |>
+  ggplot(aes(x = day)) +
+  geom_line(aes(y = Close)) +
+  geom_line(aes(y = .sim, colour = as.factor(.rep)),
+            data = sim) +
+  labs(title="Google daily closing stock price", y="$US" ) +
+  guides(colour = "none")
+
+fc <- fit |> forecast(h = 30, bootstrap = TRUE)
+fc
+
+autoplot(fc, google_2015) +
+  labs(title="Google daily closing stock price", y="$US" )
+
+google_2015 |>
+  model(NAIVE(Close)) |>
+  forecast(h = 10, bootstrap = TRUE, times = 1000) |>
+  hilo()
+
+
+# Forecasting using transformations ---------------------------------------
+
+# When forecasting from a model with transformations, we first produce forecasts 
+# of the transformed data.
+
+prices |>
+  filter(!is.na(eggs)) |>
+  model(RW(log(eggs) ~ drift())) |>
+  forecast(h = 50) |>
+  autoplot(prices |> filter(!is.na(eggs)),
+           level = 80, point_forecast = lst(mean, median)
+  ) +
+  labs(title = "Annual egg prices",
+       y = "$US (in cents adjusted for inflation) ")
+
+# Forecasting with decomposition ------------------------------------------
+
+# To forecast a decomposed time series, we forecast the seasonal component,  
+# and the seasonally adjusted component separately. 
+# It is usually assumed that the seasonal component is unchanging, or changing 
+# extremely slowly, so it is forecast by simply taking the last year of the 
+# estimated component. In other words, a seasonal naïve method is used for the 
+# seasonal component.
+# 
+# To forecast the seasonally adjusted component, any non-seasonal forecasting 
+# method may be used.
+
+# Example: Employment in the US retail sector
+us_retail_employment <- us_employment |>
+  filter(year(Month) >= 1990, Title == "Retail Trade")
+dcmp <- us_retail_employment |>
+  model(STL(Employed ~ trend(window = 7), robust = TRUE)) |>
+  components() |>
+  select(-.model)
+dcmp |>
+  model(NAIVE(season_adjust)) |>
+  forecast() |>
+  autoplot(dcmp) +
+  labs(y = "Number of people",
+       title = "US retail employment - Season Adjust")
+
+fit_dcmp <- us_retail_employment |>
+  model(stlf = decomposition_model(
+    STL(Employed ~ trend(window = 7), robust = TRUE),
+    NAIVE(season_adjust)
+  ))
+fit_dcmp |>
+  forecast() |>
+  autoplot(us_retail_employment)+
+  labs(y = "Number of people",
+       title = "US retail employment")
+
+fit_dcmp |> gg_tsresiduals()
+
+# The ACF of the residuals, shown in Figure 5.20, displays significant 
+# autocorrelations. These are due to the naïve method not capturing the changing 
+# trend in the seasonally adjusted series.
+
+# Evaluating point forecast accuracy --------------------------------------
+
+# Functions to subset a time series
+aus_production |> filter(year(Quarter) >= 1995)
+aus_production |> filter_index("1995 Q1" ~ .)
+aus_production |>
+  slice(n()-19:0)
+aus_retail |>
+  group_by(State, Industry) |>
+  slice(1:12)
+
+# Forecast errors
+# Scale-dependent errors - MAE, RMSE
+# Percentage errors - MAPE
+# Scaled errors - MASE, RMSSE
+
+# Examples
+
+recent_production <- aus_production |>
+  filter(year(Quarter) >= 1992)
+beer_train <- recent_production |>
+  filter(year(Quarter) <= 2007)
+
+beer_fit <- beer_train |>
+  model(
+    Mean = MEAN(Beer),
+    `Naïve` = NAIVE(Beer),
+    `Seasonal naïve` = SNAIVE(Beer),
+    Drift = RW(Beer ~ drift())
+  )
+
+beer_fc <- beer_fit |>
+  forecast(h = 10)
+
+beer_fc |>
+  autoplot(
+    aus_production |> filter(year(Quarter) >= 1992),
+    level = NULL
+  ) +
+  labs(
+    y = "Megalitres",
+    title = "Forecasts for quarterly beer production"
+  ) +
+  guides(colour = guide_legend(title = "Forecast"))
+
+fabletools::accuracy(beer_fit)
+fabletools::accuracy(beer_fc, recent_production)
+
+# Non seasonal example
+google_fit <- google_2015 |>
+  model(
+    Mean = MEAN(Close),
+    `Naïve` = NAIVE(Close),
+    Drift = RW(Close ~ drift())
+  )
+
+google_fc <- google_fit |>
+  forecast(google_jan_2016)
+
+google_fc |>
+  autoplot(bind_rows(google_2015, google_jan_2016),
+           level = NULL) +
+  labs(y = "$US",
+       title = "Google closing stock prices from Jan 2015") +
+  guides(colour = guide_legend(title = "Forecast"))
+
+fabletools::accuracy(google_fit)
+fabletools::accuracy(google_fc, google_stock)
+
+# Evaluating distributional forecast accuracy -----------------------------
+
+# Quantile scores
+google_fc |>
+  filter(.model == "Naïve") |>
+  autoplot(bind_rows(google_2015, google_jan_2016), level=80)+
+  labs(y = "$US",
+       title = "Google closing stock prices")
+
+google_fc |>
+  filter(.model == "Naïve", Date == "2016-01-04") |>
+  fabletools::accuracy(google_stock, list(qs=quantile_score), probs=0.10)
+
+# Winkler Score
+google_fc |>
+  filter(.model == "Naïve", Date == "2016-01-04") |>
+  fabletools::accuracy(google_stock,
+           list(winkler = winkler_score), level = 80)
+
+# Continuous Ranked Probability Score
+google_fc |>
+  fabletools::accuracy(google_stock, list(crps = CRPS))
+
+# Scale-free comparisons using skill scores
+google_fc |>
+  fabletools::accuracy(google_stock, list(skill = skill_score(CRPS)))
+
+# Time series cross-validation --------------------------------------------
+
+# Time series cross-validation accuracy
+google_2015_tr <- google_2015 |>
+  stretch_tsibble(.init = 3, .step = 1) |>
+  relocate(Date, Symbol, .id)
+google_2015_tr
+
+# TSCV accuracy
+google_2015_tr |>
+  model(RW(Close ~ drift())) |>
+  forecast(h = 1) |>
+  fabletools::accuracy(google_2015)
+# Training set accuracy
+google_2015 |>
+  model(RW(Close ~ drift())) |>
+  fabletools::accuracy()
+
+# Example: Forecast horizon accuracy with cross-validation
+google_2015_tr <- google_2015 |>
+  stretch_tsibble(.init = 3, .step = 1)
+fc <- google_2015_tr |>
+  model(RW(Close ~ drift())) |>
+  forecast(h = 8) |>
+  group_by(.id) |>
+  mutate(h = row_number()) |>
+  ungroup() |>
+  as_fable(response = "Close", distribution = Close)
+fc |>
+  fabletools::accuracy(google_2015, by = c("h", ".model")) |>
+  ggplot(aes(x = h, y = RMSE)) +
+  geom_point()
+
+# TIME SERIES REGRESSION MODELS -------------------------------------------
+
+# The linear model --------------------------------------------------------
+
+# Simple linear regression
+
+# Example: US consumption expenditure
+us_change |>
+  pivot_longer(c(Consumption, Income), names_to="Series") |>
+  autoplot(value) +
+  labs(y = "% change")
+
+us_change |>
+  ggplot(aes(x = Income, y = Consumption)) +
+  labs(y = "Consumption (quarterly % change)",
+       x = "Income (quarterly % change)") +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+
+us_change |>
+  model(TSLM(Consumption ~ Income)) |>
+  report()
+
+# Multiple linear regression
+
+# Example: US consumption expenditure
+us_change |>
+  select(-Consumption, -Income) |>
+  pivot_longer(-Quarter) |>
+  ggplot(aes(Quarter, value, colour = name)) +
+  geom_line() +
+  facet_grid(name ~ ., scales = "free_y") +
+  guides(colour = "none") +
+  labs(y="% change")
+
+us_change |>
+  GGally::ggpairs(columns = 2:6)
+
+# Least squares estimation ------------------------------------------------
+
+# Example: US consumption expenditure
+fit_consMR <- us_change |>
+  model(tslm = TSLM(Consumption ~ Income + Production +
+                      Unemployment + Savings))
+report(fit_consMR)
+
+# Fitted values
+augment(fit_consMR) |>
+  ggplot(aes(x = Quarter)) +
+  geom_line(aes(y = Consumption, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  labs(y = NULL,
+       title = "Percent change in US consumption expenditure"
+  ) +
+  scale_colour_manual(values=c(Data="black",Fitted="#D55E00")) +
+  guides(colour = guide_legend(title = NULL))
+
+augment(fit_consMR) |>
+  ggplot(aes(x = Consumption, y = .fitted)) +
+  geom_point() +
+  labs(
+    y = "Fitted (predicted values)",
+    x = "Data (actual values)",
+    title = "Percent change in US consumption expenditure"
+  ) +
+  geom_abline(intercept = 0, slope = 1)
+
+# Goodness-of-fit
+
+# Evaluating the regression model -----------------------------------------
+fit_consMR |> gg_tsresiduals()
+
+augment(fit_consMR) |>
+  features(.innov, ljung_box, lag = 10)
+
+# Residual plots against predictors
+us_change |>
+  left_join(residuals(fit_consMR), by = "Quarter") |>
+  pivot_longer(Income:Unemployment,
+               names_to = "regressor", values_to = "x") |>
+  ggplot(aes(x = x, y = .resid)) +
+  geom_point() +
+  facet_wrap(. ~ regressor, scales = "free_x") +
+  labs(y = "Residuals", x = "")
+
+# Residual plots against fitted values
+augment(fit_consMR) |>
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point() + labs(x = "Fitted", y = "Residuals")
+
+# Outliers and influential observations
+
+# Spurious regression
+# Regressing non-stationary time series can lead to spurious regressions.
+# Cases of spurious regression might appear to give reasonable short-term 
+# forecasts, but they will generally not continue to work into the future.
+fit <- aus_airpassengers |>
+  filter(Year <= 2011) |>
+  left_join(guinea_rice, by = "Year") |>
+  model(TSLM(Passengers ~ Production))
+report(fit)
+
+fit |> gg_tsresiduals()
+
+
+# Some useful predictors --------------------------------------------------
+
+# Trend
+# Dummy variables
+# Dummy seasonal variables
+
+# Example: Australian quarterly beer production
+recent_production <- aus_production |>
+  filter(year(Quarter) >= 1992)
+recent_production |>
+  autoplot(Beer) +
+  labs(y = "Megalitres",
+       title = "Australian quarterly beer production")
+
+# We can model this data using a regression model with a linear trend and 
+# quarterly dummy variables
+fit_beer <- recent_production |>
+  model(TSLM(Beer ~ trend() + season()))
+report(fit_beer)
+
+augment(fit_beer) |>
+  ggplot(aes(x = Quarter)) +
+  geom_line(aes(y = Beer, colour = "Data")) +
+  geom_line(aes(y = .fitted, colour = "Fitted")) +
+  scale_colour_manual(
+    values = c(Data = "black", Fitted = "#D55E00")
+  ) +
+  labs(y = "Megalitres",
+       title = "Australian quarterly beer production") +
+  guides(colour = guide_legend(title = "Series"))
+
+augment(fit_beer) |>
+  ggplot(aes(x = Beer, y = .fitted,
+             colour = factor(quarter(Quarter)))) +
+  geom_point() +
+  labs(y = "Fitted", x = "Actual values",
+       title = "Australian quarterly beer production") +
+  geom_abline(intercept = 0, slope = 1) +
+  guides(colour = guide_legend(title = "Quarter"))
+
+# Intervention variables
+# Trading days
+# Distributed lags
+# Easter
+# Fourier Series
+
+fourier_beer <- recent_production |>
+  model(TSLM(Beer ~ trend() + fourier(K = 2)))
+report(fourier_beer)
+
+# Selecting predictors ----------------------------------------------------
+
+glance(fit_consMR) |>
+  select(adj_r_squared, CV, AIC, AICc, BIC)
+
+# Adjusted R2
+# Cross validation
+# Akaike’s Information Criterion
+# Corrected Akaike’s Information Criterion
+# Schwarz’s Bayesian Information Criterion
+
+# Which measure should we use?
+
+# Consequently, we recommend that one of the AICc, AIC, or CV statistics be used, 
+# each of which has forecasting as their objective. 
+
+# Example: US consumption
+
+# Best subset regression
+# Stepwise regression
+# Beware of inference after selecting predictors
+
+
+# Forecasting with regression ---------------------------------------------
 
 
