@@ -1102,4 +1102,79 @@ glance(fit_consMR) |>
 
 # Forecasting with regression ---------------------------------------------
 
+# Example: Australian quarterly beer production
 
+recent_production <- aus_production |>
+  filter(year(Quarter) >= 1992)
+
+fit_beer <- recent_production |>
+  model(TSLM(Beer ~ trend() + season()))
+
+fc_beer <- forecast(fit_beer)
+
+fc_beer |>
+  autoplot(recent_production) +
+  labs(
+    title = "Forecasts of beer production using regression",
+    y = "megalitres"
+  )
+
+# Scenario based forecasting
+fit_consBest <- us_change |>
+  model(
+    lm = TSLM(Consumption ~ Income + Savings + Unemployment)
+  )
+
+future_scenarios <- scenarios(
+  Increase = new_data(us_change, 4) |>
+    mutate(Income=1, Savings=0.5, Unemployment=0),
+  Decrease = new_data(us_change, 4) |>
+    mutate(Income=-1, Savings=-0.5, Unemployment=0),
+  names_to = "Scenario")
+
+fc <- forecast(fit_consBest, new_data = future_scenarios)
+
+us_change |>
+  autoplot(Consumption) +
+  autolayer(fc) +
+  labs(title = "US consumption", y = "% change")
+
+# Building a predictive regression model
+
+# Prediction intervals
+# Example
+fit_cons <- us_change |>
+  model(TSLM(Consumption ~ Income))
+
+new_cons <- scenarios(
+  "Average increase" = new_data(us_change, 4) |>
+    mutate(Income = mean(us_change$Income)),
+  "Extreme increase" = new_data(us_change, 4) |>
+    mutate(Income = 12),
+  names_to = "Scenario"
+)
+
+fcast <- forecast(fit_cons, new_cons)
+
+us_change |>
+  autoplot(Consumption) +
+  autolayer(fcast) +
+  labs(title = "US consumption", y = "% change")
+
+# Nonlinear regression ----------------------------------------------------
+
+# Forecasting with a nonlinear trend
+
+# Example: Boston marathon winning times
+boston_men <- boston_marathon |>
+  filter(Year >= 1924) |>
+  filter(Event == "Men's open division") |>
+  mutate(Minutes = as.numeric(Time)/60)
+
+trnd_lm <- boston_men %>% 
+  model(TSLM(Minutes ~ trend()))
+
+boston_men %>% autoplot(Minutes) + 
+  geom_line(data = fitted(trnd_lm), mapping = aes(x = Year, y = .fitted))
+
+resid(trnd_lm) %>% ggplot(aes(x = Year, y = .resid)) + geom_line()
