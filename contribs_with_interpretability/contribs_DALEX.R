@@ -67,6 +67,11 @@ rsq(results_rf, truth = Sepal.Length, estimate = .pred)
 
 # EXPLICABILIDAD ----------------------------------------------------------
 
+
+# Partial Dependencies ----------------------------------------------------
+
+
+
 library(DALEX)
 
 the_pred_function <- function(model, newdata) {
@@ -271,3 +276,104 @@ pdp_1_contrib(in_model = modelo_pipeline_lm,
               in_data = iris, 
               pred_var = "Sepal.Width", 
               pred_fun = the_pred_function2, grid_resolution = 20)
+
+
+# Shap --------------------------------------------------------------------
+
+the_explainer_rf
+predict(the_explainer_rf, iris[1,])
+
+shap_1_rf <- predict_parts(explainer = the_explainer_rf, 
+                            new_observation = iris[1,], 
+                            type = "shap",
+                            B = 25)
+plot(shap_1_rf)
+
+shap_1_rf
+
+shap_1_rf %>% as_tibble() %>% 
+  group_by(variable_name) %>% 
+  summarise(avg = mean(contribution)) %>% 
+  spread(variable_name, avg)
+
+
+
+# Codigo antiguo ----------------------------------------------------------
+
+
+
+get_shap_values <- function(in_model, X, nsim, pred_wrapper, seed = NULL) {
+  
+  if (!is.null(seed)) set.seed(seed)
+  
+  shap_values <- fastshap::explain(in_model,
+                                   X = X,
+                                   nsim = nsim,
+                                   pred_wrapper = pred_wrapper,
+                                   adjust = TRUE)
+  shap_values
+}
+
+
+get_shap_contribs <- function(in_data, shap_values, in_model, pred_wrapper, pred = FALSE) {
+  
+  delta_vector <- rep(NA, ncol(shap_values)+1)
+  names(delta_vector) <- c("baseline", colnames(shap_values))
+  
+  delta_vector["baseline"] <-
+    pred_wrapper(in_model, in_data %>% mutate_all(~ 0)) %>% .[1]
+  
+  for (v in colnames(shap_values)) {
+    
+    aux <- in_data %>%
+      mutate_at(vars(-all_of(v)), ~ 0) %>%
+      mutate_at(all_of(v), ~ mean(.))
+    
+    delta_vector[v] <- pred_wrapper(in_model, aux[1,]) - delta_vector["baseline"]
+  }
+  
+  shap_contribs <- shap_values %>%
+    as.data.frame() %>%
+    mutate(baseline = 0, .before = 1) %>%
+    sweep(2, delta_vector[c("baseline", colnames(shap_values))], "+") %>%
+    as_tibble()
+  
+  if (pred == TRUE) shap_contribs <- shap_contribs %>%
+    mutate(y_hat = rowSums(shap_contribs))
+  
+  return(shap_contribs)
+}
+
+shap_contribs <- function(in_model,
+                          in_data,
+                          pred_vars,
+                          pred_fun,
+                          nsim = 10,
+                          grid_resolution = 20,
+                          seed = NULL) {
+  
+  shap_values <- get_shap_values(in_model     = in_model,
+                                 X            = in_data,
+                                 nsim         = nsim,
+                                 pred_wrapper = pred_fun,
+                                 seed         = seed)
+  
+  shap_contribs <- get_shap_contribs(in_data      = in_data,
+                                     shap_values  = shap_values,
+                                     in_model     = in_model,
+                                     pred_wrapper = pred_fun)
+  
+  out <- list(contribs        = shap_contribs,
+              smooth_contribs = NULL,
+              contrib_grid    = NULL,
+              contrib_funs    = NULL)
+  
+  return(out)
+  
+}
+
+
+shap_contribs(modelo_pipeline_lm, 
+              iris, 
+              c("Sepal.Width", "Petal.Length", "Petal.Width", "Species"),
+              the_pred_function)
