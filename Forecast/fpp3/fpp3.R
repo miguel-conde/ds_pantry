@@ -1175,6 +1175,83 @@ trnd_lm <- boston_men %>%
   model(TSLM(Minutes ~ trend()))
 
 boston_men %>% autoplot(Minutes) + 
-  geom_line(data = fitted(trnd_lm), mapping = aes(x = Year, y = .fitted))
+  geom_line(data = fitted(trnd_lm), mapping = aes(x = Year, y = .fitted)) +
+  geom_smooth(method = "lm", se = FALSE)
 
 resid(trnd_lm) %>% ggplot(aes(x = Year, y = .resid)) + geom_line()
+
+fit_trends <- boston_men |>
+  model(
+    linear = TSLM(Minutes ~ trend()),
+    exponential = TSLM(log(Minutes) ~ trend()),
+    piecewise = TSLM(Minutes ~ trend(knots = c(1950, 1980)))
+  )
+fc_trends <- fit_trends |> forecast(h = 10)
+
+boston_men |>
+  autoplot(Minutes) +
+  geom_line(data = fitted(fit_trends),
+            aes(y = .fitted, colour = .model)) +
+  autolayer(fc_trends, alpha = 0.5, level = 95) +
+  labs(y = "Minutes",
+       title = "Boston marathon winning times")
+
+# EXPONENTIAL SMOOTHING ---------------------------------------------------
+
+
+# Simple exponential smoothing --------------------------------------------
+
+# The simplest of the exponentially smoothing methods is naturally called simple 
+# exponential smoothing (SES)14. This method is suitable for forecasting data 
+# with no clear trend or seasonal pattern.
+algeria_economy <- global_economy |>
+  filter(Country == "Algeria")
+algeria_economy |>
+  autoplot(Exports) +
+  labs(y = "% of GDP", title = "Exports: Algeria")
+
+# Estimate parameters
+fit <- algeria_economy |>
+  model(ETS(Exports ~ error("A") + trend("N") + season("N")))
+fc <- fit |>
+  forecast(h = 5)
+
+fc |>
+  autoplot(algeria_economy) +
+  geom_line(aes(y = .fitted), col="#D55E00",
+            data = augment(fit)) +
+  labs(y="% of GDP", title="Exports: Algeria") +
+  guides(colour = "none")
+
+# Methods with trend ------------------------------------------------------
+
+# Holt’s linear trend method
+
+# Example: Australian population
+aus_economy <- global_economy |>
+  filter(Code == "AUS") |>
+  mutate(Pop = Population / 1e6)
+autoplot(aus_economy, Pop) +
+  labs(y = "Millions", title = "Australian population")
+
+fit <- aus_economy |>
+  model(
+    AAN = ETS(Pop ~ error("A") + trend("A") + season("N"))
+  )
+fc <- fit |> forecast(h = 10)
+
+# Damped trend methods
+
+# Example: Australian Population (continued)
+aus_economy |>
+  model(
+    `Holt's method` = ETS(Pop ~ error("A") +
+                            trend("A") + season("N")),
+    `Damped Holt's method` = ETS(Pop ~ error("A") +
+                                   trend("Ad", phi = 0.9) + season("N"))
+  ) |>
+  forecast(h = 15) |>
+  autoplot(aus_economy, level = NULL) +
+  labs(title = "Australian population",
+       y = "Millions") +
+  guides(colour = guide_legend(title = "Forecast"))
