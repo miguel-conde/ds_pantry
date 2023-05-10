@@ -1255,3 +1255,106 @@ aus_economy |>
   labs(title = "Australian population",
        y = "Millions") +
   guides(colour = guide_legend(title = "Forecast"))
+
+# Example: Internet usage
+www_usage <- as_tsibble(WWWusage)
+www_usage |> autoplot(value) +
+  labs(x="Minute", y="Number of users",
+       title = "Internet usage per minute")
+
+www_usage |>
+  stretch_tsibble(.init = 10) |>
+  model(
+    SES = ETS(value ~ error("A") + trend("N") + season("N")),
+    Holt = ETS(value ~ error("A") + trend("A") + season("N")),
+    Damped = ETS(value ~ error("A") + trend("Ad") +
+                   season("N"))
+  ) |>
+  forecast(h = 1) |>
+  fabletools::accuracy(www_usage)
+
+fit <- www_usage |>
+  model(
+    Damped = ETS(value ~ error("A") + trend("Ad") +
+                   season("N"))
+  )
+# Estimated parameters:
+tidy(fit)
+
+fit |>
+  forecast(h = 10) |>
+  autoplot(www_usage) +
+  labs(x="Minute", y="Number of users",
+       title = "Internet usage per minute")
+
+# Methods with seasonality ------------------------------------------------
+
+# Example: Domestic overnight trips in Australia
+
+aus_holidays <- tourism |>
+  filter(Purpose == "Holiday") |>
+  summarise(Trips = sum(Trips)/1e3)
+
+fit <- aus_holidays |>
+  model(
+    additive = ETS(Trips ~ error("A") + trend("A") +
+                     season("A")),
+    multiplicative = ETS(Trips ~ error("M") + trend("A") +
+                           season("M"))
+  )
+
+fc <- fit |> forecast(h = "3 years")
+
+fc |>
+  autoplot(aus_holidays, level = NULL) +
+  labs(title="Australian domestic tourism",
+       y="Overnight trips (millions)") +
+  guides(colour = guide_legend(title = "Forecast"))
+
+components(fit) %>% autoplot()
+components(fit %>% select(additive)) %>% autoplot()
+
+
+
+# Holt-Winters’ damped method
+
+# Example: Holt-Winters method with daily data
+sth_cross_ped <- pedestrian |>
+  filter(Date >= "2016-07-01",
+         Sensor == "Southern Cross Station") |>
+  index_by(Date) |>
+  summarise(Count = sum(Count)/1000)
+sth_cross_ped |>
+  filter(Date <= "2016-07-31") |>
+  model(
+    hw = ETS(Count ~ error("M") + trend("Ad") + season("M"))
+  ) |>
+  forecast(h = "2 weeks") |>
+  autoplot(sth_cross_ped |> filter(Date <= "2016-08-14")) +
+  labs(title = "Daily traffic: Southern Cross",
+       y="Pedestrians ('000)")
+
+
+# A taxonomy of exponential smoothing methods -----------------------------
+
+
+# Innovations state space models for exponential smoothing ----------------
+
+
+# Estimation and model selection ------------------------------------------
+
+# Example: Domestic holiday tourist visitor nights in Australia
+aus_holidays <- tourism |>
+  filter(Purpose == "Holiday") |>
+  summarise(Trips = sum(Trips)/1e3)
+
+fit <- aus_holidays |>
+  model(ETS(Trips))
+
+report(fit) # The model selected is ETS(M,N,A)
+
+components(fit) |>
+  autoplot() +
+  labs(title = "ETS(M,N,A) components")
+
+augment(fit) %>% autoplot(.resid) + autolayer(augment(fit), .innov)
