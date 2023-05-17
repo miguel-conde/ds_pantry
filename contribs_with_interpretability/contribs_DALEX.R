@@ -192,7 +192,7 @@ pdp_2_contrib <- function(model, data, tgt_var, model_explainer, pred_function) 
     mutate_if(is.factor, ~ levels(.)[1])
   
   data_1 <- data_0 %>% mutate(!!sym(tgt_var) := pull(data, !!sym(tgt_var)))
-  
+  # browser()
   the_dist <- mean(pred_function(model, data)) - 
     mean(pred_function(model, data_1)) + 
     mean(pred_function(model, data_0))
@@ -215,8 +215,20 @@ pdp_2_contrib(modelo_pipeline_lm, iris, "Species", the_explainer_lm, the_pred_fu
 pdp_2_contrib(modelo_pipeline_rf, iris, "Species", the_explainer_lm, the_pred_function)
 
 
-# Cómo interpolar?
-# Baseline / Intercept ?
+# Cómo interpolar / extrapolar
+
+# Baseline / Intercept ...
+iris_0 <- iris %>% 
+  as_tibble() %>% 
+  mutate_if(is.numeric, ~ 0) %>% 
+  mutate_if(is.character, ~ factor(.)) %>% 
+  mutate_if(is.factor, ~ factor(levels(.)[1], levels(.)))
+
+the_pred_function(modelo_pipeline_lm, iris_0)
+extract_fit_engine(modelo_pipeline_lm) %>% coef()
+
+the_pred_function(modelo_pipeline_rf, iris_0)
+
 
 
 # Partial dependencies - Boston -------------------------------------------
@@ -512,3 +524,35 @@ curve(res_all_lm$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$ta
 curve(res_all_lm$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio))
 curve(res_all_lm$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black))
 curve(res_all_lm$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
+
+
+### 
+kk <- model_profile(explainer = the_explainer_lm, variables = "Sepal.Width",
+                    type = "partial")
+
+kk$agr_profiles %>% 
+  as_tibble() %>% 
+  mutate(contrib = coef(extract_fit_engine(modelo_pipeline_lm))["Sepal.Width"] * `_x_`) %>% 
+  mutate(dist = contrib - `_yhat_`)
+
+pdp_2_contrib <- function(model, data, tgt_var, model_explainer, pred_function) {
+  
+  data_0 <- data %>% 
+    as_tibble() %>% 
+    mutate_at(all_of(tgt_var), ~ ifelse(is.numeric(.), 0, .)) %>% 
+    mutate_at(all_of(tgt_var), ~ ifelse(is.character(.), factor(.), .)) %>% 
+    mutate_at(all_of(tgt_var), ~ ifelse(is.factor(.), levels(.)[1], .))
+  
+  the_dist <- mean(pred_function(model, data_0)) 
+  
+  h <- model_profile(explainer = model_explainer, 
+                     variables = tgt_var, 
+                     N = nrow(data), 
+                     type = "partial") # Parece que tiene que ser PARTIAL
+  
+  alpha <- h$agr_profiles %>% mutate(`_yhat_` = `_yhat_` - the_dist)
+  
+  return(alpha)
+  
+}
+
