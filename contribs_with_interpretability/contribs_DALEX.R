@@ -267,8 +267,8 @@ pdp_2_contrib <- function(model, data, tgt_var, model_explainer, pred_function) 
   }
   
   if (is.factor(pull(data, !!sym(tgt_var)))) {
-    data_0 <- data_0 %>% 
-      mutate(!!sym(tgt_var) := factor(levels(!!sym(tgt_var))[1], 
+    data_0 <- data_0 %>%
+      mutate(!!sym(tgt_var) := factor(levels(!!sym(tgt_var))[1],
                                       levels = levels(!!sym(tgt_var))))
   }
   
