@@ -24,6 +24,14 @@ get_mode <- function(v, method = c("first", "all")) {
 # Cargar el conjunto de datos de iris
 data(iris)
 
+iris <-
+  recipe(Sepal.Length ~ ., data = iris) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  prep() %>%
+  bake(iris)
+
+
+
 
 # MODELOS -----------------------------------------------------------------
 
@@ -405,6 +413,66 @@ pull(filter(s_w_rf, `_x_` == iris[10, "Sepal.Width"]), `_yhat_`) +
   pull(filter(p_l_rf, `_x_` == iris[10, "Petal.Length"]), `_yhat_`) +
   pull(filter(p_w_rf, `_x_` == iris[10, "Petal.Width"]), `_yhat_`) +
   pull(filter(s_s_rf, `_x_` == iris[10, "Species"]), `_yhat_`) +
+  mean(predict(modelo_pipeline_rf, change_2_base_lvl(iris))[[1]])
+
+#### Check 2
+
+# LM
+
+s_w <- pdp_2_contrib(modelo_pipeline_lm, iris, "Sepal.Width",  the_explainer_lm, the_pred_function)
+p_l <- pdp_2_contrib(modelo_pipeline_lm, iris, "Petal.Length", the_explainer_lm, the_pred_function)
+p_w <- pdp_2_contrib(modelo_pipeline_lm, iris, "Petal.Width",  the_explainer_lm, the_pred_function)
+s_s_vi <- pdp_2_contrib(modelo_pipeline_lm, iris, "Species_virginica",      
+                      the_explainer_lm, the_pred_function) 
+s_s_ve <- pdp_2_contrib(modelo_pipeline_lm, iris, "Species_versicolor",      
+                        the_explainer_lm, the_pred_function)
+
+iris %>% select(-Sepal.Length) %>% bind_cols(results_lm) %>% as_tibble()
+
+pull(filter(s_w, `_x_` == iris[1, "Sepal.Width", drop = TRUE]), `_yhat_`) +
+  pull(filter(p_l, `_x_` == iris[1, "Petal.Length", drop = TRUE]), `_yhat_`) +
+  pull(filter(p_w, `_x_` == iris[1, "Petal.Width", drop = TRUE]), `_yhat_`) +
+  pull(filter(s_s_vi, `_x_` == iris[1, "Species_virginica", drop = TRUE]), `_yhat_`) +
+  pull(filter(s_s_ve, `_x_` == iris[1, "Species_versicolor", drop = TRUE]), `_yhat_`) +
+  mean(predict(modelo_pipeline_lm, change_2_base_lvl(iris))[[1]])
+
+# RF
+
+s_w_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Sepal.Width",  the_explainer_rf, the_pred_function)
+p_l_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Petal.Length", the_explainer_rf, the_pred_function)
+p_w_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Petal.Width",  the_explainer_rf, the_pred_function)
+s_s_vi_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Species_virginica",      
+                        the_explainer_rf, the_pred_function)
+s_s_ve_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Species_versicolor",      
+                        the_explainer_rf, the_pred_function)
+
+iris %>% select(-Sepal.Length) %>% bind_cols(results_rf) %>% as_tibble()
+
+pull(filter(s_w_rf, `_x_` == iris[10, "Sepal.Width", drop = TRUE]), `_yhat_`) +
+  pull(filter(p_l_rf, `_x_` == iris[10, "Petal.Length", drop = TRUE]), `_yhat_`) +
+  pull(filter(p_w_rf, `_x_` == iris[10, "Petal.Width", drop = TRUE]), `_yhat_`) +
+  pull(filter(s_s_vi_rf, `_x_` == iris[1, "Species_virginica", drop = TRUE]), `_yhat_`) +
+  pull(filter(s_s_ve_rf, `_x_` == iris[1, "Species_versicolor", drop = TRUE]), `_yhat_`) +
+  mean(predict(modelo_pipeline_rf, change_2_base_lvl(iris))[[1]])
+
+####
+pdp_1_contrib <- rcontribs:::pdp_1_contrib
+s_w_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Sepal.Width", the_pred_fun_2)
+p_l_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Petal.Length", the_pred_fun_2)
+p_w_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Petal.Width", the_pred_fun_2)
+s_s_vi_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Species_virginica", 
+                           the_pred_fun_2)
+s_s_ve_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Species_versicolor",
+                           the_pred_fun_2)
+
+iris %>% select(-Sepal.Length) %>% bind_cols(results_rf) %>% as_tibble() %>% 
+  filter(Sepal.Width == 2)
+
+pull(filter(s_w_rf, Sepal.Width == 2), yhat) +
+  pull(filter(p_l_rf, Petal.Length == 3.5), yhat) +
+  pull(filter(p_w_rf, Petal.Width == 1), yhat) +
+  pull(filter(s_s_vi_rf, Species_virginica == 0), yhat) +
+  pull(filter(s_s_ve_rf, Species_versicolor == 1), yhat) +
   mean(predict(modelo_pipeline_rf, change_2_base_lvl(iris))[[1]])
 
 # Partial dependencies - Boston -------------------------------------------
