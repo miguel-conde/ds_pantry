@@ -24,14 +24,6 @@ get_mode <- function(v, method = c("first", "all")) {
 # Cargar el conjunto de datos de iris
 data(iris)
 
-iris <-
-  recipe(Sepal.Length ~ ., data = iris) %>%
-  step_dummy(all_nominal(), -all_outcomes()) %>%
-  prep() %>%
-  bake(iris)
-
-
-
 
 # MODELOS -----------------------------------------------------------------
 
@@ -191,97 +183,19 @@ h_rf <- model_profile(explainer = the_explainer_rf, variables = "Sepal.Width",
 alpha_rf <- h_rf$agr_profiles %>% mutate(`_yhat_` = `_yhat_` - the_dist_rf)
 
 
-# pdp_2_contrib <- function(model, data, tgt_var, model_explainer, pred_function) {
-# 
-#   data_0 <- data %>%
-#     as_tibble() %>%
-#     mutate_if(is.numeric, ~ 0) %>%
-#     mutate_if(is.character, ~ factor(.)) %>%
-#     mutate_if(is.factor, ~ levels(.)[1])
-# 
-#   data_1 <- data_0 %>% mutate(!!sym(tgt_var) := pull(data, !!sym(tgt_var)))
-#   # browser()
-#   the_dist <- mean(pred_function(model, data)) -
-#     mean(pred_function(model, data_1)) +
-#     mean(pred_function(model, data_0))
-# 
-#   h <- model_profile(explainer = model_explainer,
-#                      variables = tgt_var,
-#                      N = nrow(data),
-#                      type = "partial") # Parece que tiene que ser PARTIAL
-# 
-#   alpha <- h$agr_profiles %>% mutate(`_yhat_` = `_yhat_` - the_dist)
-# 
-#   return(alpha)
-# 
-# }
-
-change_2_base_lvl <- function(the_data) {
-  
-  # Pone todas las variables a 0 si es numérica o en el nivel de referencia si 
-  # es character o factor
-  
-    data_0 <- the_data %>%
-      as_tibble() %>%
-      mutate_if(is.numeric, ~ 0) %>%
-      mutate_if(is.character, ~ factor(.)) %>%
-      mutate_if(is.factor, ~ levels(.)[1])
-    
-    return(data_0)
-  
-}
-
-pon_var_a_0 <- function(the_data, tgt_var) {
-  
-  # Pone tgt_var a 0 si es numérica o en el nivel de referencia si es character 
-  # o factor
-  
-  data_0 <- the_data
-  
-  if (is.numeric(pull(data_0, !!sym(tgt_var)))) {
-    data_0 <- data_0 %>% mutate(!!sym(tgt_var) := 0)
-  }
-  
-  if (is.character(pull(data_0, !!sym(tgt_var)))) {
-    data_0 <- data_0 %>% mutate_(!!sym(tgt_var) := factor(!!sym(tgt_var)))
-  }
-  
-  if (is.factor(pull(data_0, !!sym(tgt_var)))) {
-    data_0 <- data_0 %>% 
-      mutate(!!sym(tgt_var) := factor(levels(!!sym(tgt_var))[1], 
-                                      levels = levels(!!sym(tgt_var))))
-  }
-  
-  return(data_0)
-}
-
 pdp_2_contrib <- function(model, data, tgt_var, model_explainer, pred_function) {
   
-  # data_0 <- data %>% 
-  #   as_tibble() %>% 
-  #   mutate_at(all_of(tgt_var), ~ ifelse(is.numeric(.), 0, .)) %>% 
-  #   mutate_at(all_of(tgt_var), ~ ifelse(is.character(.), factor(.), .)) %>% 
-  #   # mutate_at(all_of(tgt_var), ~ ifelse(is.factor(.), levels(.)[1], .))
-  #   mutate_at(all_of(tgt_var), ~ ifelse(is.factor(.), as.character(.), .))
+  data_0 <- data %>% 
+    as_tibble() %>% 
+    mutate_if(is.numeric, ~ 0) %>% 
+    mutate_if(is.character, ~ factor(.)) %>% 
+    mutate_if(is.factor, ~ levels(.)[1])
   
-  data_0 <- data
+  data_1 <- data_0 %>% mutate(!!sym(tgt_var) := pull(data, !!sym(tgt_var)))
   
-  if (is.numeric(pull(data, !!sym(tgt_var)))) {
-    data_0 <- data_0 %>% mutate(!!sym(tgt_var) := 0)
-  }
-  
-  if (is.character(pull(data, !!sym(tgt_var)))) {
-    data_0 <- data_0 %>% mutate_(!!sym(tgt_var) := factor(!!sym(tgt_var)))
-  }
-  
-  if (is.factor(pull(data, !!sym(tgt_var)))) {
-    data_0 <- data_0 %>%
-      mutate(!!sym(tgt_var) := factor(levels(!!sym(tgt_var))[1],
-                                      levels = levels(!!sym(tgt_var))))
-  }
-  
-  # browser()
-  the_dist <- mean(pred_function(model, data_0)) 
+  the_dist <- mean(pred_function(model, data)) - 
+    mean(pred_function(model, data_1)) + 
+    mean(pred_function(model, data_0))
   
   h <- model_profile(explainer = model_explainer, 
                      variables = tgt_var, 
@@ -294,186 +208,17 @@ pdp_2_contrib <- function(model, data, tgt_var, model_explainer, pred_function) 
   
 }
 
+pdp_2_contrib(model_pipeline_lm, iris, "Sepal.Width", the_explainer_lm, the_pred_function)
+pdp_2_contrib(model_pipeline_rf, iris, "Sepal.Width", the_explainer_rf, the_pred_function)
 
-pdp_2_contrib_rcontribs <- function(in_model, in_data, pred_var, model_explainer, pred_fun) {
-  
-  h <- model_profile(explainer = model_explainer, 
-                     variables = pred_var, 
-                     N = nrow(in_data), 
-                     type = "partial") # Parece que tiene que ser PARTIAL
-  # browser()
-  
-  the_pred_fun <- function(object, newdata) {
-    predict(object, newdata) %>% pull(1)
-  }
-  pd_values <- pdp::partial(
-    in_model,
-    train = in_data,
-    pred.var = pred_var,
-    pred.fun = the_pred_fun,
-    grid.resolution =  20,
-    ice = TRUE
-  )
-  # 
-  # aux_class <- class(pd_values)
-  # 
-  # pd_values <- pd_values %>%
-  #   as_tibble() %>%
-  #   group_by(!!sym(pred_var)) %>%
-  #   summarise(yhat = mean(yhat))
-  # 
-  # # class(pd_values) <- aux_class
-  # class(pd_values) <- c("data.frame", "partial")
-  
-  avg_y_hat <- pred_fun(in_model, in_data) %>% mean()
-  
-  if (is.numeric(pull(in_data, !!sym(pred_var)))) {
-    
-    avg_x <- in_data %>% pull(!!sym(pred_var)) %>% mean()
-    
-  } else {
-    if (is.factor(pull(in_data, !!sym(pred_var))) | 
-        is.character(pull(in_data, !!sym(pred_var)))) {
-      avg_x <- in_data %>% pull(!!sym(pred_var)) %>% get_mode()
-    }
-  }
-  
-  X_aux_0 <- in_data %>% change_2_base_lvl()
-  
-  # X_aux_0 <- in_data %>% mutate_all(~ 0)
-  # X_aux_0 <- in_data %>% mutate_if(is.numeric, ~ 0) %>% mutate_if(is.factor, ~ levels(.)[1])
-  X_aux_1 <- X_aux_0  %>% mutate(!!sym(pred_var) := avg_x)
-  
-  # La distancia es la media de:
-  #          fitted - fitted cuando todos valen 0 menos el de interés
-  dist <- avg_y_hat - (mean(pred_fun(in_model, X_aux_1)) - mean(pred_fun(in_model, X_aux_0)))
-  
-  # aux_class <- class(pd_values)
-  # out <- pd_values %>%
-  #   as_tibble() %>%
-  #   mutate(yhat = yhat - dist) %>%
-  #   as.data.frame()
-  # class(out) <- aux_class
-  
-  out <- h
-  out$yhat <- out$yhat - dist
-  
-  return(out)
-}
-
-
-pdp_2_contrib(modelo_pipeline_lm, iris, "Sepal.Width", the_explainer_lm, the_pred_function)
-pdp_2_contrib(modelo_pipeline_rf, iris, "Sepal.Width", the_explainer_rf, the_pred_function)
 
 pdp_2_contrib(modelo_pipeline_lm, iris, "Species", the_explainer_lm, the_pred_function)
 pdp_2_contrib(modelo_pipeline_rf, iris, "Species", the_explainer_lm, the_pred_function)
 
 
-# Cómo interpolar / extrapolar
+# Cómo interpolar?
+# Baseline / Intercept ?
 
-# Baseline / Intercept ...
-iris_0 <- iris %>% 
-  as_tibble() %>% 
-  mutate_if(is.numeric, ~ 0) %>% 
-  mutate_if(is.character, ~ factor(.)) %>% 
-  mutate_if(is.factor, ~ factor(levels(.)[1], levels(.)))
-
-the_pred_function(modelo_pipeline_lm, iris_0)
-extract_fit_engine(modelo_pipeline_lm) %>% coef()
-
-the_pred_function(modelo_pipeline_rf, iris_0)
-
-#### Check
-
-# LM
-
-s_w <- pdp_2_contrib(modelo_pipeline_lm, iris, "Sepal.Width",  the_explainer_lm, the_pred_function)
-p_l <- pdp_2_contrib(modelo_pipeline_lm, iris, "Petal.Length", the_explainer_lm, the_pred_function)
-p_w <- pdp_2_contrib(modelo_pipeline_lm, iris, "Petal.Width",  the_explainer_lm, the_pred_function)
-s_s <- pdp_2_contrib(modelo_pipeline_lm, iris, "Species",      the_explainer_lm, the_pred_function)
-
-iris %>% select(-Sepal.Length) %>% bind_cols(results_lm) %>% as_tibble()
-
-pull(filter(s_w, `_x_` == iris[1, "Sepal.Width"]), `_yhat_`) +
-  pull(filter(p_l, `_x_` == iris[1, "Petal.Length"]), `_yhat_`) +
-  pull(filter(p_w, `_x_` == iris[1, "Petal.Width"]), `_yhat_`) +
-  pull(filter(s_s, `_x_` == iris[1, "Species"]), `_yhat_`) +
-  mean(predict(modelo_pipeline_lm, change_2_base_lvl(iris))[[1]])
-
-# RF
-
-s_w_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Sepal.Width",  the_explainer_rf, the_pred_function)
-p_l_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Petal.Length", the_explainer_rf, the_pred_function)
-p_w_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Petal.Width",  the_explainer_rf, the_pred_function)
-s_s_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Species",      the_explainer_rf, the_pred_function)
-
-iris %>% select(-Sepal.Length) %>% bind_cols(results_rf) %>% as_tibble()
-
-pull(filter(s_w_rf, `_x_` == iris[10, "Sepal.Width"]), `_yhat_`) +
-  pull(filter(p_l_rf, `_x_` == iris[10, "Petal.Length"]), `_yhat_`) +
-  pull(filter(p_w_rf, `_x_` == iris[10, "Petal.Width"]), `_yhat_`) +
-  pull(filter(s_s_rf, `_x_` == iris[10, "Species"]), `_yhat_`) +
-  mean(predict(modelo_pipeline_rf, change_2_base_lvl(iris))[[1]])
-
-#### Check 2
-
-# LM
-
-s_w <- pdp_2_contrib(modelo_pipeline_lm, iris, "Sepal.Width",  the_explainer_lm, the_pred_function)
-p_l <- pdp_2_contrib(modelo_pipeline_lm, iris, "Petal.Length", the_explainer_lm, the_pred_function)
-p_w <- pdp_2_contrib(modelo_pipeline_lm, iris, "Petal.Width",  the_explainer_lm, the_pred_function)
-s_s_vi <- pdp_2_contrib(modelo_pipeline_lm, iris, "Species_virginica",      
-                      the_explainer_lm, the_pred_function) 
-s_s_ve <- pdp_2_contrib(modelo_pipeline_lm, iris, "Species_versicolor",      
-                        the_explainer_lm, the_pred_function)
-
-iris %>% select(-Sepal.Length) %>% bind_cols(results_lm) %>% as_tibble()
-
-pull(filter(s_w, `_x_` == iris[1, "Sepal.Width", drop = TRUE]), `_yhat_`) +
-  pull(filter(p_l, `_x_` == iris[1, "Petal.Length", drop = TRUE]), `_yhat_`) +
-  pull(filter(p_w, `_x_` == iris[1, "Petal.Width", drop = TRUE]), `_yhat_`) +
-  pull(filter(s_s_vi, `_x_` == iris[1, "Species_virginica", drop = TRUE]), `_yhat_`) +
-  pull(filter(s_s_ve, `_x_` == iris[1, "Species_versicolor", drop = TRUE]), `_yhat_`) +
-  mean(predict(modelo_pipeline_lm, change_2_base_lvl(iris))[[1]])
-
-# RF
-
-s_w_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Sepal.Width",  the_explainer_rf, the_pred_function)
-p_l_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Petal.Length", the_explainer_rf, the_pred_function)
-p_w_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Petal.Width",  the_explainer_rf, the_pred_function)
-s_s_vi_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Species_virginica",      
-                        the_explainer_rf, the_pred_function)
-s_s_ve_rf <- pdp_2_contrib(modelo_pipeline_rf, iris, "Species_versicolor",      
-                        the_explainer_rf, the_pred_function)
-
-iris %>% select(-Sepal.Length) %>% bind_cols(results_rf) %>% as_tibble()
-
-pull(filter(s_w_rf, `_x_` == iris[10, "Sepal.Width", drop = TRUE]), `_yhat_`) +
-  pull(filter(p_l_rf, `_x_` == iris[10, "Petal.Length", drop = TRUE]), `_yhat_`) +
-  pull(filter(p_w_rf, `_x_` == iris[10, "Petal.Width", drop = TRUE]), `_yhat_`) +
-  pull(filter(s_s_vi_rf, `_x_` == iris[1, "Species_virginica", drop = TRUE]), `_yhat_`) +
-  pull(filter(s_s_ve_rf, `_x_` == iris[1, "Species_versicolor", drop = TRUE]), `_yhat_`) +
-  mean(predict(modelo_pipeline_rf, change_2_base_lvl(iris))[[1]])
-
-####
-pdp_1_contrib <- rcontribs:::pdp_1_contrib
-s_w_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Sepal.Width", the_pred_fun_2)
-p_l_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Petal.Length", the_pred_fun_2)
-p_w_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Petal.Width", the_pred_fun_2)
-s_s_vi_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Species_virginica", 
-                           the_pred_fun_2)
-s_s_ve_rf <- pdp_1_contrib(modelo_pipeline_rf, iris, "Species_versicolor",
-                           the_pred_fun_2)
-
-iris %>% select(-Sepal.Length) %>% bind_cols(results_rf) %>% as_tibble() %>% 
-  filter(Sepal.Width == 2)
-
-pull(filter(s_w_rf, Sepal.Width == 2), yhat) +
-  pull(filter(p_l_rf, Petal.Length == 3.5), yhat) +
-  pull(filter(p_w_rf, Petal.Width == 1), yhat) +
-  pull(filter(s_s_vi_rf, Species_virginica == 0), yhat) +
-  pull(filter(s_s_ve_rf, Species_versicolor == 1), yhat) +
-  mean(predict(modelo_pipeline_rf, change_2_base_lvl(iris))[[1]])
 
 # Partial dependencies - Boston -------------------------------------------
 
@@ -768,16 +513,3 @@ curve(res_all_lm$contrib_funs$tax(x), from = min(Boston$tax), to = max(Boston$ta
 curve(res_all_lm$contrib_funs$ptratio(x), from = min(Boston$ptratio), to = max(Boston$ptratio))
 curve(res_all_lm$contrib_funs$black(x), from = min(Boston$black), to = max(Boston$black))
 curve(res_all_lm$contrib_funs$lstat(x), from = min(Boston$lstat), to = max(Boston$lstat))
-
-
-### 
-kk <- model_profile(explainer = the_explainer_lm, variables = "Sepal.Width",
-                    type = "partial")
-
-kk$agr_profiles %>% 
-  as_tibble() %>% 
-  mutate(contrib = coef(extract_fit_engine(modelo_pipeline_lm))["Sepal.Width"] * `_x_`) %>% 
-  mutate(dist = contrib - `_yhat_`)
-
-
-
