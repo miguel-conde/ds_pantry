@@ -148,29 +148,48 @@ poiss_glm <- glm(n ~ t, data = probe, family = "poisson", offset = log(n_adultas
 
 summary(poiss_glm)
 
-# log_lambda_fit <- coef(poiss_glm)["(Intercept)"] + coef(poiss_glm)["t"] * probe$t
-# log_lambda_ci_low <- coef(poiss_glm)["(Intercept)"] + confint(poiss_glm)["t", "2.5 %"] * probe$t
-# log_lambda_ci_high <- coef(poiss_glm)["(Intercept)"] + confint(poiss_glm)["t", "97.5 %"] * probe$t
-# 
-# res_data <- probe %>% 
-#   mutate(n_fit = exp(log_lambda_fit),
-#          n_ci_low = exp(log_lambda_ci_low),
-#          n_ci_high = exp(log_lambda_ci_high))
+log_pred <- predict(poiss_glm, type = "link", se.fit = TRUE)
 
-pred <- predict(poiss_glm, type = "response", se.fit = TRUE)
+log_lambda_fit <- log_pred$fit
+log_lambda_ci_low <- log_pred$fit - 2 * log_pred$se.fit 
+log_lambda_ci_high <- log_pred$fit + 2 * log_pred$se.fit 
 
 res_data <- probe %>%
-  mutate(n_fit     = pred$fit,
-         n_ci_low  = n_fit - 2*pred$se.fit,
-         n_ci_high = n_fit + 2*pred$se.fit)
+  mutate(n_fit = exp(log_lambda_fit),
+         n_ci_low = exp(log_lambda_ci_low),
+         n_ci_high = exp(log_lambda_ci_high))
+
+# a <- predict(poiss_glm, type = "response", se.fit = TRUE)
+# 
+# res_data <- probe %>%
+#   mutate(n_fit     = pred$fit,
+#          n_ci_low  = n_fit - 2*pred$se.fit,
+#          n_ci_high = n_fit + 2*pred$se.fit)
   
 res_data %>% 
-  gather(key, value, -yr, -t, -n_adultas, -n_100K) %>% 
+  select(-n_adultas, -t, -n_100K) %>% 
+  gather(key, value, -yr) %>% 
   ggplot(aes(x = yr, y = value, colour = key)) +
   geom_line() +
   geom_point() +
   ylim(0, NA)
 
-# % disminución media anual del numero de asesinatos por cada 10M de mujeres adultas
-(exp(coef(poiss_glm)["t"]) - 1) * 100
+
+# Asumiendo que tu dataframe se llama df
+ggplot(data = res_data, aes(x = yr)) +
+  geom_line(aes(y = n, color = "Valor Real"), show.legend = TRUE) +
+  geom_point(aes(y = n, color = "Valor Real"), show.legend = TRUE) +
+  geom_line(aes(y = n_fit, color = "Valor Predicho"), show.legend = TRUE) +
+  geom_point(aes(y = n_fit, color = "Valor Predicho"), show.legend = TRUE) +
+  geom_ribbon(aes(ymin = n_ci_low, ymax = n_ci_high, fill = "2 x Error Estándar"), 
+              alpha = 0.2, show.legend = TRUE) +
+  scale_color_manual(name = "Series",
+                     values = c("Valor Real" = "blue", "Valor Predicho" = "red")) +
+  scale_fill_manual(name = "Intervalo de Confianza",
+                    values = c("2 x Error Estándar" = "red")) +
+  guides(fill = guide_legend(override.aes = list(linetype = "blank", shape = NA))) +
+  labs(title = "Gráfico", x = "Año", y = "Valores") +
+  ylim(0, NA) +
+  theme_minimal()
+
 
